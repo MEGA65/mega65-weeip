@@ -1,0 +1,11 @@
+
+WeeIP - Micro TCP-IP stack for PIC18 microcontrollers
+Current version: 1.0.3
+Copyright (c) 1996-2014 Bruno Basseto (bruno@wise-ware.org)
+
+This software is free and open source. Verify license conditions within the file LICENSE at the project root.
+
+WeeIP source code can be compiled with Microchip's official compiler, MCC18.
+Since version 1.0.3, WeeIP can also be built using the CPIK compiler, version 0.7.3.
+
+CPIK is open source and can be found at http://pikdev.free.fr/ 

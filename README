@@ -1,0 +1,19 @@
+
+WeeIP - Micro TCP-IP stack for PIC18 microcontrollers
+Current version: 1.0.3
+Copyright (c) 1996-2014 Bruno Basseto (bruno@wise-ware.org)
+
+This software is free and open source. Verify license conditions within the file LICENSE at the project root.
+This software requires a cross compiler and a target environment to be executed. Verify installation issues within the file INSTALL at the project root. 
+
+WeeIP is a simple but complete working transport-network protocol stack for 8-bit microprocessors.
+Its current version supports Microchip PIC18Fx7J60 family of microcontrollers, but it can be easily ported to other architectures.
+
+Some features:
+* Both TCP and UDP protocols supported
+* ARP address resolution incorporated
+* Multiple socket support, both client and server
+* Lightweight, small foot-print code
+* Specially targeted for 8-bit microprocessors
+* Easy to learn API, based on the SOCKET opaque structure
+* Event-driven design pattern makes it easy to integrate with existing applications
