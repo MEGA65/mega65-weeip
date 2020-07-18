@@ -9,11 +9,9 @@
 #include "task.h"
 #include "weeip.h"
 #include "arp.h"
+#include "eth.h"
 
 #include "memory.h"
-
-#define ETH_RX_BUFFER 0xffe6000L
-#define ETH_TX_BUFFER 0xffe6000L
 
 #define _PROMISCUOUS
 
@@ -160,10 +158,10 @@ void eth_write(uint8_t *buf,uint16_t len)
  * Finish transfering an IP packet to the ethernet controller and start transmission.
  * @param size Payload size (without headers).
  */
-void eth_packet_send(void)
+void eth_packet_send(uint16_t len)
 {
-   POKE(0xD6E2,eth_tx_len&0xff);
-   POKE(0xD6E3,eth_tx_len>>8);
+   POKE(0xD6E2,len&0xff);
+   POKE(0xD6E3,len>>8);
    POKE(0xD6E4,0x01); // TX now
 }
 
@@ -239,7 +237,7 @@ eth_arp_send
    /*
     * Start transmission.
     */
-   eth_packet_send();
+   eth_packet_send(eth_tx_len);
 }
 
 /**

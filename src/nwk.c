@@ -203,6 +203,8 @@ byte_t nwk_upstream (byte_t sig)
        * Pending message found, send it.
        */
       checksum_init();
+      // XXX Correct buffer offset processing to handle variable
+      // header lengths
       lcopy((uint32_t)default_header,(uint32_t)_header.b,40);
 
       IPH(id) = HTONS(id);
@@ -388,7 +390,7 @@ found:
    data_size -= 28;
    if(_sckt->rx) {
       if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
-      eth_read((byte_t*)_sckt->rx, data_size);
+      lcopy(ETH_RX_BUFFER+28,(uint32_t)_sckt->rx, data_size);
       _sckt->rx_data = data_size;
    }
    
@@ -536,7 +538,9 @@ parse_tcp:
             if(_sckt->rx) {
                if(data_size > _sckt->rx_size) 
                   data_size = _sckt->rx_size;
-               eth_read((byte_t*)_sckt->rx, data_size);
+	       // XXX Correct buffer offset processing to handle variable
+	       // header lengths
+               lcopy(ETH_RX_BUFFER+68,(uint32_t)_sckt->rx, data_size);
                _sckt->rx_data = data_size;
             }
             _sckt->toSend = ACK;            

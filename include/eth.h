@@ -3,6 +3,10 @@
 #define __ETHH__
 #include "defs.h"
 #include "inet.h"
+
+#define ETH_RX_BUFFER 0xffe6000L
+#define ETH_TX_BUFFER 0xffe6000L
+
 extern IPV4 ip_mask;
 extern IPV4 ip_gate;
 extern EUI48 mac_local;
@@ -14,7 +18,7 @@ void eth_drop();
 byte_t eth_task(byte_t sig);
 bool_t eth_ip_send();
 void eth_arp_send(EUI48 *mac);
-void eth_packet_send(uint16_t size);
+void eth_packet_send(uint16_t len);
 void eth_init();
 void eth_disable();
 void eth_enable();
