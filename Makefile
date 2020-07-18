@@ -21,5 +21,5 @@ TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/main.c src/nwk.c src/socket.c sr
 tcptest.prg:       $(TCPSRCS)
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $*.prg --mapfile $*.map $<  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $*.prg --mapfile $*.map $(TCPSRCS)  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 

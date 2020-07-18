@@ -121,30 +121,30 @@ task_add
    byte_t par)
 {
    bool_t ok;
-   tid_t *task;
+   volatile tid_t *task;
+   uint8_t j;
 
    if(f == NULL) return FALSE;
-   disable();
 
    /*
     * Search the task list for an empty slot.
     */
    ok = FALSE;
-   for_each(_tasks, task) {
-      if(task->fun == NULL) {
-          /*
-           * Empty slot found.
-           * Save task information.
-           */
-          task->fun = f;
-          task->par = par;
-          task->tmr = tempo;
-          ok = TRUE;
-          break;
-      }
+   for(j=0;j<NTASKS;j++) {
+     task=&_tasks[j];
+     if(task->fun == NULL) {
+       /*
+	* Empty slot found.
+	* Save task information.
+	*/
+       task->fun = f;
+       task->par = par;
+       task->tmr = tempo;
+       ok = TRUE;
+       break;
+     }
    }
 
-   enable();
    return ok;
 }
 
@@ -157,11 +157,10 @@ bool_t
 task_cancel
    (task_t f)
 {
-   tid_t *task;
+  volatile tid_t *task;
    bool_t ok;
    
    if(f == NULL) return FALSE;
-   disable();
 
    /*
     * Search for the task in the list.
@@ -178,7 +177,6 @@ task_cancel
       }
    }
 
-   enable();
    return ok;
 }
 
@@ -188,12 +186,10 @@ task_cancel
 void 
 task_cancel_all()
 {
-   tid_t *task;
-   disable();
+  volatile tid_t *task;
    for_each(_tasks, task) {
       task->fun = NULL;
    }
-   enable();
 }
 
 /**
@@ -210,7 +206,7 @@ i_task_add
    byte_t tempo,
    byte_t par)
 {
-   tid_t *task;
+  volatile tid_t *task;
 
    if(f == NULL) return FALSE;
 
@@ -246,7 +242,7 @@ bool_t
 i_task_cancel
    (task_t f)
 {
-   tid_t *task;
+  volatile tid_t *task;
 
    if(f == NULL) return FALSE;
 
@@ -276,7 +272,7 @@ i_task_cancel
 void
 i_task_cancel_all()
 {
-   tid_t *task;
+  volatile tid_t *task;
    for_each(_tasks, task) {
       task->fun = NULL;
    }
@@ -289,14 +285,8 @@ i_task_cancel_all()
 void 
 tick()
 {
-   static tid_t *task;
+  volatile static tid_t *task;
    static byte_t tmp;
-
-   /*
-    * Restart timer 0 peripheral.
-    */
-   TMR0H = HIGH(TMR0_VALUE);
-   TMR0L = LOW(TMR0_VALUE);
 
    /*
     * Update timing information.
@@ -349,7 +339,7 @@ void
 task_main()
 {
    static byte_t (*f)(byte_t);
-   static tid_t *task;
+   volatile static tid_t *task;
    static bool_t exe;
 
    forever() {

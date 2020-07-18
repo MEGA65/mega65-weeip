@@ -6,18 +6,20 @@
  */
 
 #include <string.h>
-#if defined(__CPIK__)
-#include <device/p18F97J60.h>
-#include <interrupt.h>
-#else
-#include <p18F97J60.h>
-#endif
-//#include <delays.h>
 #include "task.h"
 #include "weeip.h"
 #include "arp.h"
 
+#include "memory.h"
+
+#define ETH_RX_BUFFER 0xffe6000L
+#define ETH_TX_BUFFER 0xffe6000L
+
 #define _PROMISCUOUS
+
+static uint16_t eth_size;        // Packet size.
+uint16_t eth_tx_len=0;           // Bytes written to TX buffer
+
 
 IPV4 ip_mask;                       ///< Subnetwork address mask.
 IPV4 ip_gate;                       ///< IP Gateway address.
@@ -41,11 +43,11 @@ ETH_HEADER eth_header;
  */
 EUI48 mac_local;
 
-static uint16_t next;            // Pointer to the next packet.
-static uint16_t eth_size;        // Packet size.
-
-#define write_reg(X,Y) X=Y; nop()
-#define eth(X) EDATA=X; nop()
+void eth(uint8_t b)
+{
+   lpoke(ETH_TX_BUFFER+eth_tx_len,b);
+   eth_tx_len++;
+}
 
 /*
  * Check if the transceiver is ready to transmit a packet.
@@ -74,95 +76,97 @@ eth_drop()
  * Ethernet control task.
  * Shall be called when a packet arrives.
  */
-byte_t 
-eth_task
-   (byte_t p)
+uint8_t eth_task (uint8_t p)
 {
 
-   /*
-    * Check if there are incoming packets.
-    */
-   if(!PEEK(0xD6E1)&0x20) {
-      task_add(eth_task, 10, 0);
-      return 0;
-   }
-
-   /*
-    * A packet is available.
-    */
-   lcopy(ETH_RX_BUFFER,(byte_t*)&eth_header, sizeof(eth_header));
-         
-   /*
-    * Check destination address.
-    */
-   if((eth_header.destination.b[0] &
-       eth_header.destination.b[1] &
-       eth_header.destination.b[2] &
-       eth_header.destination.b[3] &
-       eth_header.destination.b[4] &
-       eth_header.destination.b[5]) != 0xff) {
-      /*
-       * Not broadcast, check if it matches the local address.
-       */
-      if(memcmp(&eth_header.destination, &mac_local, sizeof(EUI48)))
-         goto drop;
-   }
-
-   /*
-    * Address match, check protocol.
-    * Read protocol header.
-    */
-   if(eth_header.type == 0x0608) {            // big-endian for 0x0806
-      /*
-       * ARP packet.
-       */
-      lcopy(ETH_RX_BUFFER,(byte_t*)&_header, sizeof(ARP_HDR));
-      arp_mens();   
+  /*
+   * Check if there are incoming packets.
+   */
+  if(!PEEK(0xD6E1)&0x20) {
+    task_add(eth_task, 10, 0);
+    return 0;
+  }
+  
+  /*
+   * A packet is available.
+   */
+  lcopy(ETH_RX_BUFFER,(uint32_t)&eth_header, sizeof(eth_header));
+  
+  /*
+   * Check destination address.
+   */
+  if((eth_header.destination.b[0] &
+      eth_header.destination.b[1] &
+      eth_header.destination.b[2] &
+      eth_header.destination.b[3] &
+      eth_header.destination.b[4] &
+      eth_header.destination.b[5]) != 0xff) {
+    /*
+     * Not broadcast, check if it matches the local address.
+     */
+    if(memcmp(&eth_header.destination, &mac_local, sizeof(EUI48)))
       goto drop;
-   }
-      
-   if(eth_header.type == 0x0008) {            // big-endian for 0x0800
-      /*
-       * IP packet.
-       * Verify transport protocol to load header.
-       */
-      update_cache(&_header.ip.source, &eth_header.source);
-      lcopy(ETH_RX_BUFFER,(byte_t*)&_header, sizeof(IP_HDR));
-      switch(_header.ip.protocol) {
-         case IP_PROTO_UDP:
-            lcopy(ETH_RX_BUFFER,(byte_t*)&_header.t.udp, sizeof(UDP_HDR));
-            break;
-         case IP_PROTO_TCP:
-            lcopy(ETH_RX_BUFFER,(byte_t*)&_header.t.tcp, sizeof(TCP_HDR));
-            break;
-         default:
-            goto drop;
-      }
-      nwk_downstream();
-   }
-
-drop:
-   eth_drop();   
-   task_add(eth_task, 0, 0);                    // try again to check more packets.
-   return 0;
+  }
+  
+  /*
+   * Address match, check protocol.
+   * Read protocol header.
+   */
+  if(eth_header.type == 0x0608) {            // big-endian for 0x0806
+    /*
+     * ARP packet.
+     */
+    lcopy(ETH_RX_BUFFER,(uint32_t)&_header, sizeof(ARP_HDR));
+    arp_mens();   
+    goto drop;
+  }
+  
+  if(eth_header.type == 0x0008) {            // big-endian for 0x0800
+    /*
+     * IP packet.
+     * Verify transport protocol to load header.
+     */
+    update_cache(&_header.ip.source, &eth_header.source);
+    lcopy(ETH_RX_BUFFER,(uint32_t)&_header, sizeof(IP_HDR));
+    switch(_header.ip.protocol) {
+    case IP_PROTO_UDP:
+      lcopy(ETH_RX_BUFFER,(uint32_t)&_header.t.udp, sizeof(UDP_HDR));
+      break;
+    case IP_PROTO_TCP:
+      lcopy(ETH_RX_BUFFER,(uint32_t)&_header.t.tcp, sizeof(TCP_HDR));
+      break;
+    default:
+      goto drop;
+    }
+    nwk_downstream();
+  }
+  
+ drop:
+  eth_drop();   
+  task_add(eth_task, 0, 0);                    // try again to check more packets.
+  return 0;
 }
 
 #define IPH(X) _header.ip.X
 
-uint16_t eth_tx_len=0;
-
-void eth(byte_t b)
-{
-   lpoke(ETH_TX_BUFFER+eth_tx_len,b);
-   eth_tx_len++;
-}
-
-void eth_write(byte_t *buf,uint16_t len)
+void eth_write(uint8_t *buf,uint16_t len)
 {
 	if (len+eth_tx_len>2040) return;
-	lcopy(buf,ETH_TX_BUFFER+eth_tx_len,len);
+	lcopy((uint32_t)buf,ETH_TX_BUFFER+eth_tx_len,len);
 	eth_tx_len+=len;
 }
+
+/**
+ * Finish transfering an IP packet to the ethernet controller and start transmission.
+ * @param size Payload size (without headers).
+ */
+void eth_packet_send(void)
+{
+   POKE(0xD6E2,eth_tx_len&0xff);
+   POKE(0xD6E3,eth_tx_len>>8);
+   POKE(0xD6E4,0x01); // TX now
+}
+
 
 /**
  * Start transfering an IP packet.
@@ -196,8 +200,8 @@ eth_ip_send()
     */
    eth_tx_len=0;
 
-   eth_write((byte_t*)&mac, 6);
-   eth_write((byte_t*)&mac_local, 6);
+   eth_write((uint8_t*)&mac, 6);
+   eth_write((uint8_t*)&mac_local, 6);
    eth(0x08);                                      // type = IP (0x0800)
    eth(0x00);
 
@@ -206,7 +210,7 @@ eth_ip_send()
     */
    if(IPH(protocol) == IP_PROTO_UDP) eth_size = 28;    // header size
    else eth_size = 40;
-   eth_write((byte_t*)&_header, eth_size);
+   eth_write((uint8_t*)&_header, eth_size);
    return TRUE;
 }
 
@@ -218,37 +222,24 @@ void
 eth_arp_send
    (EUI48 *mac)
 {
-   if(ECON1bits.TXRTS) return;                     // another transmission in progress.
+  if(!(PEEK(0xD6E0)&0x80)) return;                     // another transmission in progress.
    
    eth_tx_len=0;
 
-   eth_write((byte_t*)mac, 6);
-   eth_write((byte_t*)&mac_local, 6);
+   eth_write((uint8_t*)mac, 6);
+   eth_write((uint8_t*)&mac_local, 6);
    eth(0x08);                                      // type = ARP (0x0806)
    eth(0x06);
 
    /*
     * Send protocol header.
     */
-   eth_write((byte_t*)&_header, sizeof(ARP_HDR));
+   eth_write((uint8_t*)&_header, sizeof(ARP_HDR));
    
    /*
     * Start transmission.
     */
    eth_packet_send();
-}
-
-/**
- * Finish transfering an IP packet to the ethernet controller and start transmission.
- * @param size Payload size (without headers).
- */
-void
-eth_packet_send
-   (uint16_t size)
-{
-   POKE(0xD6E2,eth_tx_len&0xff);
-   POKE(0xD6E3,eth_tx_len>>8);
-   POKE(0xD6E4,0x01); // TX now
 }
 
 /**

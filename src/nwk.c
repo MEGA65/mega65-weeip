@@ -38,6 +38,8 @@
 #include "eth.h"
 #include "arp.h"
 
+#include "memory.h"
+
 /**
  * Message header buffer.
  */
@@ -201,7 +203,7 @@ byte_t nwk_upstream (byte_t sig)
        * Pending message found, send it.
        */
       checksum_init();
-      lcopy(default_header,_header.b,40);
+      lcopy((uint32_t)default_header,(uint32_t)_header.b,40);
 
       IPH(id) = HTONS(id);
       id++;

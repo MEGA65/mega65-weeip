@@ -30,7 +30,7 @@
  * THE SOFTWARE.
  ********************************************************************************
  ********************************************************************************/
-#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include "weeip.h"
 #include "arp.h"
@@ -81,8 +81,8 @@ found:
     */
    memset((void*)_sckt, 0, sizeof(SOCKET));
    _sckt->type = protocol;
-   _sckt->seq.w[0] = rand();
-   _sckt->seq.w[1] = rand();
+   _sckt->seq.w[0] = rand32(0);
+   _sckt->seq.w[1] = rand32(0);
    return _sckt;
 }
 
@@ -296,8 +296,8 @@ weeip_init()
 {
    memset(_sockets, 0, sizeof(_sockets));
    _sckt = _sockets;
-   port_used = PORT_MIN + (rand() % (PORT_MAX - PORT_MIN));
-   id = rand();
+   port_used = PORT_MIN + (rand16(PORT_MAX - PORT_MIN+1));
+   id = rand16(0);
    task_add(nwk_tick, TICK_TCP, 0);
    eth_init();
    arp_init();
