@@ -40,7 +40,7 @@ extern volatile _uint32_t ticks;
 extern bool_t wdt_tick;
 extern void tick();
 extern void task_init();
-extern void task_main();
+extern void task_periodic(void);
 extern bool_t task_add(task_t f, byte_t tempo, byte_t par);
 extern bool_t i_task_add(task_t f, byte_t tempo, byte_t par);
 extern bool_t task_cancel(task_t f);

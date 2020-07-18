@@ -89,5 +89,8 @@ void main(void)
 
    task_add(pisca, 10, 0);
 
-   task_main();
+   while(1) {
+     // XXX Actually only call it periodically
+     task_periodic();
+   }
 }

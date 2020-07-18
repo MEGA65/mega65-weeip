@@ -79,6 +79,7 @@ uint8_t eth_task (uint8_t p)
 
   /*
    * Check if there are incoming packets.
+   * If not, then check in a while.
    */
   if(!PEEK(0xD6E1)&0x20) {
     task_add(eth_task, 10, 0);
@@ -140,7 +141,9 @@ uint8_t eth_task (uint8_t p)
   }
   
  drop:
-  eth_drop();   
+  eth_drop();
+  // We processed a packet, so schedule ourselves immediately, in case there
+  // are more packets coming.
   task_add(eth_task, 0, 0);                    // try again to check more packets.
   return 0;
 }

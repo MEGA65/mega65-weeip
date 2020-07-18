@@ -335,35 +335,33 @@ task_init()
  * Main loop.
  * Schedule tasks as needed.
  */
-void 
-task_main()
+void task_periodic(void)
 {
    static byte_t (*f)(byte_t);
    volatile static tid_t *task;
    static bool_t exe;
 
-   forever() {
-      /*
-       * Call pending tasks.
-       */
-      exe = FALSE;
-      for_each(_tasks, task) {
-         f = task->fun;
-         if(f == NULL) continue;
-
-         /*
-          * Check task timing.
-          */
-         exe = TRUE;
-         if(task->tmr) continue;
-
-         /*
-          * Task is ready.
-          * Remove from the list and run.
-          */
-         task->fun = NULL;
-         f(task->par);
-      }
-
+   /*
+    * Call pending tasks.
+    */
+   exe = FALSE;
+   for_each(_tasks, task) {
+     f = task->fun;
+     if(f == NULL) continue;
+     
+     /*
+      * Check task timing.
+      */
+     exe = TRUE;
+     if(task->tmr) continue;
+     
+     /*
+      * Task is ready.
+      * Remove from the list and run.
+      */
+     task->fun = NULL;
+     f(task->par);
    }
+   tick();
+   
 }
