@@ -79,16 +79,6 @@ typedef union {
 /*
  * Useful macros.
  */
-#if defined(__CPIK__)
-#define enable()  ENABLE_IT
-#define disable() DISABLE_IT
-#define volatile
-#define clrwdt() __asm__(" clrwdt")
-#define nop()    __asm__(" nop")
-#else
-#define enable()  INTCON|=0b11000000
-#define disable() INTCON&=0b00111111
-#endif
 
 #define LOW(x) (x & 0xff)
 #define HIGH(x) (x >> 8)

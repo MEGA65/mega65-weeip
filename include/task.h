@@ -33,11 +33,7 @@ extern volatile _uint32_t ticks;
 /*
  * Timing helper macros.
  */
-#if defined(__CPIK__)
-#define timer_t unsigned long long int
-#else
 #define timer_t unsigned long int
-#endif
 #define start_timer(X) (X+ticks.d)
 #define timeout(X) (ticks.d>X?1:0)
 
