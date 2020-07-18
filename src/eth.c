@@ -22,30 +22,6 @@
 IPV4 ip_mask;                       ///< Subnetwork address mask.
 IPV4 ip_gate;                       ///< IP Gateway address.
 
-/*
- * Ethernet controller memory map.
- */
-#define TXBEGIN       0x0000       ///< Transmission buffer start (must be even).
-#define RXBEGIN       0x05f8       ///< Reception buffer start (must be even).
-#define RXEND         0x1fff       ///< Reception buffer end.
-
-/*
- * Physical registers addresses.
- */
-#define PHCON1         0x00
-#define PHCON2         0x10
-#define PHLCON         0x14
-
-/**
- * Ethernet controller header.
- */
-typedef struct {
-   uint16_t next;                ///< Pointer to the next packet in memory (little-endian).
-   uint16_t size;                ///< Packet size (little endian).
-   byte_t status[2];             ///< Packet status.
-} CTRL_HEADER;
-CTRL_HEADER ctrl_header;
-
 /**
  * Ethernet frame header.
  */
@@ -71,110 +47,27 @@ static uint16_t eth_size;        // Packet size.
 #define write_reg(X,Y) X=Y; nop()
 #define eth(X) EDATA=X; nop()
 
-/**
- * Change PHY register.
- * @param addr PHY register address.
- * @param val PHY register new value.
- */
-void 
-phy_write
-   (byte_t addr,
-   uint16_t val)
-{
-   write_reg(MIREGADR, addr);
-   write_reg(MIWRL, LOW(val));
-   write_reg(MIWRH, HIGH(val));
-   while(MISTATbits.BUSY);
-}   
-
-/**
- * Tranfer data from ETH memory to RAM memory.
- * @param dest Destination address.
- * @param size Number of bytes to transfer.
- */
-void 
-eth_read
-   (buffer_t dest,
-   uint16_t size)
-{
-   while(size) {
-      *dest = EDATA;
-      dest++;
-      size--;
-   }
-}
-
-/**
- * Transfer data from RAM memory to ETH memory.
- * @param src Source address.
- * @param size Number of bytes to transfer.
- */
-void
-eth_write
-   (buffer_t src,
-   uint16_t size)
-{
-   while(size) {
-      EDATA = *src;
-      src++;
-      size--;
-   }
-}
-
-/**
- * Fill ETH memory with a value.
- * @param v Value to write.
- * @param size Number of bytes to fill.
- */
-void 
-eth_set
-   (byte_t v,
-   uint16_t size)
-{
-   while(size) {
-      EDATA = v;
-      size--;
-   }
-}
-
-/**
+/*
  * Check if the transceiver is ready to transmit a packet.
  * @return TRUE if a packet can be sent.
  */
 bool_t
 eth_clear_to_send()
 {
-   if(ECON1bits.TXRTS) return FALSE;               // transmission in progress...
-   return TRUE;
+   if(PEEK(0xD6E0)&0x80) return TRUE;
+   return FALSE;
 }
 
 /**
- * Command the ethernet controller to drop the current package.
+ * Command the ethernet controller to discard the current frame in the
+ * RX buffer.
  * Select next one, if existing.
  */
 void 
 eth_drop()
 {
-   uint16_t p;
-
-   /*
-    * Point to next packet.
-    */
-   next = ctrl_header.next;
-   
-   /*
-    * Free ETH memory.
-    */
-   if(next == RXBEGIN) p = RXEND;
-   else p = next - 1;
-   write_reg(ERXRDPTL, LOW(p));
-   write_reg(ERXRDPTH, HIGH(p));
-
-   /*
-    * Decrement packet counter.
-    * Eventually clears the interrupt flag.
-    */
-   ECON2bits.PKTDEC = 1;
+   // Switch ethernet RX buffers and mark the current one clear
+   POKE(0xD6E1,((PEEK(0xD6E1)>>1)&0x02)|0x01);
 }
 
 /**
@@ -185,30 +78,19 @@ byte_t
 eth_task
    (byte_t p)
 {
-   EIRbits.RXERIF = 0;
-   EIRbits.TXERIF = 0;
 
    /*
     * Check if there are incoming packets.
     */
-   if(EPKTCNT == 0) {
-      PIE2bits.ETHIE = 1;
+   if(!PEEK(0xD6E1)&0x20) {
       task_add(eth_task, 10, 0);
       return 0;
    }
 
    /*
     * A packet is available.
-    * Read its control header.
     */
-   write_reg(ERDPTL, LOW(next));
-   write_reg(ERDPTH, HIGH(next));
-   eth_read((byte_t*)&ctrl_header, sizeof(ctrl_header));
-         
-   /*
-    * Read packet ethernet header.
-    */
-   eth_read((byte_t*)&eth_header, sizeof(eth_header));
+   lcopy(ETH_RX_BUFFER,(byte_t*)&eth_header, sizeof(eth_header));
          
    /*
     * Check destination address.
@@ -234,7 +116,7 @@ eth_task
       /*
        * ARP packet.
        */
-      eth_read((byte_t*)&_header, sizeof(ARP_HDR));
+      lcopy(ETH_RX_BUFFER,(byte_t*)&_header, sizeof(ARP_HDR));
       arp_mens();   
       goto drop;
    }
@@ -245,13 +127,13 @@ eth_task
        * Verify transport protocol to load header.
        */
       update_cache(&_header.ip.source, &eth_header.source);
-      eth_read((byte_t*)&_header, sizeof(IP_HDR));
+      lcopy(ETH_RX_BUFFER,(byte_t*)&_header, sizeof(IP_HDR));
       switch(_header.ip.protocol) {
          case IP_PROTO_UDP:
-            eth_read((byte_t*)&_header.t.udp, sizeof(UDP_HDR));
+            lcopy(ETH_RX_BUFFER,(byte_t*)&_header.t.udp, sizeof(UDP_HDR));
             break;
          case IP_PROTO_TCP:
-            eth_read((byte_t*)&_header.t.tcp, sizeof(TCP_HDR));
+            lcopy(ETH_RX_BUFFER,(byte_t*)&_header.t.tcp, sizeof(TCP_HDR));
             break;
          default:
             goto drop;
@@ -260,12 +142,27 @@ eth_task
    }
 
 drop:
-   eth_drop();
+   eth_drop();   
    task_add(eth_task, 0, 0);                    // try again to check more packets.
    return 0;
 }
 
 #define IPH(X) _header.ip.X
+
+uint16_t eth_tx_len=0;
+
+void eth(byte_t b)
+{
+   lpoke(ETH_TX_BUFFER+eth_tx_len,b);
+   eth_tx_len++;
+}
+
+void eth_write(byte_t *buf,uint16_t len)
+{
+	if (len+eth_tx_len>2040) return;
+	lcopy(buf,ETH_TX_BUFFER+eth_tx_len,len);
+	eth_tx_len+=len;
+}
 
 /**
  * Start transfering an IP packet.
@@ -278,7 +175,7 @@ eth_ip_send()
    static IPV4 ip;
    static EUI48 mac;
 
-   if(ECON1bits.TXRTS) return FALSE;               // another transmission in progress, fail.
+   if(!(PEEK(0xD6E0)&0x80)) return FALSE;               // another transmission in progress, fail.
    
    /*
     * Check destination IP.
@@ -295,17 +192,10 @@ eth_ip_send()
    }
 
    /*
-    * Setup ethernet controller TX buffers.
-    */
-   write_reg(ETXSTL, LOW(TXBEGIN));
-   write_reg(ETXSTH, HIGH(TXBEGIN));
-   write_reg(EWRPTL, LOW(TXBEGIN));
-   write_reg(EWRPTH, HIGH(TXBEGIN));
-
-   /*
     * Send ethernet header.
     */
-   eth(0x00);                                      // control byte
+   eth_tx_len=0;
+
    eth_write((byte_t*)&mac, 6);
    eth_write((byte_t*)&mac_local, 6);
    eth(0x08);                                      // type = IP (0x0800)
@@ -330,18 +220,8 @@ eth_arp_send
 {
    if(ECON1bits.TXRTS) return;                     // another transmission in progress.
    
-   /*
-    * Setup ethernet controller TX buffers.
-    */
-   write_reg(ETXSTL, LOW(TXBEGIN));
-   write_reg(ETXSTH, HIGH(TXBEGIN));
-   write_reg(EWRPTL, LOW(TXBEGIN));
-   write_reg(EWRPTH, HIGH(TXBEGIN));
+   eth_tx_len=0;
 
-   /*
-    * Send ethernet header.
-    */
-   eth(0x00);                                      // control byte
    eth_write((byte_t*)mac, 6);
    eth_write((byte_t*)&mac_local, 6);
    eth(0x08);                                      // type = ARP (0x0806)
@@ -355,12 +235,7 @@ eth_arp_send
    /*
     * Start transmission.
     */
-   eth_size = sizeof(ARP_HDR);
-   eth_size = TXBEGIN + eth_size + 15 - 1;
-   write_reg(ETXNDL, LOW(eth_size));
-   write_reg(ETXNDH, HIGH(eth_size));
-   EIRbits.TXIF_EIR = 0;
-   ECON1bits.TXRTS = 1;
+   eth_packet_send();
 }
 
 /**
@@ -371,11 +246,9 @@ void
 eth_packet_send
    (uint16_t size)
 {
-   eth_size = TXBEGIN + eth_size + size + 15 - 1;
-   write_reg(ETXNDL, LOW(eth_size));
-   write_reg(ETXNDH, HIGH(eth_size));
-   EIRbits.TXIF_EIR = 0;
-   ECON1bits.TXRTS = 1;
+   POKE(0xD6E2,eth_tx_len&0xff);
+   POKE(0xD6E3,eth_tx_len>>8);
+   POKE(0xD6E4,0x01); // TX now
 }
 
 /**
@@ -386,80 +259,28 @@ eth_init()
 {
    uint16_t t;
 
-   ECON1 = 0;
-   ECON2 = 0;
-   next = RXBEGIN;
-   ECON2bits.ETHEN = 1;                  // enable ethernet controller.
-
-   /*
-    * Wait for clock stabilization.
-    */
-   while(!ESTATbits.PHYRDY);
-   for(t=0; t<50000UL; t++);
-//   Delay1KTCYx(10);                        // delay 1ms
-
-   /*
-    * Setup memory map.
-    */
-   ECON2bits.AUTOINC = 1;
-   write_reg(ERXSTL, LOW(RXBEGIN));
-   write_reg(ERXSTH, HIGH(RXBEGIN));
-   write_reg(ERXRDPTL, LOW(RXEND));
-   write_reg(ERXRDPTH, HIGH(RXEND));
-   write_reg(ERXNDL, LOW(RXEND));
-   write_reg(ERXNDH, HIGH(RXEND));
-   write_reg(ETXSTL, LOW(TXBEGIN));
-   write_reg(ETXSTH, HIGH(TXBEGIN));
-   
-   /*
-    * Startup MAC layer.
-    */
-   MACON1bits.MARXEN = 1; nop();
-   MACON3 = 0b00110000; nop();
-   MACON4bits.DEFER = 1; nop();
-   write_reg(MAMXFLL, LOW(1518));
-   write_reg(MAMXFLH, HIGH(1518));
-   write_reg(MABBIPG, 0x12);
-   write_reg(MAIPGL, 0x12);
-   write_reg(MAIPGH, 0x0c);
+   eth_drop();
 
    /*
     * Setup frame reception filter.
     */
 #if defined(_PROMISCUOUS)
-   write_reg(ERXFCON, 0b00100000);
+   POKE(0xD6E5,PEEK(0xD6E5)&0xFE);
 #else
-   write_reg(ERXFCON, 0b10100001);
+   POKE(0xD6E5,PEEK(0xD6E5)|0x01);
 #endif
 
    /*
     * Configure MAC address.
     */
-   write_reg(MAADR1, mac_local.b[0]);
-   write_reg(MAADR2, mac_local.b[1]);
-   write_reg(MAADR3, mac_local.b[2]);
-   write_reg(MAADR4, mac_local.b[3]);
-   write_reg(MAADR5, mac_local.b[4]);
-   write_reg(MAADR6, mac_local.b[5]);
+   POKE(0xD6E9,mac_local.b[0]);
+   POKE(0xD6EA,mac_local.b[1]);
+   POKE(0xD6EB,mac_local.b[2]);
+   POKE(0xD6EC,mac_local.b[3]);
+   POKE(0xD6ED,mac_local.b[4]);
+   POKE(0xD6EE,mac_local.b[5]);
 
-   /*
-    * Startup PHY layer.
-    */
-   phy_write(PHCON1, 0b0000000000000000);
-   phy_write(PHCON2, 0b0000000100010000);
-
-   /*
-    * Enable packet reception.
-    */
-   ECON1bits.RXEN = 1;
-   
-   /*
-    * Setup interrupt services.
-    */
-   EIR = 0;
-   EIE = 0b01000000;
-   PIR2bits.ETHIF = 0;
-   PIE2bits.ETHIE = 1;
+   // XXX Enable ethernet IRQs?
 }
 
 /**
@@ -470,30 +291,6 @@ void eth_disable()
    /*
     * Wait for any pending activity.
     */
-   disable();
-   while(ECON1bits.TXRTS);
-   while(ESTATbits.RXBUSY);
-   
-   /*
-    * Disable packet reception.
-    * Disable interrupts.
-    */
-   ECON1bits.RXEN = 0;
-   EIR = 0;
-   EIE = 0;
-   PIR2bits.ETHIF = 0;
-   PIE2bits.ETHIE = 0;
-   enable();
+   // XXX Disable ethernet IRQs?
 }
 
-/**
- * Enable ethernet controller.
- */
-void eth_enable()
-{
-   ECON1bits.RXEN = 1;
-   EIR = 0;
-   EIE = 0b01000000;
-   PIR2bits.ETHIF = 0;
-   PIE2bits.ETHIE = 1;
-}

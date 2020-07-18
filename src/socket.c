@@ -36,6 +36,8 @@
 #include "arp.h"
 #include "eth.h"
 
+#include "random.h"
+
 extern uint16_t id;
 
 /**

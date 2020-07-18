@@ -32,12 +32,6 @@
  ********************************************************************************
  ********************************************************************************/
 
-#if defined(__CPIK__)
-#include <device/p18F97J60.h>
-#include <interrupt.h>
-#else
-#include <p18F97J60.h>
-#endif
 #include <string.h>
 #include "task.h"
 
@@ -50,11 +44,6 @@
  * Time counter.
  */
 volatile _uint32_t ticks;
-
-/**
- * Watchdog for the clock interrupt.
- */
-volatile bool_t wdt_tick;
 
 /**
  * Timer reload factor. Defines the timebase.
@@ -313,7 +302,6 @@ tick()
     * Update timing information.
     */
    ticks.d++;
-   wdt_tick = TRUE;
 
    /*
     * Update task timing information.
@@ -351,15 +339,6 @@ task_init()
     */
    memset((void*)_tasks, 0, sizeof(_tasks));
 
-   /*
-    * Program Timer 0 peripheral.
-    */
-   T0CON = 0b00000111;                    // 16-bit counter, prescaler 1/256
-   INTCONbits.TMR0IF = 0;                 // use interrupt
-   INTCONbits.TMR0IE = 1;
-   TMR0H = HIGH(TMR0_VALUE);              // start value
-   TMR0L = LOW(TMR0_VALUE);
-   T0CONbits.TMR0ON = 1;                  // activate peripheral
 }
 
 /**
@@ -373,27 +352,10 @@ task_main()
    static tid_t *task;
    static bool_t exe;
 
-   /*
-    * Clear stack.
-    * The function will not return.
-    */
-   disable();
-   STKPTR = 0;
-   enable();
-   
    forever() {
-      /*
-       * Clear watchdog-timer.
-       */
-      if(wdt_tick) {
-         clrwdt();
-         wdt_tick = FALSE;
-      }
-
       /*
        * Call pending tasks.
        */
-      disable();
       exe = FALSE;
       for_each(_tasks, task) {
          f = task->fun;
@@ -410,22 +372,8 @@ task_main()
           * Remove from the list and run.
           */
          task->fun = NULL;
-         enable();
          f(task->par);
-         disable();
       }
-      enable();
 
-#if defined(_SLEEP)
-      if(!exe) {
-         /*
-          * No tasks ready.
-          * Go to sleep.
-          */
-         sleep();
-         nop();
-         if(_task_sleep != NULL) _task_sleep(0);
-      }
-#endif
    }
 }

@@ -5,7 +5,6 @@
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
-#include <device/p18f97j60.h>
 
 /********************************************************************************
  ********************************************************************************
@@ -39,10 +38,6 @@
 #include "eth.h"
 #include "arp.h"
 
-#if defined(__CPIK__)
-#include <rom.h>
-#endif
-
 /**
  * Message header buffer.
  */
@@ -67,20 +62,12 @@ IPV4 ip_local;
 /**
  * Default header.
  */
-#if defined(__CPIK__)
-ROMF_DATA8U(default_header,
-   "0x45, 0x08, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x40, 0x06,"
-   "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,"
-   "0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,"
-   "0x00, 0x00, 0x50, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00")
-#else
-__rom byte_t default_header[] = {
+byte_t default_header[] = {
    0x45, 0x08, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x40, 0x06,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x50, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00
 };
-#endif
 
 /**
  * Flags received within last packet.
@@ -117,9 +104,7 @@ byte_t _flags;
  * TCP timing control task.
  * Called periodically at a rate defined by TICK_TCP.
  */
-byte_t 
-nwk_tick
-   (byte_t sig)
+byte_t nwk_tick (byte_t sig)
 {
    static byte_t t=0;
    
@@ -194,9 +179,7 @@ nwk_tick
 /**
  * Network upstream task. Send outgoing network messages.
  */
-byte_t 
-nwk_upstream
-   (byte_t sig)
+byte_t nwk_upstream (byte_t sig)
 {
    static int i;
    if(!eth_clear_to_send()) {
@@ -218,11 +201,7 @@ nwk_upstream
        * Pending message found, send it.
        */
       checksum_init();
-#if defined(__CPIK__)
-      for(i=0; i<40; i++) _header.b[i] = default_header(i);
-#else
-      memcpypgm2ram((void*)&_header, (void*)default_header, sizeof(default_header));
-#endif
+      lcopy(default_header,_header.b,40);
 
       IPH(id) = HTONS(id);
       id++;
@@ -343,8 +322,7 @@ nwk_upstream
  * Network downstream processing.
  * Parse incoming network messages.
  */
-void
-nwk_downstream()
+void nwk_downstream(void)
 {
    WEEIP_EVENT ev;
 
@@ -367,7 +345,7 @@ nwk_downstream()
    /*
     * Destination address.
     */
-   if(IPH(destination).d != 0xffffffff)                        // broadcast.
+   if(IPH(destination).d != 0xffffffffL)                       // broadcast.
       if(IPH(destination).d != ip_local.d)                     // unicast.
          goto drop;                                            // not for us.
 
