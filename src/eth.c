@@ -5,6 +5,8 @@
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
+#include <stdio.h>
+
 #include <string.h>
 #include "task.h"
 #include "weeip.h"
@@ -81,7 +83,7 @@ uint8_t eth_task (uint8_t p)
    * Check if there are incoming packets.
    * If not, then check in a while.
    */
-  if(!PEEK(0xD6E1)&0x20) {
+  if(!(PEEK(0xD6E1)&0x20)) {
     task_add(eth_task, 10, 0);
     return 0;
   }
@@ -89,6 +91,7 @@ uint8_t eth_task (uint8_t p)
   /*
    * A packet is available.
    */
+  printf("packet\n");
   lcopy(ETH_RX_BUFFER,(uint32_t)&eth_header, sizeof(eth_header));
   
   /*
@@ -163,9 +166,16 @@ void eth_write(uint8_t *buf,uint16_t len)
  */
 void eth_packet_send(uint16_t len)
 {
-   POKE(0xD6E2,len&0xff);
-   POKE(0xD6E3,len>>8);
-   POKE(0xD6E4,0x01); // TX now
+  // Make sure TX FSM is not jammed
+  POKE(0xD6E0,0x01);
+  POKE(0xD6E0,0x03);
+
+  // Set packet length
+  POKE(0xD6E2,len&0xff);
+  POKE(0xD6E3,len>>8);
+  
+  // Send packet
+  POKE(0xD6E4,0x01); // TX now
 }
 
 

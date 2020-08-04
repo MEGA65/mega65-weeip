@@ -4,8 +4,8 @@
 #include "defs.h"
 #include "inet.h"
 
-#define ETH_RX_BUFFER 0xffe6000L
-#define ETH_TX_BUFFER 0xffe6000L
+#define ETH_RX_BUFFER 0xffe8000L
+#define ETH_TX_BUFFER 0xffe8000L
 
 extern IPV4 ip_mask;
 extern IPV4 ip_gate;

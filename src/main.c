@@ -1,4 +1,6 @@
 
+#include <stdio.h>
+
 #include "task.h"
 #include "weeip.h"
 #include "eth.h"
@@ -54,10 +56,10 @@ byte_t comunica (byte_t p)
 
 void main(void)
 {
-  
-  srand(random32(0));
+
   POKE(0,65);
   mega65_io_enable();
+  srand(random32(0));
   
    // Set MAC address
    mac_local.b[0] = 0x72;
@@ -68,10 +70,10 @@ void main(void)
    mac_local.b[5] = 0x38;
 
    // Set our IP
-   ip_local.b[0] = 192;
-   ip_local.b[1] = 168;
-   ip_local.b[2] = 0;
-   ip_local.b[3] = 12;
+   ip_local.b[0] = 203;
+   ip_local.b[1] = 19;
+   ip_local.b[2] = 107;
+   ip_local.b[3] = 64;
 
    // Set Netmask
    ip_mask.b[0] = 255;
@@ -79,16 +81,21 @@ void main(void)
    ip_mask.b[2] = 255;
    ip_mask.b[3] = 0;
 
+   printf("Calling weeip_init()\n");
    weeip_init();
 
-
+   printf("Setting up TCP listen on port 55.\n");
    s = socket_create(SOCKET_TCP);
    socket_set_callback(comunica);
    socket_set_rx_buffer(buf, 20);
    socket_listen(55);
 
    task_add(pisca, 10, 0);
-
+   // XXX Cause ethernet handler to be added to task list.
+   // XXX Should really just get added when we see a packet
+   interrupt_handler();
+   
+   printf("Ready for main loop.\n");
    while(1) {
      // XXX Actually only call it periodically
      task_periodic();
