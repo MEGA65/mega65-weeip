@@ -5,6 +5,7 @@
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
+#include <stdio.h>
 
 /********************************************************************************
  ********************************************************************************
@@ -195,13 +196,19 @@ arp_mens
    /*
     * Check opcode.
     */
+   
+   printf("arp opcode = $%04x (offset %d)\n",ARP(opcode),
+	  (unsigned short)&ARP(opcode) - (unsigned short)&_header);
    if(ARP(opcode) == ARP_REQUEST) {
       /*
        * Address request.
        * Check local address.
        */
+     printf("arp request: %08lx vs %08lx\n",
+	    ARP(dest_ip).d,ip_local.d);
       if(ARP(dest_ip).d != ip_local.d) return;
-
+      printf("for us\n");
+      
       /*
        * Looking for us.
        * Insert sender address into cache.

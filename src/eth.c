@@ -92,11 +92,20 @@ uint8_t eth_task (uint8_t p)
    * A packet is available.
    */
   printf("packet\n");
-  lcopy(ETH_RX_BUFFER,(uint32_t)&eth_header, sizeof(eth_header));
-  
+  // +2 to skip length and flags field
+  lcopy(ETH_RX_BUFFER+2L,(uint32_t)&eth_header, sizeof(eth_header));
+
   /*
    * Check destination address.
    */
+  printf("dest = %02x:%02x:%02x:%02x:%02x:%02x\n",
+	 eth_header.destination.b[0],
+	 eth_header.destination.b[1],
+	 eth_header.destination.b[2],
+	 eth_header.destination.b[3],
+	 eth_header.destination.b[4],
+	 eth_header.destination.b[5]);
+
   if((eth_header.destination.b[0] &
       eth_header.destination.b[1] &
       eth_header.destination.b[2] &
@@ -114,11 +123,13 @@ uint8_t eth_task (uint8_t p)
    * Address match, check protocol.
    * Read protocol header.
    */
+  printf("type=%04x\n",eth_header.type);
   if(eth_header.type == 0x0608) {            // big-endian for 0x0806
     /*
      * ARP packet.
      */
-    lcopy(ETH_RX_BUFFER,(uint32_t)&_header, sizeof(ARP_HDR));
+    printf("saw arp\n");
+    lcopy(ETH_RX_BUFFER+2+14,(uint32_t)&_header, sizeof(ARP_HDR));
     arp_mens();   
     goto drop;
   }
@@ -129,13 +140,13 @@ uint8_t eth_task (uint8_t p)
      * Verify transport protocol to load header.
      */
     update_cache(&_header.ip.source, &eth_header.source);
-    lcopy(ETH_RX_BUFFER,(uint32_t)&_header, sizeof(IP_HDR));
+    lcopy(ETH_RX_BUFFER+2,(uint32_t)&_header, sizeof(IP_HDR));
     switch(_header.ip.protocol) {
     case IP_PROTO_UDP:
-      lcopy(ETH_RX_BUFFER,(uint32_t)&_header.t.udp, sizeof(UDP_HDR));
+      lcopy(ETH_RX_BUFFER+2,(uint32_t)&_header.t.udp, sizeof(UDP_HDR));
       break;
     case IP_PROTO_TCP:
-      lcopy(ETH_RX_BUFFER,(uint32_t)&_header.t.tcp, sizeof(TCP_HDR));
+      lcopy(ETH_RX_BUFFER+2,(uint32_t)&_header.t.tcp, sizeof(TCP_HDR));
       break;
     default:
       goto drop;
@@ -233,6 +244,8 @@ void
 eth_arp_send
    (EUI48 *mac)
 {
+  printf("eth_arp_send()\n");
+  
   if(!(PEEK(0xD6E0)&0x80)) return;                     // another transmission in progress.
    
    eth_tx_len=0;
