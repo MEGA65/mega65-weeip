@@ -5,6 +5,7 @@
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
+#include <stdio.h>
 
 /********************************************************************************
  ********************************************************************************
@@ -184,21 +185,25 @@ byte_t nwk_tick (byte_t sig)
 byte_t nwk_upstream (byte_t sig)
 {
    static int i;
+   printf("nwk_upstream\n");
    if(!eth_clear_to_send()) {
       /*
        * Ethernet not ready.
        * Delay task execution.
        */
+     printf("Waiting for TX clear\n");
       task_add(nwk_upstream, 2, 0);
       return 0;
    }
-
+   
    /*
     * Search for pending messages.
     */
    for_each(_sockets, _sckt) {
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
+      printf("Socket has something to send to $%08x\n",
+	     _sckt->remIP.d);
       /*
        * Pending message found, send it.
        */
@@ -302,7 +307,9 @@ byte_t nwk_upstream (byte_t sig)
       /*
        * Send IP packet.
        */
+      printf("about to call eth_ip_send()\n");
       if(eth_ip_send()) {
+	printf("eth_ip_send() success\n");
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
          eth_packet_send(data_size);
       }
@@ -320,6 +327,16 @@ byte_t nwk_upstream (byte_t sig)
     * Job done, finish.
     */
    return 0;
+}
+
+void dump_bytes(char *msg,uint8_t *d,int count)
+{
+  printf("%s: ",msg);
+  while(count) {
+    printf(" %02x",*d);
+    d++; count--;
+  }
+  printf("\n");
 }
 
 /**
@@ -346,6 +363,8 @@ void nwk_downstream(void)
    ip_checksum((byte_t*)&_header, 20);
    if(chks.u != 0xffff) goto drop;
 
+   dump_bytes("_header",(uint8_t*)&_header,40);
+   
    /*
     * Destination address.
     */
@@ -353,6 +372,8 @@ void nwk_downstream(void)
       if(IPH(destination).d != ip_local.d)                     // unicast.
          goto drop;                                            // not for us.
 
+   printf("IP is for us.\n");
+   
    /*
     * Search for a waiting socket.
     */
@@ -362,11 +383,12 @@ void nwk_downstream(void)
       if(_sckt->type == SOCKET_UDP) {                          // another protocol.
          if(IPH(protocol) != IP_PROTO_UDP) continue;
       } else {
-         if(IPH(protocol) != IP_PROTO_TCP) continue;
+	if(IPH(protocol) != IP_PROTO_TCP) continue;
       }
       if(_sckt->listening) goto found;                         // waiting for a connection.
       if(_sckt->remIP.d != IPH(source).d) continue;            // another source.
       if(_sckt->remPort != TCPH(source)) continue;             // another port.
+      printf("Socket matches.\n");
       goto found;                                              // found!
    }
 
@@ -376,6 +398,7 @@ found:
    /*
     * Update socket data.
     */
+   printf("found socket: source.d=$%08lx\n",IPH(source).d);
    _sckt->remIP.d = IPH(source).d;
    _sckt->remPort = TCPH(source);
    _sckt->listening = FALSE;
@@ -390,7 +413,7 @@ found:
    data_size -= 28;
    if(_sckt->rx) {
       if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
-      lcopy(ETH_RX_BUFFER+28,(uint32_t)_sckt->rx, data_size);
+      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+28,(uint32_t)_sckt->rx, data_size);
       _sckt->rx_data = data_size;
    }
    
@@ -472,6 +495,7 @@ parse_tcp:
    /*
     * TCP state machine implementation.
     */
+   printf("TCP state machine. state=%d\n",_sckt->state);
    switch(_sckt->state) {
       case _LISTEN:
          if(_flags & SYN) {

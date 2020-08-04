@@ -140,6 +140,11 @@ update_cache
    EUI48 *mac)
 {
    ARP_CACHE_ENTRY *i;
+   printf("ARP noting %d.%d.%d.%d = %02x:%02x:%02x:%02x:%02x:%02x\n",
+	  ip->b[0],ip->b[1],ip->b[2],ip->b[3],
+	  mac->b[0],mac->b[1],mac->b[2],mac->b[3],mac->b[4],mac->b[5]);
+	  
+   
    for_each(arp_cache, i) {
       if(i->ip.d == ip->d) {
          memcpy((void*)&i->mac, (void*)mac, sizeof(EUI48));
@@ -197,17 +202,12 @@ arp_mens
     * Check opcode.
     */
    
-   printf("arp opcode = $%04x (offset %d)\n",ARP(opcode),
-	  (unsigned short)&ARP(opcode) - (unsigned short)&_header);
    if(ARP(opcode) == ARP_REQUEST) {
       /*
        * Address request.
        * Check local address.
        */
-     printf("arp request: %08lx vs %08lx\n",
-	    ARP(dest_ip).d,ip_local.d);
       if(ARP(dest_ip).d != ip_local.d) return;
-      printf("for us\n");
       
       /*
        * Looking for us.

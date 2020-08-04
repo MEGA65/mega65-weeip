@@ -91,20 +91,12 @@ uint8_t eth_task (uint8_t p)
   /*
    * A packet is available.
    */
-  printf("packet\n");
   // +2 to skip length and flags field
   lcopy(ETH_RX_BUFFER+2L,(uint32_t)&eth_header, sizeof(eth_header));
 
   /*
    * Check destination address.
    */
-  printf("dest = %02x:%02x:%02x:%02x:%02x:%02x\n",
-	 eth_header.destination.b[0],
-	 eth_header.destination.b[1],
-	 eth_header.destination.b[2],
-	 eth_header.destination.b[3],
-	 eth_header.destination.b[4],
-	 eth_header.destination.b[5]);
 
   if((eth_header.destination.b[0] &
       eth_header.destination.b[1] &
@@ -123,12 +115,10 @@ uint8_t eth_task (uint8_t p)
    * Address match, check protocol.
    * Read protocol header.
    */
-  printf("type=%04x\n",eth_header.type);
   if(eth_header.type == 0x0608) {            // big-endian for 0x0806
     /*
      * ARP packet.
      */
-    printf("saw arp\n");
     lcopy(ETH_RX_BUFFER+2+14,(uint32_t)&_header, sizeof(ARP_HDR));
     arp_mens();   
     goto drop;
@@ -139,14 +129,15 @@ uint8_t eth_task (uint8_t p)
      * IP packet.
      * Verify transport protocol to load header.
      */
+    lcopy(ETH_RX_BUFFER+2+14,(uint32_t)&_header, sizeof(IP_HDR));
+    printf("Update ARP based on packet RX: ");
     update_cache(&_header.ip.source, &eth_header.source);
-    lcopy(ETH_RX_BUFFER+2,(uint32_t)&_header, sizeof(IP_HDR));
     switch(_header.ip.protocol) {
     case IP_PROTO_UDP:
-      lcopy(ETH_RX_BUFFER+2,(uint32_t)&_header.t.udp, sizeof(UDP_HDR));
+      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR),(uint32_t)&_header.t.udp, sizeof(UDP_HDR));
       break;
     case IP_PROTO_TCP:
-      lcopy(ETH_RX_BUFFER+2,(uint32_t)&_header.t.tcp, sizeof(TCP_HDR));
+      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR),(uint32_t)&_header.t.tcp, sizeof(TCP_HDR));
       break;
     default:
       goto drop;
@@ -201,7 +192,14 @@ eth_ip_send()
    static IPV4 ip;
    static EUI48 mac;
 
-   if(!(PEEK(0xD6E0)&0x80)) return FALSE;               // another transmission in progress, fail.
+   printf("eth_ip_send()\n");
+   
+   if(!eth_clear_to_send()) {
+     printf("Eth TX busy\n");
+     return FALSE;               // another transmission in progress, fail.
+   }
+
+   printf("Ethernet clear to send\n");
    
    /*
     * Check destination IP.
@@ -214,6 +212,7 @@ eth_ip_send()
 
    if(!query_cache(&ip, &mac)) {                   // find MAC
       arp_query(&ip);                              // yet unknown IP, query MAC and fail.
+      printf("No ARP entry for $%08lx\n",ip.d);
       return FALSE;
    }
 
@@ -233,6 +232,7 @@ eth_ip_send()
    if(IPH(protocol) == IP_PROTO_UDP) eth_size = 28;    // header size
    else eth_size = 40;
    eth_write((uint8_t*)&_header, eth_size);
+   printf("eth_ip_send success.\n");
    return TRUE;
 }
 
@@ -244,8 +244,6 @@ void
 eth_arp_send
    (EUI48 *mac)
 {
-  printf("eth_arp_send()\n");
-  
   if(!(PEEK(0xD6E0)&0x80)) return;                     // another transmission in progress.
    
    eth_tx_len=0;
