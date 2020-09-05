@@ -33,6 +33,7 @@ byte_t comunica (byte_t p)
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
+	printf("Saying hello\n");
          buf[0] = 'h';
          buf[1] = 'e';
          buf[2] = 'l';

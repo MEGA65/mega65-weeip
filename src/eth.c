@@ -87,6 +87,9 @@ uint8_t eth_task (uint8_t p)
     task_add(eth_task, 10, 0);
     return 0;
   }
+
+  // Get next received packet
+  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
   
   /*
    * A packet is available.
@@ -130,7 +133,6 @@ uint8_t eth_task (uint8_t p)
      * Verify transport protocol to load header.
      */
     lcopy(ETH_RX_BUFFER+2+14,(uint32_t)&_header, sizeof(IP_HDR));
-    printf("Update ARP based on packet RX: ");
     update_cache(&_header.ip.source, &eth_header.source);
     switch(_header.ip.protocol) {
     case IP_PROTO_UDP:
@@ -168,15 +170,13 @@ void eth_write(uint8_t *buf,uint16_t len)
  */
 void eth_packet_send(uint16_t len)
 {
-  // Make sure TX FSM is not jammed
-  POKE(0xD6E0,0x01);
-  POKE(0xD6E0,0x03);
 
   // Set packet length
   POKE(0xD6E2,len&0xff);
   POKE(0xD6E3,len>>8);
   
   // Send packet
+  printf("send packet\n");
   POKE(0xD6E4,0x01); // TX now
 }
 
@@ -199,7 +199,8 @@ eth_ip_send()
      return FALSE;               // another transmission in progress, fail.
    }
 
-   printf("Ethernet clear to send\n");
+   printf("Ethernet clear to send to %08lx\n",
+	  IPH(destination).d);
    
    /*
     * Check destination IP.
@@ -232,7 +233,7 @@ eth_ip_send()
    if(IPH(protocol) == IP_PROTO_UDP) eth_size = 28;    // header size
    else eth_size = 40;
    eth_write((uint8_t*)&_header, eth_size);
-   printf("eth_ip_send success.\n");
+   //   printf("eth_ip_send success.\n");
    return TRUE;
 }
 

@@ -202,7 +202,7 @@ byte_t nwk_upstream (byte_t sig)
    for_each(_sockets, _sckt) {
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
-      printf("Socket has something to send to $%08x\n",
+      printf("Socket has something to send to $%08lx\n",
 	     _sckt->remIP.d);
       /*
        * Pending message found, send it.
@@ -309,7 +309,7 @@ byte_t nwk_upstream (byte_t sig)
        */
       printf("about to call eth_ip_send()\n");
       if(eth_ip_send()) {
-	printf("eth_ip_send() success\n");
+	//	printf("eth_ip_send() success\n");
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
          eth_packet_send(data_size);
       }
@@ -355,7 +355,7 @@ void nwk_downstream(void)
    if(IPH(ver_length) != 0x45) goto drop;
    data_size = IPH(length);
    data_size = NTOHS(data_size);
-   
+
    /*
     * Checksum.
     */
@@ -363,8 +363,6 @@ void nwk_downstream(void)
    ip_checksum((byte_t*)&_header, 20);
    if(chks.u != 0xffff) goto drop;
 
-   dump_bytes("_header",(uint8_t*)&_header,40);
-   
    /*
     * Destination address.
     */
@@ -372,7 +370,7 @@ void nwk_downstream(void)
       if(IPH(destination).d != ip_local.d)                     // unicast.
          goto drop;                                            // not for us.
 
-   printf("IP is for us.\n");
+   if (0) printf("IP is for us. Source is %08lx\n",IPH(source).d);
    
    /*
     * Search for a waiting socket.
@@ -400,6 +398,7 @@ found:
     */
    printf("found socket: source.d=$%08lx\n",IPH(source).d);
    _sckt->remIP.d = IPH(source).d;
+   printf("_sckt->remIP.d=%08lx\n",_sckt->remIP.d);
    _sckt->remPort = TCPH(source);
    _sckt->listening = FALSE;
 
@@ -421,6 +420,9 @@ found:
    goto done;
 
 parse_tcp:
+
+   printf("parse_tcp\n");
+   
    /*
     * TCP message.
     * Check flags.
