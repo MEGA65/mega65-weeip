@@ -83,12 +83,14 @@ typedef enum {
  */
 #undef SOCKET
 typedef struct {
-	unsigned type: 2;                         ///< Socket usage and protocol.
-	unsigned listening: 1;                    ///< Listening flag.
-	unsigned timeout: 1;                      ///< Timeout flag.
-	unsigned time: 4;
-	unsigned state: 4;                        ///< TCP state machine.
-	unsigned retry: 4;                        ///< Retry counter.
+  // XXX CC65 doesn't support packed bitfields properly,
+  // so we use full bytes for all these.
+	unsigned type;                         ///< Socket usage and protocol.
+	unsigned listening;                    ///< Listening flag.
+	unsigned timeout;                      ///< Timeout flag.
+	unsigned time;
+	unsigned state;                        ///< TCP state machine.
+	unsigned retry;                        ///< Retry counter.
 	byte_t toSend;                            ///< Flags to send on next packet.
 	void *rx;                                 ///< Reception buffer pointer.
 	void *tx;                                 ///< Transmission buffer pointer.
