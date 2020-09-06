@@ -216,7 +216,10 @@ eth_ip_send()
    ip.d = IPH(destination).d;
    if(ip.d != 0xffffffff) {                        // is it broadcast?
       if(ip_mask.d & (ip.d ^ ip_local.d))          // same network?
-         ip.d = ip_gate.d;                         // send to gateway for reaching other networks.
+	{
+	  printf("Sending via gateway\n");
+	  ip.d = ip_gate.d;                         // send to gateway for reaching other networks.
+	}
    }
 
    if(!query_cache(&ip, &mac)) {                   // find MAC
