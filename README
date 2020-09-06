@@ -1,3 +1,15 @@
+WeeIP for the MEGA65.
+
+Changes copyright 2020 Paul Gardner-Stephen (paul@m-e-g-a.org)
+
+Notes:
+* Uses the MEGA65's 100mbit fast ethernet controller.
+* Generally munged to behave correctly under CC65.
+* Complete work in progress, and not yet usable.
+* Initial work on simple DNS client.
+* DHCP client required, but not yet implemented.
+
+Original copyright notice:
 
 WeeIP - Micro TCP-IP stack for PIC18 microcontrollers
 Current version: 1.0.3
