@@ -7,6 +7,8 @@
 
 #include <stdio.h>
 
+#include "memory.h"
+
 /********************************************************************************
  ********************************************************************************
  * The MIT License (MIT)
@@ -103,6 +105,16 @@ byte_t _flags;
 //   return res;
 //}
 
+void dump_bytes(char *msg,uint8_t *d,int count)
+{
+  printf("%s: ",msg);
+  while(count) {
+    printf(" %02x",*d);
+    d++; count--;
+  }
+  printf("\n");
+}
+
 /**
  * TCP timing control task.
  * Called periodically at a rate defined by TICK_TCP.
@@ -116,12 +128,14 @@ byte_t nwk_tick (byte_t sig)
     */
    for_each(_sockets, _sckt) {
       if(_sckt->type != SOCKET_TCP) continue;               // UDP socket or unused.
+
+
       if(_sckt->time == 0) continue;                        // does not have timing requirements.
-      
+
       /*
        * Do socket timing.
        */
-      _sckt->time--;
+      //      _sckt->time--;
       if(_sckt->time == 0) {
          /*
           * Timeout.
@@ -160,8 +174,8 @@ byte_t nwk_tick (byte_t sig)
                _sckt->timeout = TRUE;
                task_cancel(nwk_upstream);
                task_add(nwk_upstream, 0, 0);
-            }
-         } else {
+            } 
+        } else {
             /*
              * Too much retransmissions.
              * Socket down.
@@ -311,7 +325,7 @@ byte_t nwk_upstream (byte_t sig)
       if(eth_ip_send()) {
 	//	printf("eth_ip_send() success\n");
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
-         eth_packet_send(data_size);
+         eth_packet_send();	 
       }
       _sckt->toSend = 0;
       _sckt->timeout = FALSE;
@@ -327,16 +341,6 @@ byte_t nwk_upstream (byte_t sig)
     * Job done, finish.
     */
    return 0;
-}
-
-void dump_bytes(char *msg,uint8_t *d,int count)
-{
-  printf("%s: ",msg);
-  while(count) {
-    printf(" %02x",*d);
-    d++; count--;
-  }
-  printf("\n");
 }
 
 /**
@@ -398,7 +402,6 @@ found:
     */
    printf("found socket: source.d=$%08lx\n",IPH(source).d);
    _sckt->remIP.d = IPH(source).d;
-   printf("_sckt->remIP.d=%08lx\n",_sckt->remIP.d);
    _sckt->remPort = TCPH(source);
    _sckt->listening = FALSE;
 

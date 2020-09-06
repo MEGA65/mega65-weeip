@@ -91,7 +91,7 @@ void main(void)
    socket_set_rx_buffer(buf, 20);
    socket_listen(55);
 
-   task_add(pisca, 10, 0);
+   //   task_add(pisca, 10, 0);
    // XXX Cause ethernet handler to be added to task list.
    // XXX Should really just get added when we see a packet
    interrupt_handler();

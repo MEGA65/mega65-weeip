@@ -7,7 +7,12 @@
 
 #include <stdio.h>
 
-#define PEEK(X) (*((unsigned char *)(X)))
+#include "task.h"
+#include "weeip.h"
+#include "eth.h"
+
+#include "memory.h"
+#include "random.h"
 
 /********************************************************************************
  ********************************************************************************
@@ -167,8 +172,7 @@ update_cache
 
    // Not an existing entry in the cache to be updated, so replace a random entry?
    printf("Inserting ARP entry into random slot.\n");
-   // XXX USe raster number as pseudo random number source
-   i = &arp_cache[PEEK(0xD012)%MAX_CACHE];
+   i = &arp_cache[random32(MAX_CACHE)];
    i->ip.d = ip->d;
    memcpy((void*)&i->mac, (void*)mac, sizeof(EUI48));   
    return;
@@ -278,6 +282,7 @@ arp_tick
    (byte_t p)
 {
    ARP_CACHE_ENTRY *i;
+
    for_each(arp_cache, i) {
       if(i->time) {
          i->time--;

@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include <string.h>
 #include "task.h"
@@ -14,6 +15,7 @@
 #include "eth.h"
 
 #include "memory.h"
+#include "hal.h"
 
 #define _PROMISCUOUS
 
@@ -43,10 +45,14 @@ ETH_HEADER eth_header;
  */
 EUI48 mac_local;
 
+#define MTU 2048
+unsigned char tx_frame_buf[MTU];
+
 void eth(uint8_t b)
 {
-   lpoke(ETH_TX_BUFFER+eth_tx_len,b);
-   eth_tx_len++;
+  printf("W$%02x@%d ",b,eth_tx_len);
+  if (eth_tx_len<MTU) tx_frame_buf[eth_tx_len]=b;
+  eth_tx_len++;
 }
 
 /*
@@ -78,7 +84,6 @@ eth_drop()
  */
 uint8_t eth_task (uint8_t p)
 {
-
   /*
    * Check if there are incoming packets.
    * If not, then check in a while.
@@ -159,24 +164,34 @@ uint8_t eth_task (uint8_t p)
 
 void eth_write(uint8_t *buf,uint16_t len)
 {
-	if (len+eth_tx_len>2040) return;
-	lcopy((uint32_t)buf,ETH_TX_BUFFER+eth_tx_len,len);
-	eth_tx_len+=len;
+  printf("W[%d bytes]x@%d ",len,eth_tx_len);  
+  if (len+eth_tx_len>=MTU) return;
+  lcopy((uint32_t)buf,&tx_frame_buf[eth_tx_len],len);
+  eth_tx_len+=len;
 }
+
+void dump_bytes(char *msg,uint8_t *d,int count);
 
 /**
  * Finish transfering an IP packet to the ethernet controller and start transmission.
- * @param size Payload size (without headers).
  */
-void eth_packet_send(uint16_t len)
+void eth_packet_send(void)
 {
 
   // Set packet length
-  POKE(0xD6E2,len&0xff);
-  POKE(0xD6E3,len>>8);
+  mega65_io_enable();
+  POKE(0xD6E2,eth_tx_len&0xff);
+  POKE(0xD6E3,eth_tx_len>>8);
+
+  // Copy our working frame buffer to 
+  lcopy((unsigned long)tx_frame_buf,ETH_TX_BUFFER,eth_tx_len);
+
+  printf("send packet buf @ $%04x, len=%d\n",(unsigned int)tx_frame_buf,eth_tx_len);
+  dump_bytes("packet",tx_frame_buf,eth_tx_len);
+  printf("Stored packet length = $%02x%02x\n",
+	 PEEK(0xD6E3),PEEK(0xD6E2));
   
   // Send packet
-  printf("send packet\n");
   POKE(0xD6E4,0x01); // TX now
 }
 
@@ -224,6 +239,9 @@ eth_ip_send()
 
    eth_write((uint8_t*)&mac, 6);
    eth_write((uint8_t*)&mac_local, 6);
+   printf("MAC local = %02x:%02x:%02x:%02x:%02x:%02x\n",
+	  mac_local.b[0],mac_local.b[1],mac_local.b[2],
+	  mac_local.b[3],mac_local.b[4],mac_local.b[5]);
    eth(0x08);                                      // type = IP (0x0800)
    eth(0x00);
 
@@ -233,6 +251,7 @@ eth_ip_send()
    if(IPH(protocol) == IP_PROTO_UDP) eth_size = 28;    // header size
    else eth_size = 40;
    eth_write((uint8_t*)&_header, eth_size);
+   
    //   printf("eth_ip_send success.\n");
    return TRUE;
 }
@@ -262,7 +281,7 @@ eth_arp_send
    /*
     * Start transmission.
     */
-   eth_packet_send(eth_tx_len);
+   eth_packet_send();
 }
 
 /**

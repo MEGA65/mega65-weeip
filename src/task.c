@@ -6,6 +6,8 @@
  * @version 0.
  */
 
+#include <stdio.h>
+
 /********************************************************************************
  ********************************************************************************
  * The MIT License (MIT)
@@ -348,7 +350,7 @@ void task_periodic(void)
    for_each(_tasks, task) {
      f = task->fun;
      if(f == NULL) continue;
-     
+
      /*
       * Check task timing.
       */
