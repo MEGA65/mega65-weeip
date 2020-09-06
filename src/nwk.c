@@ -213,7 +213,7 @@ byte_t nwk_upstream (byte_t sig)
    /*
     * Search for pending messages.
     */
-   for_each(_sockets, _sckt) {
+   for_each(_sockets, _sckt) {     
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
       printf("Socket has something to send to $%08lx\n",

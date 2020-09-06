@@ -50,7 +50,6 @@ unsigned char tx_frame_buf[MTU];
 
 void eth(uint8_t b)
 {
-  printf("W$%02x@%d ",b,eth_tx_len);
   if (eth_tx_len<MTU) tx_frame_buf[eth_tx_len]=b;
   eth_tx_len++;
 }
@@ -164,7 +163,6 @@ uint8_t eth_task (uint8_t p)
 
 void eth_write(uint8_t *buf,uint16_t len)
 {
-  printf("W[%d bytes]x@%d ",len,eth_tx_len);  
   if (len+eth_tx_len>=MTU) return;
   lcopy((uint32_t)buf,&tx_frame_buf[eth_tx_len],len);
   eth_tx_len+=len;
@@ -186,11 +184,6 @@ void eth_packet_send(void)
   // Copy our working frame buffer to 
   lcopy((unsigned long)tx_frame_buf,ETH_TX_BUFFER,eth_tx_len);
 
-  printf("send packet buf @ $%04x, len=%d\n",(unsigned int)tx_frame_buf,eth_tx_len);
-  dump_bytes("packet",tx_frame_buf,eth_tx_len);
-  printf("Stored packet length = $%02x%02x\n",
-	 PEEK(0xD6E3),PEEK(0xD6E2));
-  
   // Send packet
   POKE(0xD6E4,0x01); // TX now
 }
