@@ -189,6 +189,13 @@ void main(void)
      if (hostname[i]==0) break;
    }
    dns_query_len+=strlen(hostname)+1;
+
+   // QTYPE = 0x0001 = "A records"
+   dns_query[dns_query_len++]=0x00;
+   dns_query[dns_query_len++]=0x01;
+   // QCLASS = 0x0001 = "internet addressses
+   dns_query[dns_query_len++]=0x00;
+   dns_query[dns_query_len++]=0x01;
    
    socket_send(dns_query,dns_query_len);
 #endif
