@@ -415,7 +415,7 @@ found:
    data_size -= 28;
    if(_sckt->rx) {
       if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
-      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+28,(uint32_t)_sckt->rx, data_size);
+      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+8,(uint32_t)_sckt->rx, data_size);
       _sckt->rx_data = data_size;
    }
    
