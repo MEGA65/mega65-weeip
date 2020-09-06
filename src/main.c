@@ -59,12 +59,63 @@ byte_t comunica (byte_t p)
    return 0;
 }
 
+void dump_bytes(char *msg,uint8_t *d,int count);
+
+
 byte_t dns_reply_handler (byte_t p)
 {
+  unsigned int ofs;
+  
   socket_select(s);
   switch(p) {
   case WEEIP_EV_DATA:
     printf("DNS reply packet received.\n");
+
+    // Check that query ID matches
+    if (buf[0]!=dns_query[0]) break;
+    if (buf[1]!=dns_query[1]) break;
+
+    // Check that it is a reply
+    if ((buf[2]!=0x81)&&(buf[2]!=0x85)) break;
+
+    // Check if we have at least one answer
+    if (!(buf[6]||buf[7])) {
+      printf("DNS response contained no answers.\n");
+      break;
+    }
+
+    // Skip over the question text (HACK: Search for first $00 byte)
+    ofs=0xc; while(buf[ofs]) ofs++;
+    // Then skip that $00 byte
+    ofs++;
+
+    // Skip over query type and class if correct
+    if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
+	ofs+=2;
+	if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
+	  ofs+=2;
+	  // Now we are at the start of the answer section
+	  // Assume that answers will be pointers to the name in the query.
+	  // For this we look for fixed value $c0 $0c indicating pointer to the name in the query
+	  if ((buf[ofs]==0xc0)&&(buf[ofs+1]==0x0c)) {
+	    ofs+=2;
+	    // Then we check that answer type is $00 $01 = "type a"
+	    if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
+	      ofs+=2;
+	      // Then we check that answer class is $00 $01 = "IPv4 address"
+	      if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
+		ofs+=2;
+		// Now we can just skip over the TTL and size, by assuming its a 4 byte
+		ofs+=6;
+		// IP address
+		printf("IP address is %d.%d.%d.%d\n",
+		       buf[ofs+0],buf[ofs+1],buf[ofs+2],buf[ofs+3]);
+	      }
+	    }
+	  }
+	}
+    }
+    
     break;
   }
   return 0;
