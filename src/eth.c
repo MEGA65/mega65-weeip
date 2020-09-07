@@ -5,7 +5,6 @@
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
-#include <stdio.h>
 #include <stdint.h>
 
 #include <string.h>
@@ -201,16 +200,10 @@ eth_ip_send()
    static IPV4 ip;
    static EUI48 mac;
 
-   printf("eth_ip_send()\n");
-   
    if(!eth_clear_to_send()) {
-     printf("Eth TX busy\n");
      return FALSE;               // another transmission in progress, fail.
    }
 
-   printf("Ethernet clear to send to %08lx\n",
-	  IPH(destination).d);
-   
    /*
     * Check destination IP.
     */
@@ -218,14 +211,12 @@ eth_ip_send()
    if(ip.d != 0xffffffff) {                        // is it broadcast?
       if(ip_mask.d & (ip.d ^ ip_local.d))          // same network?
 	{
-	  printf("Sending via gateway\n");
 	  ip.d = ip_gate.d;                         // send to gateway for reaching other networks.
 	}
    }
 
    if(!query_cache(&ip, &mac)) {                   // find MAC
       arp_query(&ip);                              // yet unknown IP, query MAC and fail.
-      printf("No ARP entry for $%08lx\n",ip.d);
       return FALSE;
    }
 
@@ -236,9 +227,6 @@ eth_ip_send()
 
    eth_write((uint8_t*)&mac, 6);
    eth_write((uint8_t*)&mac_local, 6);
-   printf("MAC local = %02x:%02x:%02x:%02x:%02x:%02x\n",
-	  mac_local.b[0],mac_local.b[1],mac_local.b[2],
-	  mac_local.b[3],mac_local.b[4],mac_local.b[5]);
    eth(0x08);                                      // type = IP (0x0800)
    eth(0x00);
 

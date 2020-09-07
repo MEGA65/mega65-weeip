@@ -30,7 +30,6 @@
  * THE SOFTWARE.
  ********************************************************************************
  ********************************************************************************/
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include "weeip.h"
@@ -227,7 +226,6 @@ socket_send
    _sckt->tx_size = size;
    _sckt->toSend = ACK | PSH;
    _sckt->retry = RETRIES_TCP;
-   printf("Marking socket %p as needing to send.\n",_sckt);
    task_cancel(nwk_upstream);
    task_add(nwk_upstream, 0, 0);
    return TRUE;

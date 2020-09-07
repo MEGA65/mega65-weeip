@@ -34,26 +34,32 @@ byte_t buf[1024];
  * */
 byte_t comunica (byte_t p)
 {
+  unsigned int i;
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
-	printf("Saying hello\n");
-         buf[0] = 'h';
-         buf[1] = 'e';
-         buf[2] = 'l';
-         buf[3] = 'l';
-         buf[4] = 'o';
-         socket_send(buf, 5);
-         break;
+	printf("Requesting index.html\n");
+	// NOTE: PETSCII so things are inverted
+	snprintf(buf,1024,
+		 "get /INDEX.HTML http/1.1\n\r"
+		 "hOST: MEGA65.ORG\n\r"
+		 "aCCEPT: */*\n\r"
+		 "uSER-aGENT: mega-browser mega65-weeip/20200907\n\r"
+		 "\n\r");
+	// Demunge PETSCII a bit
+	for(i=0;buf[i];i++) {
+	  if (buf[i]>=0xc1) buf[i]-=0x60;
+	}
+	socket_send(buf, strlen(buf));
+	break;
       case WEEIP_EV_DISCONNECT:
-         socket_reset();
-         socket_listen(55);
+         socket_release(s);
          break;
       case WEEIP_EV_DATA:
-         buf[0] = 'o';
-         buf[1] = 'k';
-         socket_send(buf, 2);
-         break;
+	printf("Received %d bytes.\n",s->rx_data);
+	((char *)s->rx)[s->rx_data]=0;
+	printf("%s",s->rx);
+	break;
    }
 
    return 0;
@@ -72,6 +78,8 @@ void main(void)
   mega65_io_enable();
   srand(random32(0));
 
+  printf("%c",0x93);
+  
   // Get MAC address from ethernet controller
   for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
   
@@ -81,7 +89,7 @@ void main(void)
   interrupt_handler();   
 
   // Do DHCP auto-configuration
-  printf("Obtaining IP via DHCP\n");
+  printf("Configuring network via DHCP\n");
   dhcp_autoconfig();
   while(!dhcp_configured) {
     task_periodic();
@@ -101,8 +109,13 @@ void main(void)
      printf("Host '%s' resolves to %d.%d.%d.%d\n",
 	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
    }
+
+   s = socket_create(SOCKET_TCP);
+   socket_set_callback(comunica);
+   socket_set_rx_buffer(buf, 1024);
+   socket_connect(&a,80);
+
    
-   printf("Ready for main loop.\n");
    while(1) {
      // XXX Actually only call it periodically
      task_periodic();

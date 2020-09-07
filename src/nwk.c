@@ -199,7 +199,6 @@ byte_t nwk_tick (byte_t sig)
 byte_t nwk_upstream (byte_t sig)
 {
    static int i;
-   printf("nwk_upstream\n");
    if(!eth_clear_to_send()) {
       /*
        * Ethernet not ready.
@@ -216,8 +215,6 @@ byte_t nwk_upstream (byte_t sig)
    for_each(_sockets, _sckt) {     
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
-      printf("Socket has something to send to $%08lx\n",
-	     _sckt->remIP.d);
       /*
        * Pending message found, send it.
        */
@@ -321,7 +318,6 @@ byte_t nwk_upstream (byte_t sig)
       /*
        * Send IP packet.
        */
-      printf("about to call eth_ip_send()\n");
       if(eth_ip_send()) {
 	//	printf("eth_ip_send() success\n");
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
@@ -381,8 +377,6 @@ void nwk_downstream(void)
 	if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
 	  goto drop;                                           // not for us.
 
-   if (0) printf("IP is for us. Source is %08lx\n",IPH(source).d);
-   
    /*
     * Search for a waiting socket.
     */
@@ -433,8 +427,6 @@ found:
 
 parse_tcp:
 
-   printf("parse_tcp\n");
-   
    /*
     * TCP message.
     * Check flags.
@@ -509,7 +501,6 @@ parse_tcp:
    /*
     * TCP state machine implementation.
     */
-   printf("TCP state machine. state=%d\n",_sckt->state);
    switch(_sckt->state) {
       case _LISTEN:
          if(_flags & SYN) {

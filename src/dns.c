@@ -22,7 +22,6 @@ byte_t dns_reply_handler (byte_t p)
   socket_select(dns_socket);
   switch(p) {
   case WEEIP_EV_DATA:
-    printf("DNS reply packet received.\n");
 
     // Check that query ID matches
     if (dns_buf[0]!=dns_query[0]) break;
@@ -91,15 +90,12 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   
   // Before we get any further, send an ARP query for the DNS server
   // (or if it isn't on the same network segment, for our gateway.)
-  printf("Performing ARP resolution of DNS server\n");
   arp_query(&ip_dnsserver);
   arp_query(&ip_gate);
   // Then wait until we get a reply.
   while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
     task_periodic();     
   }   
-  printf("Resolved DNS server or gateway to MAC address %02x:%02x:...\n",
-	 mac.b[0],mac.b[1]);
   
   socket_select(dns_socket);
   socket_connect(&ip_dnsserver,53);

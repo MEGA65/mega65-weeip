@@ -99,22 +99,16 @@ query_cache
     * Loops into arp_cache.
     */
    for_each(arp_cache, i) {
-     if (i->ip.b[0]!=0xff) 
-       if (0) printf("  %d.%d.%d.%d resolves to %02x:%02x:%02x:%02x:%02x:%02x\n",
-		     i->ip.b[0],i->ip.b[1],i->ip.b[2],i->ip.b[3],
-		     i->mac.b[0],i->mac.b[1],i->mac.b[2],i->mac.b[3],i->mac.b[4],i->mac.b[5]);
       if(i->ip.d == ip->d) {
          if(i->mac.b[0] == 0xff) return FALSE;
          memcpy((void*)mac, (void*)&i->mac, sizeof(EUI48));
-	 if (0) printf("Resolved IP %d.%d.%d.%d to %02x:%02x:%02x:%02x:%02x:%02x\n",
-		       ip->b[0],ip->b[1],ip->b[2],ip->b[3],
-		       mac->b[0],mac->b[1],mac->b[2],mac->b[3],mac->b[4],mac->b[5]);
          return TRUE;
       }
    }
+#if 0
    printf("Could not resolve IP %d.%d.%d.%d\n",
 	  ip->b[0],ip->b[1],ip->b[2],ip->b[3]);
-   
+#endif   
    /*
     * Unknown IP.
     * Look for an empty entry.
@@ -156,11 +150,6 @@ update_cache
    EUI48 *mac)
 {
    ARP_CACHE_ENTRY *i;
-   if (0)
-     printf("ARP noting %d.%d.%d.%d = %02x:%02x:%02x:%02x:%02x:%02x\n",
-	    ip->b[0],ip->b[1],ip->b[2],ip->b[3],
-	    mac->b[0],mac->b[1],mac->b[2],mac->b[3],mac->b[4],mac->b[5]);
-	  
    
    for_each(arp_cache, i) {
       if(i->ip.d == ip->d) {
@@ -171,7 +160,6 @@ update_cache
    }
 
    // Not an existing entry in the cache to be updated, so replace a random entry?
-   printf("Inserting ARP entry into random slot.\n");
    i = &arp_cache[random32(MAX_CACHE)];
    i->ip.d = ip->d;
    memcpy((void*)&i->mac, (void*)mac, sizeof(EUI48));   
