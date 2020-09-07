@@ -40,6 +40,7 @@
 chks_t chks;
 
 static byte_t _a, _b, _c;
+static unsigned int _b16;
 
 /**
  * Sums a 16-bit word to the current checksum value.
@@ -55,16 +56,16 @@ add_checksum
     * First byte (MSB).
     */
    _a = chks.b[0];
-   _b = _a + (HIGH(v));
-   _c = (_b < _a);
+   _b = _b16 = _a + (HIGH(v));   
+   _c = _b16 >> 8;
    chks.b[0] = _b;
 
    /*
     * Second byte (LSB).
     */
    _a = chks.b[1];
-   _b = _a + (LOW(v)) + _c;
-   _c = (_b < _a);
+   _b = _b16 = _a + (LOW(v)) + _c;
+   _c = _b16 >> 8;
    chks.b[1] = _b;
 
    /*
@@ -94,9 +95,9 @@ ip_checksum
       /*
        * First byte (do not care if LSB or not).
        */
-      _a = chks.b[0];
-      _b = _a + (*p++) + _c;
-      _c = (_b < _a);
+     _a = chks.b[0];
+      _b = _b16 = _a + (*p++) + _c;
+      _c = _b16>>8;
       chks.b[0] = _b;
 
       if(--t == 0) {
@@ -113,11 +114,12 @@ ip_checksum
        * Second byte (do not care if MSB or not).
        */
       _a = chks.b[1];
-      _b = _a + (*p++) + _c;
-      _c = (_b < _a);
+      _b = _b16 = _a + (*p++) + _c;
+      _c = _b16>>8;
       chks.b[1] = _b;
 
       t--;
+
    }
 
    /*
