@@ -81,8 +81,13 @@ void main(void)
   interrupt_handler();   
 
   // Do DHCP auto-configuration
+  printf("Obtaining IP via DHCP\n");
   dhcp_autoconfig();
-  
+  while(!dhcp_configured) {
+    task_periodic();
+  }
+  printf("My IP is %d.%d.%d.%d\n",
+	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
         
 #ifdef TEST_TCP_LISTEN   
    printf("Setting up TCP listen on port 55.\n");
