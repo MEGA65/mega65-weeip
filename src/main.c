@@ -7,6 +7,7 @@
 #include "eth.h"
 #include "arp.h"
 #include "dns.h"
+#include "dhcp.h"
 
 #include "memory.h"
 #include "random.h"
@@ -65,51 +66,24 @@ void main(void)
   IPV4 a;
   EUI48 mac;
   char *hostname="mega65.org";
+  unsigned char i;
   
   POKE(0,65);
   mega65_io_enable();
   srand(random32(0));
+
+  // Get MAC address from ethernet controller
+  for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
   
-   // Set MAC address
-   mac_local.b[0] = 0x72;
-   mac_local.b[1] = 0xb8;
-   mac_local.b[2] = 0x79;
-   mac_local.b[3] = 0xb1;
-   mac_local.b[4] = 0x36;
-   mac_local.b[5] = 0x38;
+  // Setup WeeIP
+  printf("Calling weeip_init()\n");
+  weeip_init();
+  interrupt_handler();   
 
-   // Set our IP
-   ip_local.b[0] = 203;
-   ip_local.b[1] = 19;
-   ip_local.b[2] = 107;
-   ip_local.b[3] = 64;
-
-   // Set gateway IP
-   ip_gate.b[0] = 203;
-   ip_gate.b[1] = 19;
-   ip_gate.b[2] = 107;
-   ip_gate.b[3] = 1;
-      
-   // Set Netmask
-   ip_mask.b[0] = 255;
-   ip_mask.b[1] = 255;
-   ip_mask.b[2] = 255;
-   ip_mask.b[3] = 0;
-
-   // Set DNS server
-   ip_dnsserver.b[0] = 8;
-   ip_dnsserver.b[1] = 8;
-   ip_dnsserver.b[2] = 8;
-   ip_dnsserver.b[3] = 8;
-   
-   
-   printf("Calling weeip_init()\n");
-   weeip_init();
-
-   // XXX Cause ethernet handler to be added to task list.
-   // XXX Should really just get added when we see a packet
-   interrupt_handler();   
-   
+  // Do DHCP auto-configuration
+  dhcp_autoconfig();
+  
+        
 #ifdef TEST_TCP_LISTEN   
    printf("Setting up TCP listen on port 55.\n");
    s = socket_create(SOCKET_TCP);
