@@ -19,9 +19,8 @@ SOCKET *dhcp_socket;
 
 byte_t dhcp_reply_handler (byte_t p)
 {
-  unsigned int ofs;
-
-  printf("dhcp_reply_handler called\n");
+  unsigned int type,len,offset;
+  unsigned int i;
   
   socket_select(dhcp_socket);
   switch(p) {
@@ -29,35 +28,76 @@ byte_t dhcp_reply_handler (byte_t p)
     // First time it will be the offer.
     // And actually, that's all we care about receiving.
     // We MUST however, send the ACCEPT message.
-    printf("Saw reply from DHCP server.\n");
+    // Check that XID matches us
+    for(i=0;i<6;i++) if (dhcp_xid[i]!=dns_buf[4+i]) break;
+    if (i<4) break;
+    // Check that MAC address matches us
+    for(i=0;i<6;i++) if (dns_buf[0x1c+i]!=mac_local.b[i]) break;
+    if (i<6) break;
+
+    // Check that its a DHCP reply message
+    if (dns_buf[0x00]!=0x02) break;
+    if (dns_buf[0x01]!=0x01) break;
+    if (dns_buf[0x02]!=0x06) break;
+    if (dns_buf[0x03]!=0x00) break;
+    
+    // Ok, its for us. Extract the info we need.
+    
+    // Set our IP from BOOTP field
+    for(i=0;i<4;i++) ip_local.b[i] = dns_buf[0x10+i];
+    printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+
+    // Only process DHCP fields if magic cookie is set
+    if (dns_buf[0xec]!=0x63) break;
+    if (dns_buf[0xed]!=0x82) break;
+    if (dns_buf[0xee]!=0x53) break;
+    if (dns_buf[0xef]!=0x63) break;
+    printf("Parsing DHCP fields.\n");
+
+    offset=0xf0;
+    while(dns_buf[offset]!=0xff) {
+      if (!dns_buf[offset]) offset++;
+      else {
+	type = dns_buf[offset];
+	// Skip field type
+	offset++;
+	// Parse and skip length marker
+	len=dns_buf[offset];
+	offset++;
+	// offset now points to the data field.
+	switch(type) {
+	case 0x01:
+	  for(i=0;i<4;i++) ip_mask.b[i] = dns_buf[offset+i];	  
+	  printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+	  break;
+	case 0x03:
+	  for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
+	  printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+	  break;
+	case 0x06:
+	  for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
+	  printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	  break;
+	default:
+	  break;
+	}
+	// Skip over length and continue
+	offset+=len;
+      }      
+    }
+
+    // XXX We SHOULD send a packet to acknowledge the offer.
+    // It works for now without it, because we start responding to ARP requests which
+    // sensible DHCP servers will perform to verify occupancy of the IP.
+    
+    // Mark DHCP configuration complete, and free the socket
+    dhcp_configured=1;
+    printf("DHCP configuration complete.\n");
+    socket_release(dhcp_socket);    
+    
     break;
   }
 
-#if 0  
-  // Set our IP
-   ip_local.b[0] = 203;
-   ip_local.b[1] = 19;
-   ip_local.b[2] = 107;
-   ip_local.b[3] = 64;
-
-   // Set gateway IP
-   ip_gate.b[0] = 203;
-   ip_gate.b[1] = 19;
-   ip_gate.b[2] = 107;
-   ip_gate.b[3] = 1;
-      
-   // Set Netmask
-   ip_mask.b[0] = 255;
-   ip_mask.b[1] = 255;
-   ip_mask.b[2] = 255;
-   ip_mask.b[3] = 0;
-
-   // Set DNS server
-   ip_dnsserver.b[0] = 8;
-   ip_dnsserver.b[1] = 8;
-   ip_dnsserver.b[2] = 8;
-   ip_dnsserver.b[3] = 8;
-#endif
    return 0;
 }
 

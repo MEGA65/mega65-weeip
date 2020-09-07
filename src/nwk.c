@@ -381,7 +381,7 @@ void nwk_downstream(void)
 	if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
 	  goto drop;                                           // not for us.
 
-   if (1) printf("IP is for us. Source is %08lx\n",IPH(source).d);
+   if (0) printf("IP is for us. Source is %08lx\n",IPH(source).d);
    
    /*
     * Search for a waiting socket.
@@ -395,13 +395,11 @@ void nwk_downstream(void)
 	if(IPH(protocol) != IP_PROTO_TCP) continue;
       }
       if(_sckt->listening) goto found;                         // waiting for a connection.
-      printf("Ports match.\n");
       // Don't check source if we are bound to broadcast
       if(_sckt->remIP.d!=0xffffffffL) {
 	if(_sckt->remIP.d != IPH(source).d) continue;            // another source.
       }
       if(_sckt->remPort != TCPH(source)) continue;             // another port.
-      printf("Socket matches.\n");
       goto found;                                              // found!
    }
 
@@ -411,7 +409,7 @@ found:
    /*
     * Update socket data.
     */
-   printf("found socket: source.d=$%08lx\n",IPH(source).d);
+   //   printf("found socket: source.d=$%08lx\n",IPH(source).d);
    _sckt->remIP.d = IPH(source).d;
    _sckt->remPort = TCPH(source);
    _sckt->listening = FALSE;
