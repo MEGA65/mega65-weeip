@@ -6,6 +6,7 @@
 #include "weeip.h"
 #include "eth.h"
 #include "arp.h"
+#include "dns.h"
 
 #include "memory.h"
 #include "random.h"
@@ -27,8 +28,6 @@ byte_t pisca (byte_t p)
 
 SOCKET *s;
 byte_t buf[1024];
-byte_t dns_query[512];
-uint16_t dns_query_len=0;
 
 /* Function that is used as a call-back on socket events
  * */
@@ -61,73 +60,11 @@ byte_t comunica (byte_t p)
 
 void dump_bytes(char *msg,uint8_t *d,int count);
 
-
-byte_t dns_reply_handler (byte_t p)
-{
-  unsigned int ofs;
-  
-  socket_select(s);
-  switch(p) {
-  case WEEIP_EV_DATA:
-    printf("DNS reply packet received.\n");
-
-    // Check that query ID matches
-    if (buf[0]!=dns_query[0]) break;
-    if (buf[1]!=dns_query[1]) break;
-
-    // Check that it is a reply
-    if ((buf[2]!=0x81)&&(buf[2]!=0x85)) break;
-
-    // Check if we have at least one answer
-    if (!(buf[6]||buf[7])) {
-      printf("DNS response contained no answers.\n");
-      break;
-    }
-
-    // Skip over the question text (HACK: Search for first $00 byte)
-    ofs=0xc; while(buf[ofs]) ofs++;
-    // Then skip that $00 byte
-    ofs++;
-
-    // Skip over query type and class if correct
-    if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
-	ofs+=2;
-	if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
-	  ofs+=2;
-	  // Now we are at the start of the answer section
-	  // Assume that answers will be pointers to the name in the query.
-	  // For this we look for fixed value $c0 $0c indicating pointer to the name in the query
-	  if ((buf[ofs]==0xc0)&&(buf[ofs+1]==0x0c)) {
-	    ofs+=2;
-	    // Then we check that answer type is $00 $01 = "type a"
-	    if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
-	      ofs+=2;
-	      // Then we check that answer class is $00 $01 = "IPv4 address"
-	      if ((buf[ofs]==0x00)&&(buf[ofs+1]==0x01)) {
-		ofs+=2;
-		// Now we can just skip over the TTL and size, by assuming its a 4 byte
-		ofs+=6;
-		// IP address
-		printf("IP address is %d.%d.%d.%d\n",
-		       buf[ofs+0],buf[ofs+1],buf[ofs+2],buf[ofs+3]);
-	      }
-	    }
-	  }
-	}
-    }
-    
-    break;
-  }
-  return 0;
-}
-
 void main(void)
 {
   IPV4 a;
   EUI48 mac;
   char *hostname="mega65.org";
-  unsigned char field_len;
-  unsigned char prefix_position,i;
   
   POKE(0,65);
   mega65_io_enable();
@@ -152,14 +89,20 @@ void main(void)
    ip_gate.b[1] = 19;
    ip_gate.b[2] = 107;
    ip_gate.b[3] = 1;
-   
-   
+      
    // Set Netmask
    ip_mask.b[0] = 255;
    ip_mask.b[1] = 255;
    ip_mask.b[2] = 255;
    ip_mask.b[3] = 0;
 
+   // Set DNS server
+   ip_dnsserver.b[0] = 8;
+   ip_dnsserver.b[1] = 8;
+   ip_dnsserver.b[2] = 8;
+   ip_dnsserver.b[3] = 8;
+   
+   
    printf("Calling weeip_init()\n");
    weeip_init();
 
@@ -174,82 +117,11 @@ void main(void)
    socket_set_rx_buffer(buf, 1024);
    socket_listen(55);
 #endif
-#define TEST_DNS_QUERY
-#ifdef TEST_DNS_QUERY
    
-
-   s = socket_create(SOCKET_UDP);
-   socket_set_callback(dns_reply_handler);
-   socket_set_rx_buffer(buf,1024);
-   a.b[0]=8;
-   a.b[1]=8;
-   a.b[2]=8;   
-   a.b[3]=8;
-
-   // Before we get any further, send an ARP query for the DNS server
-   // (or if it isn't on the same network segment, for our gateway.)
-   printf("Performing ARP resolution of DNS server\n");
-   arp_query(&a);
-   arp_query(&ip_gate);
-   // Then wait until we get a reply.
-   while((!query_cache(&a,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
-     task_periodic();     
-   }   
-   printf("Resolved DNS server or gateway to MAC address %02x:%02x:...\n",
-	  mac.b[0],mac.b[1]);
-   
-   socket_select(s);
-   socket_connect(&a,53);
-   
-   // Now form our DNS query
-   // 16-bit random request ID:  
-   dns_query[0]=random32(256);
-   dns_query[1]=random32(256);
-   // Request flags: Is request, please recurse etc
-   dns_query[2]=0x01;
-   dns_query[3]=0x00;
-   // QDCOUNT = 1 (one question follows)
-   dns_query[4]=0x00;
-   dns_query[5]=0x01;
-   // ANCOUNT = 0 (no answers follow)
-   dns_query[6]=0x00;
-   dns_query[7]=0x00;
-   // NSCOUNT = 0 (no records follow)
-   dns_query[8]=0x00;
-   dns_query[9]=0x00;
-   // ARCOUNT = 0 (no additional records follow)
-   dns_query[10]=0x00;
-   dns_query[11]=0x00;
-   dns_query_len=12;
-   
-   // Now convert dotted hostname to DNS field format.
-   // This involves changing each . to the length of the following field,
-   // adding a $00 to the end, and prefixing the whole thing with the
-   // length of the first part.
-   // This is most easily done by reserving the prefix byte first, and whenever
-   // we hit a . or end of string, updating the previous prefix byte.
-   prefix_position=dns_query_len++;   
-   lcopy(hostname,&dns_query[dns_query_len],strlen(hostname)+1);
-   field_len=0;
-   for(i=0;;i++) {
-     if (hostname[i]=='.'||hostname[i]==0) {
-       dns_query[prefix_position]=field_len;
-       prefix_position=dns_query_len+i;
-       field_len=0;
-     } else field_len++;
-     if (hostname[i]==0) break;
+   if (dns_hostname_to_ip(hostname,&a)) {
+     printf("Host '%s' resolves to %d.%d.%d.%d\n",
+	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
    }
-   dns_query_len+=strlen(hostname)+1;
-
-   // QTYPE = 0x0001 = "A records"
-   dns_query[dns_query_len++]=0x00;
-   dns_query[dns_query_len++]=0x01;
-   // QCLASS = 0x0001 = "internet addressses
-   dns_query[dns_query_len++]=0x00;
-   dns_query[dns_query_len++]=0x01;
-   
-   socket_send(dns_query,dns_query_len);
-#endif
    
    printf("Ready for main loop.\n");
    while(1) {

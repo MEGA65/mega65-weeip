@@ -9,6 +9,7 @@
 
 extern IPV4 ip_mask;
 extern IPV4 ip_gate;
+extern IPV4 ip_dnsserver;
 extern EUI48 mac_local;
 void eth_read(buffer_t dest, uint16_t tam);
 void eth_write(buffer_t orig, uint16_t tam);

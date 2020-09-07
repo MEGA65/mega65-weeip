@@ -25,6 +25,7 @@ uint16_t eth_tx_len=0;           // Bytes written to TX buffer
 
 IPV4 ip_mask;                       ///< Subnetwork address mask.
 IPV4 ip_gate;                       ///< IP Gateway address.
+IPV4 ip_dnsserver;                  ///< DNS Server IP
 
 /**
  * Ethernet frame header.

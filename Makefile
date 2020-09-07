@@ -15,7 +15,7 @@ CA65=  ca65 --cpu 4510
 LD65=  ld65 -t none
 CL65=  cl65 --config src/tests/vicii.cfg
 
-TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/main.c src/nwk.c src/socket.c src/task.c
+TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/main.c src/nwk.c src/socket.c src/task.c src/dns.c
 
 
 tcptest.prg:       $(TCPSRCS)

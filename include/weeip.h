@@ -112,6 +112,7 @@ extern IPV4 ip_local;
 
 //IPV4 ip_address(static char rom *str);
 extern SOCKET *socket_create(WEEIP_PROTOCOL protocol);
+extern void socket_release(SOCKET *s);
 extern void socket_select(SOCKET *s);
 extern void socket_set_rx_buffer(buffer_t b, int size);
 extern void socket_set_callback(task_t c);
