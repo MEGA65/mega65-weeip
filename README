@@ -5,9 +5,9 @@ Changes copyright 2020 Paul Gardner-Stephen (paul@m-e-g-a.org)
 Notes:
 * Uses the MEGA65's 100mbit fast ethernet controller.
 * Generally munged to behave correctly under CC65.
-* Complete work in progress, and not yet usable.
-* Initial work on simple DNS client.
-* DHCP client required, but not yet implemented.
+* Fixed several bugs in the original WeeIP, including a nasty one in checksum calculation.
+* Simple DHCP and DNS clients now included.
+* Work in progress, and not yet usable.
 
 Original copyright notice:
 
