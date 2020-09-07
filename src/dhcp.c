@@ -20,6 +20,8 @@ SOCKET *dhcp_socket;
 byte_t dhcp_reply_handler (byte_t p)
 {
   unsigned int ofs;
+
+  printf("dhcp_reply_handler called\n");
   
   socket_select(dhcp_socket);
   switch(p) {
@@ -27,10 +29,11 @@ byte_t dhcp_reply_handler (byte_t p)
     // First time it will be the offer.
     // And actually, that's all we care about receiving.
     // We MUST however, send the ACCEPT message.
+    printf("Saw reply from DHCP server.\n");
     break;
   }
 
-  
+#if 0  
   // Set our IP
    ip_local.b[0] = 203;
    ip_local.b[1] = 19;
@@ -54,7 +57,7 @@ byte_t dhcp_reply_handler (byte_t p)
    ip_dnsserver.b[1] = 8;
    ip_dnsserver.b[2] = 8;
    ip_dnsserver.b[3] = 8;
-
+#endif
    return 0;
 }
 

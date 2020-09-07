@@ -367,14 +367,21 @@ void nwk_downstream(void)
    ip_checksum((byte_t*)&_header, 20);
    if(chks.u != 0xffff) goto drop;
 
+#if 0
+   printf("I am %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+   printf("%d.%d.%d.%d -> %d.%d.%d.%d\n",
+	  IPH(source).b[0],IPH(source).b[1],IPH(source).b[2],IPH(source).b[3],
+	  IPH(destination).b[0],IPH(destination).b[1],IPH(destination).b[2],IPH(destination).b[3]);
+#endif   
    /*
     * Destination address.
-    */
+    */   
    if(IPH(destination).d != 0xffffffffL)                       // broadcast.
       if(IPH(destination).d != ip_local.d)                     // unicast.
-         goto drop;                                            // not for us.
+	if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
+	  goto drop;                                           // not for us.
 
-   if (0) printf("IP is for us. Source is %08lx\n",IPH(source).d);
+   if (1) printf("IP is for us. Source is %08lx\n",IPH(source).d);
    
    /*
     * Search for a waiting socket.
@@ -388,7 +395,11 @@ void nwk_downstream(void)
 	if(IPH(protocol) != IP_PROTO_TCP) continue;
       }
       if(_sckt->listening) goto found;                         // waiting for a connection.
-      if(_sckt->remIP.d != IPH(source).d) continue;            // another source.
+      printf("Ports match.\n");
+      // Don't check source if we are bound to broadcast
+      if(_sckt->remIP.d!=0xffffffffL) {
+	if(_sckt->remIP.d != IPH(source).d) continue;            // another source.
+      }
       if(_sckt->remPort != TCPH(source)) continue;             // another port.
       printf("Socket matches.\n");
       goto found;                                              // found!
