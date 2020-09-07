@@ -72,8 +72,10 @@ bool_t dhcp_autoconfig(void)
   
   socket_select(dhcp_socket);
   for(i=0;i<4;i++) ip_broadcast.b[i]=255;
-  dhcp_socket->port=68;  // force local port to correct value
   socket_connect(&ip_broadcast,67);
+  // force local port to 68
+  // (reversed byte order for network byte ordering)
+  dhcp_socket->port=68<<8;  
 
   // Now form our DHCP discover message
   // 16-bit random request ID:  
@@ -93,7 +95,7 @@ bool_t dhcp_autoconfig(void)
   for(i=0;i<16;i++) dns_query[dhcp_query_len++]=0x00;
   // our MAC address padded to 192 bytes
   for(i=0;i<6;i++) dns_query[dhcp_query_len++]=mac_local.b[i];
-  for(;i<192;i++) dns_query[dhcp_query_len++]=0x00;
+  for(;i<16+192;i++) dns_query[dhcp_query_len++]=0x00;
   // DHCP magic cookie
   dns_query[dhcp_query_len++]=0x63;
   dns_query[dhcp_query_len++]=0x82;
@@ -103,6 +105,8 @@ bool_t dhcp_autoconfig(void)
   dns_query[dhcp_query_len++]=0x35;
   dns_query[dhcp_query_len++]=0x01;
   dns_query[dhcp_query_len++]=0x01;
+  // Pad to word boundary
+  dns_query[dhcp_query_len++]=0x00;
   // Request subnetmask, router, domainname, DNS server
   dns_query[dhcp_query_len++]=0x37;
   dns_query[dhcp_query_len++]=0x04;
@@ -113,6 +117,10 @@ bool_t dhcp_autoconfig(void)
   // End of request
   dns_query[dhcp_query_len++]=0xff;
 
+  // Pad out to standard length
+  while(dhcp_query_len<512)
+      dns_query[dhcp_query_len++]=0x00;
+  
   socket_send(dns_query,dhcp_query_len);
 
   // Mark ourselves as not yet having configured by DHCP

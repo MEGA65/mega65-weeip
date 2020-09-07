@@ -12,7 +12,7 @@
 unsigned char dns_query_returned=0;
 IPV4 dns_return_ip;
 SOCKET *dns_socket;
-unsigned char dns_query[512];
+unsigned char dns_query[1024];
 unsigned char dns_buf[1024];
 
 byte_t dns_reply_handler (byte_t p)

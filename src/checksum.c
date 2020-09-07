@@ -124,6 +124,7 @@ ip_checksum
     * Test the carry.
     */
    if(_c) {
-      if(++chks.b[0] == 0) chks.b[1]++;
+     ++chks.b[0];
+     if(!chks.b[0]) chks.b[1]++;
    }
 }
