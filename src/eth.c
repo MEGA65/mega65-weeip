@@ -310,6 +310,10 @@ eth_init()
    POKE(0xD6ED,mac_local.b[4]);
    POKE(0xD6EE,mac_local.b[5]);
 
+   // Release from reset and reset TX FSM
+   POKE(0xd6e0,1);
+   POKE(0xd6e0,3);
+   
    // XXX Enable ethernet IRQs?
 }
 
