@@ -10,6 +10,7 @@
 #include "random.h"
 
 unsigned char dhcp_configured=0;
+unsigned char dhcp_xid[4]={0};
 
 // Share data buffer with DNS client to save space
 extern unsigned char dns_query[512];
@@ -83,10 +84,11 @@ bool_t dhcp_autoconfig(void)
   dns_query[dhcp_query_len++]=0x01; // HTYPE
   dns_query[dhcp_query_len++]=0x06; // HLEN
   dns_query[dhcp_query_len++]=0x00; // HOPS
-  dns_query[dhcp_query_len++]=random32(256); // XID
-  dns_query[dhcp_query_len++]=random32(256); // XID
-  dns_query[dhcp_query_len++]=random32(256); // XID
-  dns_query[dhcp_query_len++]=random32(256); // XID
+  // Transaction ID
+  for(i=0;i<4;i++) {
+    dhcp_xid[i]=random32(256);
+    dns_query[dhcp_query_len++]=dhcp_xid[i];
+  }
   dns_query[dhcp_query_len++]=0x00; // SECS since start of request
   dns_query[dhcp_query_len++]=0x00; // SECS since start of request
   dns_query[dhcp_query_len++]=0x00; // FLAGS
@@ -119,7 +121,7 @@ bool_t dhcp_autoconfig(void)
 
   // Pad out to standard length
   while(dhcp_query_len<512)
-      dns_query[dhcp_query_len++]=0x00;
+    dns_query[dhcp_query_len++]=0x00;
   
   socket_send(dns_query,dhcp_query_len);
 
