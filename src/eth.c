@@ -6,6 +6,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include <string.h>
 #include "task.h"
@@ -61,8 +62,10 @@ void eth(uint8_t b)
 bool_t
 eth_clear_to_send()
 {
-   if(PEEK(0xD6E0)&0x80) return TRUE;
-   return FALSE;
+  if(PEEK(0xD6E0)&0x80) {
+    return TRUE;
+  }
+  return FALSE;
 }
 
 /**
@@ -298,8 +301,8 @@ eth_init()
    POKE(0xD6ED,mac_local.b[4]);
    POKE(0xD6EE,mac_local.b[5]);
 
-   // Release from reset and reset TX FSM
-   POKE(0xd6e0,1);
+   // Reset, then release from reset and reset TX FSM
+   POKE(0xd6e0,0);
    POKE(0xd6e0,3);
    
    // XXX Enable ethernet IRQs?
