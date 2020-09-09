@@ -17,6 +17,8 @@ extern unsigned char dns_query[512];
 extern unsigned char dns_buf[1024];
 SOCKET *dhcp_socket;
 
+void dhcp_send_query(void);
+
 byte_t dhcp_reply_handler (byte_t p)
 {
   unsigned int type,len,offset;
@@ -101,18 +103,41 @@ byte_t dhcp_reply_handler (byte_t p)
    return 0;
 }
 
-
+byte_t dhcp_autoconfig_retry(byte_t b)
+{
+  if (!dhcp_configured) {
+    // This will automatically re-add us to the list
+    dhcp_send_query();
+    task_add(dhcp_autoconfig_retry, 255, 0);
+  }
+  return 0;
+}
 
 bool_t dhcp_autoconfig(void)
 { 
-  uint16_t dhcp_query_len=0;
-  unsigned char field_len;
-  unsigned char prefix_position,i;
-  IPV4 ip_broadcast;
+  if (dhcp_configured) return 1;
   
   dhcp_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dhcp_reply_handler);
   socket_set_rx_buffer(dns_buf,1024);
+
+  dhcp_send_query();
+
+  // Mark ourselves as not yet having configured by DHCP
+  dhcp_configured=0;
+
+  // Schedule ourselves to retransmit DHCP query until we are configured
+  task_add(dhcp_autoconfig_retry, 255, 0);
+  
+  
+}
+
+void dhcp_send_query(void)
+{
+  uint16_t dhcp_query_len=0;
+  unsigned char field_len;
+  unsigned char prefix_position,i;
+  IPV4 ip_broadcast;
   
   socket_select(dhcp_socket);
   for(i=0;i<4;i++) ip_broadcast.b[i]=255;
@@ -168,8 +193,5 @@ bool_t dhcp_autoconfig(void)
   
   socket_send(dns_query,dhcp_query_len);
 
-  // Mark ourselves as not yet having configured by DHCP
-  dhcp_configured=0;
-
-  return 1;
+  return ;
 }
