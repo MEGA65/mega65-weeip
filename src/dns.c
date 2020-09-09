@@ -83,6 +83,7 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   uint16_t dns_query_len=0;
   unsigned char field_len;
   unsigned char prefix_position,i;
+  unsigned char next_retry,retries;
   
   dns_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dns_reply_handler);
@@ -152,10 +153,24 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   // Run normal network state machine
   // XXX Call-back handlers for other network tasks can still occur
   dns_query_returned=0;
+
+  // Retry for approx 30 seconds (will be slightly longer on NTSC, as we
+  // time retries based on elapsed video frames).
+  retries=30;
+  next_retry=PEEK(0xD7FA)+50;
+  
   while(!dns_query_returned) {
     task_periodic();
 
-    // XXX Detect timeout and return false
+    // Detect timeout, and retry for ~30 seconds
+    if (PEEK(0xD7FA)==next_retry) {
+      if (!retries) return 0;
+      socket_select(dns_socket);
+      socket_send(dns_query,dns_query_len);
+      retries--;
+      next_retry=PEEK(0xD7FA)+50;
+    }
+
   }
 
   // Copy resolved IP address
