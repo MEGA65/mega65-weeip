@@ -18,8 +18,9 @@ CL65=  cl65 --config src/tests/vicii.cfg
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/main.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
 
-tcptest.prg:       $(TCPSRCS)
+fetch.prg:       $(TCPSRCS)
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $*.prg --mapfile $*.map $(TCPSRCS)  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o unpacked.prg --mapfile $*.map $(TCPSRCS)  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	exomizer sfx sys -o $*.prg unpacked.prg
 
