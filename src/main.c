@@ -78,7 +78,7 @@ void main(void)
   mega65_io_enable();
   srand(random32(0));
 
-  printf("%c",0x93);
+  printf("%c%c",0x05,0x93);
   
   // Get MAC address from ethernet controller
   for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
@@ -108,8 +108,8 @@ void main(void)
 #endif
    
    if (dns_hostname_to_ip(hostname,&a)) {
-     //     printf("Host '%s' resolves to %d.%d.%d.%d\n",
-     //	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
+     printf("Host '%s' resolves to %d.%d.%d.%d\n",
+	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
    }
 
    s = socket_create(SOCKET_TCP);
