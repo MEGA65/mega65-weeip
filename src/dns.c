@@ -89,7 +89,7 @@ byte_t dns_reply_handler (byte_t p)
 
     // Check if we have at least one answer
     if (!(dns_buf[6]||dns_buf[7])) {
-      printf("DNS response contained no answers.\n");
+      //      printf("DNS response contained no answers.\n");
       break;
     }
 
@@ -111,6 +111,7 @@ byte_t dns_reply_handler (byte_t p)
 	    // Check if it is a CNAME, in which case we need to re-issue the request for the
 	    // CNAME
 	    if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x05)) {
+	      
 	      ofs+=2;
 	      // printf("DNS server responded with a CNAME\n");
 	      // Skip TTL and size
@@ -120,6 +121,12 @@ byte_t dns_reply_handler (byte_t p)
 	      // We decode them into place in dns_buf to avoid having a separate buffer
 	      i=0;
 	      while(dns_buf[ofs]) {
+
+		// Expand compressed name pointers
+		if (dns_buf[ofs]>=0xc0) {
+		  ofs=dns_buf[ofs+1];
+		}
+		
 		j=0;
 		if (i) dns_buf[i++]='.';
 		while(dns_buf[ofs]--) {
@@ -129,7 +136,7 @@ byte_t dns_reply_handler (byte_t p)
 		dns_buf[i]=0;
 	      }
 	      
-	      printf("Resolving CNAME %s ...\n",dns_buf);
+	      printf("Resolving CNAME '%s' ...\n",dns_buf);
 	      dns_construct_hostname_to_ip_query(dns_buf);
 	      socket_send(dns_query,dns_query_len);
 	      
