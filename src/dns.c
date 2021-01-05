@@ -122,7 +122,6 @@ byte_t dns_reply_handler (byte_t p)
 	      while(dns_buf[ofs]) {
 		j=0;
 		if (i) dns_buf[i++]='.';
-		printf("%c",dns_buf[ofs+1+j]);
 		while(dns_buf[ofs]--) {
 		  dns_buf[i++]=dns_buf[ofs+1+j]; j++;
 		}
