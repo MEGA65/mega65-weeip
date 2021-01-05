@@ -134,8 +134,7 @@ uint8_t eth_task (uint8_t p)
     arp_mens();   
     goto drop;
   }
-  
-  if(eth_header.type == 0x0008) {            // big-endian for 0x0800
+  else if(eth_header.type == 0x0008) {            // big-endian for 0x0800
     /*
      * IP packet.
      * Verify transport protocol to load header.
@@ -152,7 +151,11 @@ uint8_t eth_task (uint8_t p)
     default:
       goto drop;
     }
+
     nwk_downstream();
+  }
+  else {
+    //    printf("Unknown ether type $%04x\n",eth_header.type);
   }
   
  drop:
@@ -295,6 +298,9 @@ eth_init()
    POKE(0xD6E5,PEEK(0xD6E5)|0x01);
 #endif
 
+   // Set ETH TX Phase to 1
+   POKE(0xD6E5,(PEEK(0xD6E5)&0xf3)|(1<<2));   
+   
    /*
     * Configure MAC address.
     */
