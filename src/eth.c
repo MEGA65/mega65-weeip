@@ -89,13 +89,14 @@ uint8_t eth_task (uint8_t p)
   /*
    * Check if there are incoming packets.
    * If not, then check in a while.
-   */
+   */  
+
   if(!(PEEK(0xD6E1)&0x20)) {
     task_add(eth_task, 10, 0);
     return 0;
   }
 
-  // Get next received packet
+  // Get next received packet  
   POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
   
   /*
@@ -103,7 +104,7 @@ uint8_t eth_task (uint8_t p)
    */
   // +2 to skip length and flags field
   lcopy(ETH_RX_BUFFER+2L,(uint32_t)&eth_header, sizeof(eth_header));
-
+  
   /*
    * Check destination address.
    */
@@ -187,6 +188,9 @@ void eth_packet_send(void)
   // Copy our working frame buffer to 
   lcopy((unsigned long)tx_frame_buf,ETH_TX_BUFFER,eth_tx_len);
 
+  // Make sure ethernet is not under reset
+  POKE(0xD6E0,0x03);
+  
   // Send packet
   POKE(0xD6E4,0x01); // TX now
 }
@@ -304,6 +308,8 @@ eth_init()
    // Reset, then release from reset and reset TX FSM
    POKE(0xd6e0,0);
    POKE(0xd6e0,3);
+   POKE(0xd6e1,3);
+   POKE(0xd6e1,0);
    
    // XXX Enable ethernet IRQs?
 }
