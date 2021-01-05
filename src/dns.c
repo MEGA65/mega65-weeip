@@ -13,94 +13,14 @@ unsigned char dns_query_returned=0;
 IPV4 dns_return_ip;
 SOCKET *dns_socket;
 unsigned char dns_query[1024];
+uint16_t dns_query_len=0;
 unsigned char dns_buf[1024];
 
-byte_t dns_reply_handler (byte_t p)
-{
-  unsigned int ofs;
-  
-  socket_select(dns_socket);
-  switch(p) {
-  case WEEIP_EV_DATA:
-
-    // Check that query ID matches
-    if (dns_buf[0]!=dns_query[0]) break;
-    if (dns_buf[1]!=dns_query[1]) break;
-
-    // Check that it is a reply
-    if ((dns_buf[2]!=0x81)&&(dns_buf[2]!=0x85)) break;
-
-    // Check if we have at least one answer
-    if (!(dns_buf[6]||dns_buf[7])) {
-      printf("DNS response contained no answers.\n");
-      break;
-    }
-
-    // Skip over the question text (HACK: Search for first $00 byte)
-    ofs=0xc; while(dns_buf[ofs]) ofs++;
-    // Then skip that $00 byte
-    ofs++;
-
-    // Skip over query type and class if correct
-    if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
-	ofs+=2;
-	if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
-	  ofs+=2;
-	  // Now we are at the start of the answer section
-	  // Assume that answers will be pointers to the name in the query.
-	  // For this we look for fixed value $c0 $0c indicating pointer to the name in the query
-	  if ((dns_buf[ofs]==0xc0)&&(dns_buf[ofs+1]==0x0c)) {
-	    ofs+=2;
-	    // Then we check that answer type is $00 $01 = "type a"
-	    if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
-	      ofs+=2;
-	      // Then we check that answer class is $00 $01 = "IPv4 address"
-	      if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
-		ofs+=2;
-		// Now we can just skip over the TTL and size, by assuming its a 4 byte
-		ofs+=6;
-		// IP address
-		dns_return_ip.b[0]=dns_buf[ofs+0];
-		dns_return_ip.b[1]=dns_buf[ofs+1];
-		dns_return_ip.b[2]=dns_buf[ofs+2];
-		dns_return_ip.b[3]=dns_buf[ofs+3];
-		dns_query_returned=1;
-		break;
-	      }
-	    }
-	  }
-	}
-    }
-    
-    break;
-  }
-  return 0;
-}
-
-bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
-{
-  EUI48 mac;
-  uint16_t dns_query_len=0;
-  unsigned char field_len;
+void dns_construct_hostname_to_ip_query(char *hostname)
+{  
   unsigned char prefix_position,i;
-  unsigned char next_retry,retries;
+  unsigned char field_len;
   
-  dns_socket = socket_create(SOCKET_UDP);
-  socket_set_callback(dns_reply_handler);
-  socket_set_rx_buffer(dns_buf,1024);
-  
-  // Before we get any further, send an ARP query for the DNS server
-  // (or if it isn't on the same network segment, for our gateway.)
-  arp_query(&ip_dnsserver);
-  arp_query(&ip_gate);
-  // Then wait until we get a reply.
-  while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
-    task_periodic();     
-  }   
-  
-  socket_select(dns_socket);
-  socket_connect(&ip_dnsserver,53);
-
   // Now form our DNS query
   // 16-bit random request ID:  
   dns_query[0]=random32(256);
@@ -147,7 +67,123 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   // QCLASS = 0x0001 = "internet addressses
   dns_query[dns_query_len++]=0x00;
   dns_query[dns_query_len++]=0x01;
+}  
+
+byte_t dns_reply_handler (byte_t p)
+{
+  unsigned int ofs;
+  unsigned char i,j;
+
+  //  printf("DNS packet seen.\n");
   
+  socket_select(dns_socket);
+  switch(p) {
+  case WEEIP_EV_DATA:
+
+    // Check that query ID matches
+    if (dns_buf[0]!=dns_query[0]) break;
+    if (dns_buf[1]!=dns_query[1]) break;
+
+    // Check that it is a reply
+    if ((dns_buf[2]!=0x81)&&(dns_buf[2]!=0x85)) break;
+
+    // Check if we have at least one answer
+    if (!(dns_buf[6]||dns_buf[7])) {
+      printf("DNS response contained no answers.\n");
+      break;
+    }
+
+    // Skip over the question text (HACK: Search for first $00 byte)
+    ofs=0xc; while(dns_buf[ofs]) ofs++;
+    // Then skip that $00 byte
+    ofs++;
+
+    // Skip over query type and class if correct
+    if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
+	ofs+=2;
+	if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
+	  ofs+=2;
+	  // Now we are at the start of the answer section
+	  // Assume that answers will be pointers to the name in the query.
+	  // For this we look for fixed value $c0 $0c indicating pointer to the name in the query
+	  if ((dns_buf[ofs]==0xc0)&&(dns_buf[ofs+1]==0x0c)) {
+	    ofs+=2;
+	    // Check if it is a CNAME, in which case we need to re-issue the request for the
+	    // CNAME
+	    if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x05)) {
+	      ofs+=2;
+	      // printf("DNS server responded with a CNAME\n");
+	      // Skip TTL and size
+	      ofs+=8;
+	      // We should now have len+string tuples following.
+	      // So decode those into a hostname string, and resolve that instead
+	      // We decode them into place in dns_buf to avoid having a separate buffer
+	      i=0;
+	      while(dns_buf[ofs]) {
+		j=0;
+		if (i) dns_buf[i++]='.';
+		printf("%c",dns_buf[ofs+1+j]);
+		while(dns_buf[ofs]--) {
+		  dns_buf[i++]=dns_buf[ofs+1+j]; j++;
+		}
+		ofs+=j+1;
+		dns_buf[i]=0;
+	      }
+	      
+	      printf("Resolving CNAME %s ...\n",dns_buf);
+	      dns_construct_hostname_to_ip_query(dns_buf);
+	      socket_send(dns_query,dns_query_len);
+	      
+	    }
+	    // Then we check that answer type is $00 $01 = "type a"
+	    if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
+	      ofs+=2;
+	      // Then we check that answer class is $00 $01 = "IPv4 address"
+	      if ((dns_buf[ofs]==0x00)&&(dns_buf[ofs+1]==0x01)) {
+		ofs+=2;
+		// Now we can just skip over the TTL and size, by assuming its a 4 byte
+		ofs+=6;
+		// IP address
+		dns_return_ip.b[0]=dns_buf[ofs+0];
+		dns_return_ip.b[1]=dns_buf[ofs+1];
+		dns_return_ip.b[2]=dns_buf[ofs+2];
+		dns_return_ip.b[3]=dns_buf[ofs+3];
+		dns_query_returned=1;
+		break;
+	      }
+	    }
+	  }
+	}
+    }
+    
+    break;
+  }
+  return 0;
+}
+
+bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
+{
+  EUI48 mac;
+  unsigned char next_retry,retries;
+  
+  dns_socket = socket_create(SOCKET_UDP);
+  socket_set_callback(dns_reply_handler);
+  socket_set_rx_buffer(dns_buf,1024);
+  
+  // Before we get any further, send an ARP query for the DNS server
+  // (or if it isn't on the same network segment, for our gateway.)
+  arp_query(&ip_dnsserver);
+  arp_query(&ip_gate);
+  // Then wait until we get a reply.
+  while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
+    task_periodic();     
+  }   
+  
+  socket_select(dns_socket);
+  socket_connect(&ip_dnsserver,53);
+
+  dns_construct_hostname_to_ip_query(hostname);
+
   socket_send(dns_query,dns_query_len);
 
   // Run normal network state machine
