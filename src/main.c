@@ -82,9 +82,11 @@ void main(void)
   
   // Get MAC address from ethernet controller
   for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
+  printf("My MAC address is %02x:%02x:%02x:%02x:%02x:%02x\n",
+	 mac_local.b[0],mac_local.b[1],mac_local.b[2],
+	 mac_local.b[3],mac_local.b[4],mac_local.b[5]);
   
   // Setup WeeIP
-  printf("Calling weeip_init()\n");
   weeip_init();
   interrupt_handler();   
 
@@ -106,8 +108,8 @@ void main(void)
 #endif
    
    if (dns_hostname_to_ip(hostname,&a)) {
-     printf("Host '%s' resolves to %d.%d.%d.%d\n",
-	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
+     //     printf("Host '%s' resolves to %d.%d.%d.%d\n",
+     //	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
    }
 
    s = socket_create(SOCKET_TCP);
