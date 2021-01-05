@@ -15,12 +15,19 @@ CA65=  ca65 --cpu 4510
 LD65=  ld65 -t none
 CL65=  cl65 --config src/tests/vicii.cfg
 
-TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/main.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
+TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
+all:	fetch.prg telnet.prg
 
-fetch.prg:       $(TCPSRCS)
+fetch.prg:       $(TCPSRCS) src/main.c
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o unpacked.prg --mapfile $*.map $(TCPSRCS)  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
-	exomizer sfx sys -o $*.prg unpacked.prg
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-unpacked.prg --mapfile $*.map $(TCPSRCS) src/main.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	exomizer sfx sys -o $*.prg fetch-unpacked.prg
+
+telnet.prg:       $(TCPSRCS) src/telnet.c
+	git submodule init
+	git submodule update
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o telnet-unpacked.prg --mapfile $*.map $(TCPSRCS) src/telnet.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	exomizer sfx sys -o $*.prg telnet-unpacked.prg
 
