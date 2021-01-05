@@ -35,17 +35,26 @@ byte_t buf[1024];
 byte_t comunica (byte_t p)
 {
   unsigned int i;
+  unsigned char *rx=s->rx;
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
 	printf("Connected.\n");
+	// Send telnet GO AHEAD command
+	socket_send("\0377\0371",2);
 	break;
       case WEEIP_EV_DISCONNECT:
          socket_release(s);
          break;
       case WEEIP_EV_DATA:
-	((char *)s->rx)[s->rx_data]=0;
-	printf("%s",s->rx);
+	// Print what comes from the server
+	for(i=0;i<s->rx_data;i++) {
+	  if ((rx[i]>=0x20)&&(rx[i]<0x7e)
+	      ||(rx[i]==' ')||(rx[i]=='\r')||(rx[i]=='\n'))
+	    printf("%c",rx[i]);
+	  else
+	    printf("[$%02x]",rx[i]);
+	}
 	break;
    }
 
