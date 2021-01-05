@@ -9,6 +9,9 @@
 #include "memory.h"
 #include "random.h"
 
+// approx 255ms between DHCP requests
+#define DHCP_RETRY_TICKS 255
+
 unsigned char dhcp_configured=0;
 unsigned char dhcp_xid[4]={0};
 
@@ -106,9 +109,10 @@ byte_t dhcp_reply_handler (byte_t p)
 byte_t dhcp_autoconfig_retry(byte_t b)
 {
   if (!dhcp_configured) {
+    
     // This will automatically re-add us to the list
     dhcp_send_query();
-    task_add(dhcp_autoconfig_retry, 255, 0);
+    task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0);
   }
   return 0;
 }
@@ -127,7 +131,7 @@ bool_t dhcp_autoconfig(void)
   dhcp_configured=0;
 
   // Schedule ourselves to retransmit DHCP query until we are configured
-  task_add(dhcp_autoconfig_retry, 255, 0);
+  task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0);
   
   
 }
