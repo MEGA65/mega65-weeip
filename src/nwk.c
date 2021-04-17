@@ -48,7 +48,7 @@
  */
 HEADER _header;
 
-static uint16_t data_size;
+static uint16_t data_size,data_ofs;
 static _uint32_t seq;
 #define TCPH(X) _header.t.tcp.X
 #define UDPH(X) _header.t.udp.X
@@ -569,8 +569,11 @@ parse_tcp:
                   data_size = _sckt->rx_size;
 	       // XXX Correct buffer offset processing to handle variable
 	       // header lengths
-               lcopy(ETH_RX_BUFFER+68,(uint32_t)_sckt->rx, data_size);
+	       data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
+	       
+               lcopy(ETH_RX_BUFFER+16+data_ofs,(uint32_t)_sckt->rx, data_size);
                _sckt->rx_data = data_size;
+
             }
             _sckt->toSend = ACK;            
             ev = WEEIP_EV_DATA;
