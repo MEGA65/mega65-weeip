@@ -121,6 +121,7 @@ extern bool_t socket_connect(IPV4 *a, uint16_t p);
 extern bool_t socket_send(buffer_t bdata, int size);
 extern uint16_t socket_data_size();
 extern void socket_reset();
+extern bool_t socket_disconnect();
 extern void nwk_downstream();
 extern byte_t nwk_upstream(byte_t);
 extern byte_t nwk_tick(byte_t sig);
