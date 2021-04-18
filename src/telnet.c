@@ -12,6 +12,8 @@
 #include "memory.h"
 #include "random.h"
 
+unsigned char last_frame_number=0;
+
 unsigned long byte_log=0;
 
 #define PORT_NUMBER 64128
@@ -146,7 +148,10 @@ void main(void)
    while(1) {
      
      // XXX Actually only call it periodically
-     task_periodic();
+     if (PEEK(0xD7FA)!=last_frame_number) {
+       task_periodic();
+       last_frame_number=PEEK(0xD7FA);
+     }
 
      // Monitor hardware accelerated keyboard input for extra C65 keys only
      if (PEEK(0xD610)) {
