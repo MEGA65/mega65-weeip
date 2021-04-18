@@ -319,13 +319,19 @@ byte_t nwk_upstream (byte_t sig)
        * Send IP packet.
        */
       if(eth_ip_send()) {
-	//	printf("eth_ip_send() success\n");
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
-         eth_packet_send();	 
+         eth_packet_send();
+
+	 _sckt->toSend = 0;
+	 _sckt->timeout = FALSE;
+	 _sckt->time = TIMEOUT_TCP;
+	 
+      } else {
+	// Sending the IP packet failed, possibly because there was no ARP
+	// entry for the requested IP, if it is on the local network.
+
+	// So we don't clear the status that we need to send
       }
-      _sckt->toSend = 0;
-      _sckt->timeout = FALSE;
-      _sckt->time = TIMEOUT_TCP;
 
       /*
        * Reschedule 50ms later for eventual further processing.
