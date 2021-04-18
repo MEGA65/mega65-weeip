@@ -16,7 +16,7 @@ unsigned long byte_log=0;
 
 #define PORT_NUMBER 64128
 #define HOST_NAME "byob.hopto.org"
-// #define FIXED_DESTINATION_IP
+#define FIXED_DESTINATION_IP
 
 void interrupt_handler(void)
 {
@@ -144,19 +144,30 @@ void main(void)
    POKE(0x0286,0x0d);
    
    while(1) {
+     
      // XXX Actually only call it periodically
      task_periodic();
 
+     // Monitor hardware accelerated keyboard input for extra C65 keys only
      if (PEEK(0xD610)) {
        if (PEEK(0xD610)==0xF9) {
 	 printf("%c%c%c%c%c%cDisconnecting...",0x0d,0x05,0x12,0x11,0x11,0x11,0x11);
-	 socket_disconnect();
+	 socket_reset();
        }
-       
-       buf[0]=PEEK(0xD610);
        POKE(0xD610,0);
-       socket_send(buf, 1);
-       POKE(0xD020,PEEK(0xD020)+1);
      }
+
+#if 1
+     // Directly read from C64's keyboard buffer
+     if (PEEK(198)) {
+       lcopy(631,(long)buf,10);
+       socket_select(s);
+       // Only consume keys if socket_send() succeeds
+       if (socket_send(buf, PEEK(198))) {
+	 POKE(0xD020,PEEK(0xD020)+1);
+	 POKE(198,0);
+       }
+     }
+#endif     
    }
 }
