@@ -221,7 +221,13 @@ socket_send
 {
    if(_sckt == NULL) return FALSE;
    if(_sckt->state != _CONNECT) return FALSE;
+
+   // Check if we still have un-acknowledged data, and
+   // if so, return failure
+   if (_sckt->toSend & PSH) return FALSE;
+
    if(_sckt->type == SOCKET_TCP) _sckt->state = _ACK_WAIT;
+   
    _sckt->tx = fdata;
    _sckt->tx_size = size;
    _sckt->toSend = ACK | PSH;
