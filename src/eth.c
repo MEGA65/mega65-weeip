@@ -191,6 +191,12 @@ void eth_packet_send(void)
   // Copy our working frame buffer to 
   lcopy((unsigned long)tx_frame_buf,ETH_TX_BUFFER,eth_tx_len);
 
+#if 0
+  printf("ETH TX: %x:%x:%x:%x:%x:%x\n",
+	 tx_frame_buf[0],tx_frame_buf[1],tx_frame_buf[2],tx_frame_buf[3],tx_frame_buf[4],tx_frame_buf[5]
+	 );
+#endif
+  
   // Make sure ethernet is not under reset
   POKE(0xD6E0,0x03);
   
