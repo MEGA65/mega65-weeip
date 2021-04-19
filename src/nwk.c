@@ -498,7 +498,6 @@ parse_tcp:
       /*
        * RST flag received. Force disconnection.
        */
-     printf("DISCONNECT");
       _sckt->state = _IDLE;
       if (!data_size) {
 	// No data, so just disconnect
