@@ -18,7 +18,7 @@ unsigned long byte_log=0;
 
 #define PORT_NUMBER 64128
 #define HOST_NAME "byob.hopto.org"
-#define FIXED_DESTINATION_IP
+//#define FIXED_DESTINATION_IP
 
 void interrupt_handler(void)
 {
@@ -44,35 +44,39 @@ byte_t comunica (byte_t p)
 {
   unsigned int i;
   unsigned char *rx=s->rx;
-   socket_select(s);
-   switch(p) {
-      case WEEIP_EV_CONNECT:
-	printf("Connected.\n");
-	// Send telnet GO AHEAD command
-	socket_send("\0377\0371",2);
-	break;
-      case WEEIP_EV_DISCONNECT:
-         socket_release(s);
-         break;
-      case WEEIP_EV_DATA:
-	// Print what comes from the server
-	for(i=0;i<s->rx_data;i++) {
-	  lpoke(0x40000+byte_log,rx[i]);
-	  byte_log++;
-	  //	  if ((rx[i]>=0x20)&&(rx[i]<0x7e)
-	  //	      ||(rx[i]==' ')||(rx[i]=='\r')||(rx[i]=='\n'))
-	    printf("%c",rx[i]);
-	    //	  else
-	    //	    printf("[$%02x]",rx[i]);
-	}
-	lpoke(0x12000,(byte_log>>0)&0xff);
-	lpoke(0x12001,(byte_log>>8)&0xff);
-	lpoke(0x12002,(byte_log>>16)&0xff);
-	lpoke(0x12003,(byte_log>>24)&0xff);
-	break;
-   }
-
-   return 0;
+  socket_select(s);
+  switch(p) {
+  case WEEIP_EV_CONNECT:
+    printf("Connected.\n");
+    // Send telnet GO AHEAD command
+    socket_send("\0377\0371",2);
+    break;
+  case WEEIP_EV_DATA:
+  case WEEIP_EV_DISCONNECT_WITH_DATA:
+    // Print what comes from the server
+    for(i=0;i<s->rx_data;i++) {
+      lpoke(0x40000+byte_log,rx[i]);
+      byte_log++;
+      //	  if ((rx[i]>=0x20)&&(rx[i]<0x7e)
+      //	      ||(rx[i]==' ')||(rx[i]=='\r')||(rx[i]=='\n'))
+      printf("%c",rx[i]);
+      //	  else
+      //	    printf("[$%02x]",rx[i]);
+    }
+    lpoke(0x12000,(byte_log>>0)&0xff);
+    lpoke(0x12001,(byte_log>>8)&0xff);
+    lpoke(0x12002,(byte_log>>16)&0xff);
+    lpoke(0x12003,(byte_log>>24)&0xff);
+    // Fall through if its a disconnect with data
+    if (p==WEEIP_EV_DATA) break;
+    // FALL THROUGH
+  case WEEIP_EV_DISCONNECT:
+    socket_release(s);
+    printf("%c%c\nDISCONNECTED\n",5,12);
+    break;
+  }
+  
+  return 0;
 }
 
 void dump_bytes(char *msg,uint8_t *d,int count);
