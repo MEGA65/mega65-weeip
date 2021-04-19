@@ -50,10 +50,11 @@
  */
 typedef enum {
    WEEIP_EV_NONE = 0,
-	WEEIP_EV_CONNECT,                      ///< Connection established.
-	WEEIP_EV_DISCONNECT,                   ///< Disconnection from peer.
-	WEEIP_EV_DATA,                         ///< Data arrival.
-	WEEIP_EV_DATA_SENT                     ///< Data sent.
+   WEEIP_EV_CONNECT,                      ///< Connection established.
+   WEEIP_EV_DISCONNECT,                   ///< Disconnection from peer.
+   WEEIP_EV_DISCONNECT_WITH_DATA,         ///< Disconnection from peer, but packet also contains data
+   WEEIP_EV_DATA,                         ///< Data arrival.
+   WEEIP_EV_DATA_SENT                     ///< Data sent.
 } WEEIP_EVENT;
 
 #define SOCKET_FREE			0

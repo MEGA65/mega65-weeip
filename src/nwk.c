@@ -122,7 +122,7 @@ void dump_bytes(char *msg,uint8_t *d,int count)
 byte_t nwk_tick (byte_t sig)
 {
    static byte_t t=0;
-   
+
    /*
     * Loop all sockets.
     */
@@ -439,15 +439,7 @@ parse_tcp:
     */
    _flags = 0;
    data_size -= 40;
-   if(TCPH(flags) & RST) {
-      /*
-       * RST flag received. Force disconnection.
-       */
-      _sckt->state = _IDLE;
-      ev = WEEIP_EV_DISCONNECT;
-      goto done;
-   }
-   
+
    if(TCPH(flags) & ACK) {
       /*
        * Test acked sequence number.
@@ -498,6 +490,26 @@ parse_tcp:
        */
       _sckt->remSeq.d += data_size;
    }
+
+   // XXX PGS moved this lower down, so that we can check any included data has the correct sequence
+   // number, so that we can pass the data up, if required, so that data included in the RST
+   // packet doesn't get lost (Boar's Head BBS does this, for example)
+   if(TCPH(flags) & RST) {
+      /*
+       * RST flag received. Force disconnection.
+       */
+     printf("DISCONNECT");
+      _sckt->state = _IDLE;
+      if (!data_size) {
+	// No data, so just disconnect
+	ev = WEEIP_EV_DISCONNECT;
+      } else {
+	// Disconnect AND valid data
+	ev = WEEIP_EV_DISCONNECT_WITH_DATA;
+      }
+      goto done;
+   }
+   
    
    if(TCPH(flags) & FIN) {
       _sckt->remSeq.d++;
