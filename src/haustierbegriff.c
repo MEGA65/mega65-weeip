@@ -17,8 +17,46 @@ unsigned char last_frame_number=0;
 unsigned long byte_log=0;
 
 #define PORT_NUMBER 64128
-#define HOST_NAME "byob.hopto.org"
+#define HOST_NAME "rapidfire.hopto.org"
 //#define FIXED_DESTINATION_IP
+
+struct bbs {
+  char *name;
+  char *host_name;
+  unsigned int port_number;
+};
+
+const struct bbs bbs_list[27]=
+  {
+   {"Boar's Head","byob.hopto.org",64128},
+   {"RapidFire","rapidfire.hopto.org",64128},
+   {"Antidote by Triad","antidote.hopto.org",64128},
+   {"Wizards's Realm", "wizardsrealm.c64bbs.org", 23},
+   {"The Hidden", "the-hidden.hopto.org", 64128},
+   {"Eaglewing BBS", "eagelbird.ddns.net", 6400},
+   {"Scorps Portal", "scorp.us.to", 23},
+   {"Retrograde", "SORC3ROR", 6400},
+   {"My C=ult BBS", "maraud.dynalias.com", 6400},
+   {"Commodore Image", "cib.dyndns.org", 6400},
+   {"64 Vintag Remic", "64vintageremixbbs.dyndns.org", 6400},
+   {"Jamming Signal", "bbs.jammingsignal.com", 23},
+   {"Centronian BBS", "centronian.servebeer.com", 6400},
+   {"Anrchy Undergrnd", "aubbs.dyndns.org", 2300},
+   {"The Oasis BBS", "oasisbbs.hopto.org", 6400},
+   {"The Disk Box", "bbs.thediskbox.com", 6400},
+   {"Cottonwood", "cottonwoodbbs.dyndns.org", 6502},
+   {"Wrong Number ][", "cib.dyndns.org", 6404},
+   {"RabidFire", "rapidfire.hopto.org", 64128},
+   {"Mad World", "madworld.bounceme.net", 6400},
+   {"Citadel 64", "bbs.thejlab.com", 6400},
+   {"Hotwire BBS", "hotwirebbs.zapto.org", 6502},
+   {"Endless Chaos", "endlesschaos.dyndns.org", 6400},
+   {"Borderline", "borderlinebbs.dyndns.org", 6400},
+   {"RAVELOUTION","raveolution.hopto.org",64128},
+   {"The Edge BBS","theedgebbs.dyndns.org",1541},
+   {NULL,NULL,0}
+  };
+
 
 void interrupt_handler(void)
 {
@@ -81,6 +119,8 @@ byte_t comunica (byte_t p)
 
 void dump_bytes(char *msg,uint8_t *d,int count);
 
+unsigned char nbbs=0;
+
 void main(void)
 {
   IPV4 a;
@@ -98,6 +138,11 @@ void main(void)
   POKE(0xD021,0);
   
   printf("%c%c",0x05,0x93);
+
+  // Fix invalid MAC address multicast bit
+  POKE(0xD6E9,PEEK(0xD6E9)&0xFE);
+  // Mark MAC address as locally allocated
+  POKE(0xD6E9,PEEK(0xD6E9)|0x02);
   
   // Get MAC address from ethernet controller
   for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
@@ -108,7 +153,7 @@ void main(void)
   // Setup WeeIP
   weeip_init();
   interrupt_handler();   
-
+  
   // Clear buffer of received data we maintain for debugging
   lfill(0x12000,0,4);
   lfill(0x40000,0,32768);
@@ -131,7 +176,27 @@ void main(void)
 #else  
   printf("My IP is %d.%d.%d.%d\n",
 	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
-        
+
+  printf("Please select a BBS:\n");
+  for(nbbs=0;bbs_list[nbbs].port_number;nbbs++) {
+    printf("%c.%-17s ",'a'+nbbs,bbs_list[nbbs].name);
+  }
+  printf("\n");
+  
+  while(1) {
+    if (PEEK(0xD610)) {
+      if ((PEEK(0xD610)>=0x61)&&(PEEK(0xD610)-0x61)<nbbs) {
+	nbbs=PEEK(0xD610)-0x61;
+	hostname=bbs_list[nbbs].host_name;
+	port_number=bbs_list[nbbs].port_number;
+	POKE(0xD610,0);
+	break;
+      } else POKE(0xD610,0);
+    }
+  }
+  POKE(198,0);
+  printf("Preparing to connect to %s\n",bbs_list[nbbs].name);
+  
    if (!dns_hostname_to_ip(hostname,&a)) {
      printf("Could not resolve hostname '%s'\n",hostname);
    } else {
