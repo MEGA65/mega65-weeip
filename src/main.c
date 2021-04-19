@@ -38,11 +38,11 @@ byte_t comunica (byte_t p)
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
-	printf("Requesting /files/mega65-cores/03/mega65-latest.cor\n");
+	printf("Requesting /home.h65\n");
 	// NOTE: PETSCII so things are inverted
 	snprintf(buf,1024,
-		 "get /FILES/MEGA65-CORES/03/MEGA65-LATEST.COR http/1.1\n\r"
-		 "hOST: FILES.MEGA65.ORG\n\r"
+		 "get /HOME.H65 http/1.1\n\r"
+		 "hOST: CORES.DEV.MEGA65.ORG\n\r"
 		 "aCCEPT: */*\n\r"
 		 "uSER-aGENT: mega-browser mega65-weeip/20200907\n\r"
 		 "\n\r");
@@ -71,7 +71,7 @@ void main(void)
 {
   IPV4 a;
   EUI48 mac;
-  char *hostname="files.mega65.org";
+  char *hostname="cores.dev.mega65.org";
   unsigned char i;
   
   POKE(0,65);

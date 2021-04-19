@@ -17,7 +17,7 @@ CL65=  cl65 --config src/tests/vicii.cfg
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch.prg telnet.prg
+all:	fetch.prg haustierbegriff.prg
 
 fetch.prg:       $(TCPSRCS) src/main.c
 	git submodule init
@@ -25,9 +25,9 @@ fetch.prg:       $(TCPSRCS) src/main.c
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-unpacked.prg --mapfile $*.map $(TCPSRCS) src/main.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 	exomizer sfx sys -o $*.prg fetch-unpacked.prg
 
-telnet.prg:       $(TCPSRCS) src/telnet.c
+haustierbegriff.prg:       $(TCPSRCS) src/haustierbegriff.c
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o telnet-unpacked.prg --mapfile $*.map $(TCPSRCS) src/telnet.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
-	exomizer sfx sys -o $*.prg telnet-unpacked.prg
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o petterm-unpacked.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	exomizer sfx sys -o $*.prg petterm-unpacked.prg
 

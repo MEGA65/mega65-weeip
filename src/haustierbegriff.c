@@ -173,7 +173,6 @@ void main(void)
        socket_select(s);
        // Only consume keys if socket_send() succeeds
        if (socket_send(buf, PEEK(198))) {
-	 POKE(0xD020,PEEK(0xD020)+1);
 	 POKE(198,0);
        }
      }
