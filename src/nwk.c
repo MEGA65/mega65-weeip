@@ -667,27 +667,42 @@ parse_tcp:
        // ICMP Echo request: 
 
        // 0. Copy received packet to tx buffer
-       lcopy(ETH_RX_BUFFER+2L,(long)tx_frame_buf,data_size);
+       lcopy(ETH_RX_BUFFER+2L,(long)tx_frame_buf,14+data_size);
+
+       // 1. Copy Eth src to DST
+       lcopy((long)&tx_frame_buf[0+6],(long)&tx_frame_buf[0],6);
+
+       // 2. Put our ETH as src
+       lcopy((long)0xD6E9,(long)&tx_frame_buf[0+6],6);
        
-       // 1. IP SRC becomes DST
+       // 3. IP SRC becomes DST
        lcopy((long)&tx_frame_buf[14+12],(long)&tx_frame_buf[14+16],4);
        
-       // 2. Put our IP as SRC
-       lcopy((long)ip_local,(long)&tx_frame_buf[14+12],4);
+       // 4. Put our IP as SRC
+       lcopy((long)&ip_local.b[0],(long)&tx_frame_buf[14+12],4);
        
-       // 3. Change type from 0x08 (ECHO REQUEST) to 0x00 (ECHO REPLY)
+       // 5. Change type from 0x08 (ECHO REQUEST) to 0x00 (ECHO REPLY)
        tx_frame_buf[14+20]=0x00;
        
-       // 4. Update ICMP checksum
-       tx_frame_buf[14+20+2]=0; tx_frame_buf[14+20+1]=0;       
+       // 6. Update ICMP checksum
+       tx_frame_buf[14+20+2]=0; tx_frame_buf[14+20+1]=0;
+       chks.b[0]=0; chks.b[1]=0;
+       ip_checksum(&tx_frame_buf[14+20],data_size);
+       // XXX Ok, this is weird: The upper byte of the revised checksum is correct,
+       // but the lower is wrong. But most of the time, the lower byte of the original
+       // checksum is ok. So we are leaving it.  But expect some ping replies to not
+       // get through, as a result
+       // *(unsigned short *)&tx_frame_buf[14+20+2] = checksum_result();
+       tx_frame_buf[14+20+2] = checksum_result();
        
-       // 5. Update IP checksum
+       // 7. Update IP checksum
        tx_frame_buf[14+10]=0; tx_frame_buf[14+11]=0;
+       chks.b[0]=0; chks.b[1]=0;
        ip_checksum(&tx_frame_buf[14],20);
        *(unsigned short *)&tx_frame_buf[14+10] = checksum_result();
 
        // Send immediately
-       eth_tx_len=data_size;
+       eth_tx_len=14+data_size;
        eth_packet_send();
      }
    }
