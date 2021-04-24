@@ -76,8 +76,8 @@ eth_clear_to_send()
 void 
 eth_drop()
 {
-   // Switch ethernet RX buffers and mark the current one clear
-   POKE(0xD6E1,((PEEK(0xD6E1)>>1)&0x02)|0x01);
+  // Do nothing, as we pop the ethernet buffer off when asking for a frame in
+  // eth_task().
 }
 
 /**
@@ -96,8 +96,10 @@ uint8_t eth_task (uint8_t p)
     return 0;
   }
 
-  // Get next received packet  
-  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
+  // Get next received packet
+  // Just $01 and $03 should be enough, but then packets may be received in triplicate
+  // based on testing in wirekrill. But clearing bit 1 again solves this problem.
+  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03); POKE(0xD6E1,0x01);
   
   /*
    * A packet is available.
@@ -147,6 +149,9 @@ uint8_t eth_task (uint8_t p)
       break;
     case IP_PROTO_TCP:
       lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR),(uint32_t)&_header.t.tcp, sizeof(TCP_HDR));
+      break;
+    case IP_PROTO_ICMP:
+      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR),(uint32_t)&_header.t.icmp, sizeof(ICMP_HDR));
       break;
     default:
       goto drop;

@@ -35,7 +35,6 @@ const struct bbs bbs_list[27]=
    {"The Hidden", "the-hidden.hopto.org", 64128},
    {"Eaglewing BBS", "eagelbird.ddns.net", 6400},
    {"Scorps Portal", "scorp.us.to", 23},
-   {"Retrograde", "SORC3ROR", 6400},
    {"My C=ult BBS", "maraud.dynalias.com", 6400},
    {"Commodore Image", "cib.dyndns.org", 6400},
    {"64 Vintag Remic", "64vintageremixbbs.dyndns.org", 6400},
@@ -54,6 +53,7 @@ const struct bbs bbs_list[27]=
    {"Borderline", "borderlinebbs.dyndns.org", 6400},
    {"RAVELOUTION","raveolution.hopto.org",64128},
    {"The Edge BBS","theedgebbs.dyndns.org",1541},
+   {"PGS Test","F96NG92-L.fritz.box",64128},
    {NULL,NULL,0}
   };
 

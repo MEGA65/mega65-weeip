@@ -15,6 +15,8 @@
 unsigned char dhcp_configured=0;
 unsigned char dhcp_xid[4]={0};
 
+extern IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
+
 // Share data buffer with DNS client to save space
 extern unsigned char dns_query[512];
 extern unsigned char dns_buf[1024];
@@ -91,6 +93,10 @@ byte_t dhcp_reply_handler (byte_t p)
       }      
     }
 
+    // Compute broadcast address
+    for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
+    printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+    
     // XXX We SHOULD send a packet to acknowledge the offer.
     // It works for now without it, because we start responding to ARP requests which
     // sensible DHCP servers will perform to verify occupancy of the IP.

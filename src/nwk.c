@@ -48,11 +48,18 @@
  */
 HEADER _header;
 
+IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
+
 static uint16_t data_size,data_ofs;
 static _uint32_t seq;
 #define TCPH(X) _header.t.tcp.X
+#define ICMPH(X) _header.t.icmp.X
 #define UDPH(X) _header.t.udp.X
 #define IPH(X) _header.ip.X
+
+#define MTU 2048
+extern unsigned char tx_frame_buf[MTU];
+extern unsigned short eth_tx_len;
 
 /**
  * Packet counter.
@@ -377,12 +384,15 @@ void nwk_downstream(void)
 #endif   
    /*
     * Destination address.
-    */   
+    */
    if(IPH(destination).d != 0xffffffffL)                       // broadcast.
       if(IPH(destination).d != ip_local.d)                     // unicast.
-	if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
-	  goto drop;                                           // not for us.
+	if(IPH(destination).d != ip_broadcast.d)                     // unicast.
+	  if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
+	    goto drop;                                           // not for us.
 
+   if(IPH(protocol) == IP_PROTO_ICMP) goto parse_icmp;
+   
    /*
     * Search for a waiting socket.
     */
@@ -644,6 +654,47 @@ parse_tcp:
          break;
    }
 
+   goto done;
+
+ parse_icmp:
+
+   /*
+     Parse ICMP messages.
+     Only care about ECHO REQUEST for now
+   */
+   if (ICMPH(type)==0x08) {
+     if (ICMPH(fcode)==0x00) {
+       // ICMP Echo request: 
+
+       // 0. Copy received packet to tx buffer
+       lcopy(ETH_RX_BUFFER+2L,(long)tx_frame_buf,data_size);
+       
+       // 1. IP SRC becomes DST
+       lcopy((long)&tx_frame_buf[14+12],(long)&tx_frame_buf[14+16],4);
+       
+       // 2. Put our IP as SRC
+       lcopy((long)ip_local,(long)&tx_frame_buf[14+12],4);
+       
+       // 3. Change type from 0x08 (ECHO REQUEST) to 0x00 (ECHO REPLY)
+       tx_frame_buf[14+20]=0x00;
+       
+       // 4. Update ICMP checksum
+       tx_frame_buf[14+20+2]=0; tx_frame_buf[14+20+1]=0;       
+       
+       // 5. Update IP checksum
+       tx_frame_buf[14+10]=0; tx_frame_buf[14+11]=0;
+       ip_checksum(&tx_frame_buf[14],20);
+       *(unsigned short *)&tx_frame_buf[14+10] = checksum_result();
+
+       // Send immediately
+       eth_tx_len=data_size;
+       eth_packet_send();
+     }
+   }
+   
+
+   goto drop;
+   
 done:
    /*
     * Verify if there are messages to send.
