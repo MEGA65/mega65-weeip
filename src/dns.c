@@ -167,10 +167,31 @@ byte_t dns_reply_handler (byte_t p)
   return 0;
 }
 
+unsigned char offset=0;
+unsigned char bytes=0;
+unsigned char value=0;
+
 bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
 {
   EUI48 mac;
   unsigned char next_retry,retries;
+
+  // Check if IP address, and if so, parse directly.
+  offset=0; bytes=0; value=0;
+  while(hostname[offset]) {
+    printf("Checking $%02x, value=%d, bytes=%d\n",hostname[offset],value,bytes);
+    if (hostname[offset]=='.') {
+      ip->b[bytes++]=value;
+      value=0;
+      if (bytes>3) break;
+    } else if (hostname[offset]>='0'&&hostname[offset]<='9') {
+      value=value*10; value+=hostname[offset]-'0';
+    } else
+      // Not a digit or a period, so its not an IP address
+      break;
+    offset++;
+  }
+  if (bytes==3&&(!hostname[offset])) {ip->b[3]=value; return 1; }
   
   dns_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dns_reply_handler);
