@@ -19,10 +19,10 @@ TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c sr
 
 all:	fetch.prg haustierbegriff.prg
 
-fetch.prg:       $(TCPSRCS) src/main.c
+fetch.prg:       $(TCPSRCS) src/fetch.c
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-unpacked.prg --mapfile $*.map $(TCPSRCS) src/main.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-unpacked.prg --mapfile $*.map $(TCPSRCS) src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 	exomizer sfx sys -o $*.prg fetch-unpacked.prg
 
 haustierbegriff.prg:       $(TCPSRCS) src/haustierbegriff.c
