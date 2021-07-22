@@ -179,7 +179,6 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   // Check if IP address, and if so, parse directly.
   offset=0; bytes=0; value=0;
   while(hostname[offset]) {
-    printf("Checking $%02x, value=%d, bytes=%d\n",hostname[offset],value,bytes);
     if (hostname[offset]=='.') {
       ip->b[bytes++]=value;
       value=0;
