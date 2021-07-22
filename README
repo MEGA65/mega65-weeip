@@ -1,6 +1,11 @@
 WeeIP for the MEGA65.
 
-Changes copyright 2020 Paul Gardner-Stephen (paul@m-e-g-a.org)
+Changes copyright 2020-2021 Paul Gardner-Stephen (paul@m-e-g-a.org)
+
+Includes several example programmes:
+
+haustierbegriff -- A PETSCII Terminal programme for connecting to BBSs
+fetch -- A simple HTTP-protocol file fetcher for the MEGA65
 
 Notes:
 * Uses the MEGA65's 100mbit fast ethernet controller.
