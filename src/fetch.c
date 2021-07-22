@@ -38,18 +38,8 @@ byte_t comunica (byte_t p)
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
-	printf("Requesting /home.h65\n");
-	// NOTE: PETSCII so things are inverted
-	snprintf(buf,1024,
-		 "get /TEST.H65 http/1.1\n\r"
-		 "hOST: the.web.server\n\r"
-		 "aCCEPT: */*\n\r"
-		 "uSER-aGENT: mega-browser mega65-weeip/20200907\n\r"
-		 "\n\r");
-	// Demunge PETSCII a bit
-	for(i=0;buf[i];i++) {
-	  if (buf[i]>=0xc1) buf[i]-=0x60;
-	}
+	printf("Connected...\n");
+	// Buf is setup in fetch_page()
 	socket_send(buf, strlen(buf));
 	break;
       case WEEIP_EV_DISCONNECT:
@@ -67,18 +57,13 @@ byte_t comunica (byte_t p)
 
 void dump_bytes(char *msg,uint8_t *d,int count);
 
-void main(void)
+void prepare_network(void)
 {
-  IPV4 a;
-  EUI48 mac;
-  char *hostname="192.168.178.31";
   unsigned char i;
-  
-  POKE(0,65);
-  mega65_io_enable();
-  srand(random32(0));
 
-  printf("%c%c",0x05,0x93);
+  // Black screen with green text during network setup
+  POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
+  printf("%c",0x93);
   
   // Get MAC address from ethernet controller
   for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
@@ -98,28 +83,66 @@ void main(void)
   }
   printf("My IP is %d.%d.%d.%d\n",
 	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
-        
-#ifdef TEST_TCP_LISTEN   
-   printf("Setting up TCP listen on port 55.\n");
-   s = socket_create(SOCKET_TCP);
-   socket_set_callback(comunica);
-   socket_set_rx_buffer(buf, 1024);
-   socket_listen(55);
-#endif
-   
-   if (dns_hostname_to_ip(hostname,&a)) {
-     printf("Host '%s' resolves to %d.%d.%d.%d\n",
-	    hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
-   }
+}      
 
-   s = socket_create(SOCKET_TCP);
-   socket_set_callback(comunica);
-   socket_set_rx_buffer(buf, 1024);
-   socket_connect(&a,8000);
+void setup_screen80(void)
+{
+}
 
-   
-   while(1) {
-     // XXX Actually only call it periodically
-     task_periodic();
-   }
+void fetch_page(char *hostname,int port,char *path)
+{
+  unsigned short i;
+  IPV4 a;
+
+  // Revert to C64 40 column display and colours
+  // and show progress of fetching the page
+  POKE(0xD020,0x0e);
+  POKE(0xD021,0x06);
+  POKE(0x0286,0x0e);
+  printf("%c",0x93);
+
+  if (dns_hostname_to_ip(hostname,&a)) {
+    printf("Host '%s' resolves to %d.%d.%d.%d\n",
+	   hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
+  }
+
+  // NOTE: PETSCII so things are inverted
+  snprintf(buf,1024,
+	   "get %s http/1.1\n\r"
+	   "hOST: %s\n\r"
+	   "aCCEPT: */*\n\r"
+	   "uSER-aGENT: mega-browser mega65-weeip/20210722\n\r"
+	   "\n\r",
+	   path,hostname);
+  // Demunge PETSCII a bit
+  for(i=0;buf[i];i++) {
+    if (buf[i]>=0xc1) buf[i]-=0x60;
+  }
+    
+  s = socket_create(SOCKET_TCP);
+  socket_set_callback(comunica);
+  socket_set_rx_buffer(buf, 1024);
+  socket_connect(&a,8000);
+    
+  while(1) {
+    // XXX Actually only call it periodically
+    task_periodic();
+  }
+}
+
+void main(void)
+{
+  EUI48 mac;
+  char *hostname="192.168.178.31";
+  int port=8000;
+  unsigned char i;
+  
+  POKE(0,65);
+  mega65_io_enable();
+  srand(random32(0));
+
+  prepare_network();
+
+  fetch_page(hostname,port,"/TEST.H65");
+
 }
