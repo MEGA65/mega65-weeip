@@ -41,8 +41,8 @@ byte_t comunica (byte_t p)
 	printf("Requesting /home.h65\n");
 	// NOTE: PETSCII so things are inverted
 	snprintf(buf,1024,
-		 "get /HOME.H65 http/1.1\n\r"
-		 "hOST: CORES.DEV.MEGA65.ORG\n\r"
+		 "get /TEST.H65 http/1.1\n\r"
+		 "hOST: the.web.server\n\r"
 		 "aCCEPT: */*\n\r"
 		 "uSER-aGENT: mega-browser mega65-weeip/20200907\n\r"
 		 "\n\r");
@@ -71,7 +71,7 @@ void main(void)
 {
   IPV4 a;
   EUI48 mac;
-  char *hostname="cores.dev.mega65.org";
+  char *hostname="192.168.178.31";
   unsigned char i;
   
   POKE(0,65);
@@ -115,7 +115,7 @@ void main(void)
    s = socket_create(SOCKET_TCP);
    socket_set_callback(comunica);
    socket_set_rx_buffer(buf, 1024);
-   socket_connect(&a,80);
+   socket_connect(&a,8000);
 
    
    while(1) {
