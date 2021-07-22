@@ -1,3 +1,10 @@
+MEGA65 TCP/IP Stack and Example Programmes
+
+haustierbegriff -- A PETSCII Terminal programme for connecting to BBSs
+fetch -- A simple HTTP-protocol file fetcher for the MEGA65
+
+---------------------------------------------------------------
+Derived from:
 
 WeeIP - Micro TCP-IP stack for PIC18 microcontrollers
 Current version: 1.0.3
