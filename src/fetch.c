@@ -48,7 +48,7 @@ byte_t comunica (byte_t p)
       case WEEIP_EV_DATA:
 	printf("Received %d bytes.\n",s->rx_data);
 	((char *)s->rx)[s->rx_data]=0;
-	printf("%s",s->rx);
+	//	printf("%s",s->rx);
 	break;
    }
 
@@ -101,10 +101,15 @@ void fetch_page(char *hostname,int port,char *path)
   POKE(0x0286,0x0e);
   printf("%c",0x93);
 
+  printf("Resolving hostname %s\n",hostname);
   if (dns_hostname_to_ip(hostname,&a)) {
-    printf("Host '%s' resolves to %d.%d.%d.%d\n",
-	   hostname,a.b[0],a.b[1],a.b[2],a.b[3]);
+    printf("Resolved to %d.%d.%d.%d\n",
+	   a.b[0],a.b[1],a.b[2],a.b[3]);
+  } else {
+    printf("Failed to resolve hostname.\n");
+    return;
   }
+  
 
   // NOTE: PETSCII so things are inverted
   snprintf(buf,1024,
@@ -122,7 +127,7 @@ void fetch_page(char *hostname,int port,char *path)
   s = socket_create(SOCKET_TCP);
   socket_set_callback(comunica);
   socket_set_rx_buffer(buf, 1024);
-  socket_connect(&a,8000);
+  socket_connect(&a,port);
     
   while(1) {
     // XXX Actually only call it periodically
