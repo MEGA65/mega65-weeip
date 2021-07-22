@@ -27,6 +27,12 @@ byte_t pisca (byte_t p)
    return 0; // XXX and what should it return?
 }
 
+#define H65_TOONEW 1
+unsigned char h65_error=0;
+unsigned long block_addr,block_len;
+unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour;
+unsigned short line_count;
+
 SOCKET *s;
 byte_t buf[1024];
 
@@ -49,33 +55,81 @@ byte_t comunica (byte_t p)
          socket_release(s);
          break;
       case WEEIP_EV_DATA:
-	printf("Received %d bytes.\n",s->rx_data);
+	//	printf("Received %d bytes.\n",s->rx_data);
 	for(i=0;i<s->rx_data;i++) {
+	  unsigned char c=((char *)s->rx)[i];
+	  //	  printf("(%d)",page_parse_state);
 	  switch(page_parse_state) {
 	  case 0:
 	    // Look for H65+$FF header
 	    last_bytes[0]=last_bytes[1];
 	    last_bytes[1]=last_bytes[2];
 	    last_bytes[2]=last_bytes[3];
-	    last_bytes[3]=((char *)s->rx)[i];
+	    last_bytes[3]=c;
 	    if (last_bytes[0]==0x48
 		&&last_bytes[1]==0x36
 		&&last_bytes[2]==0x35
 		&&last_bytes[3]==0xFF) {
-	      page_parse_state=1;
+	      page_parse_state=2-1; // gets incremented below
 	      printf("Found H65 header.\n");
 	    }
 	    break;
-	  case 1:
+	  case 2:
 	    // Reading H65 header fields
+	    if (c!=1) {
+	      // Unsupported H65 version
+	      h65_error=H65_TOONEW;
+	    }
 	    break;
+	  case 3: break; // Ignore minor version
+	  case 4: line_width=c; break; // line width
+	  case 5: d054_bits=c; break; // $D054 bits
+	  case 6: line_display_width=c; break;
+	  case 7: d031_bits=c; break;
+	  case 8: line_count=c; break;
+	  case 9: line_count|=(((unsigned short)c)<<8); break;
+	  case 10: border_colour=c; break;
+	  case 11: screen_colour=c; break;
+	  case 12: text_colour=c; break;
+	    // Block header: Address
+#define HEADSKIP 126
+	  case HEADSKIP+0: ((char *)&block_addr)[0]=c; break;
+	  case HEADSKIP+1: ((char *)&block_addr)[1]=c; break;
+	  case HEADSKIP+2: ((char *)&block_addr)[2]=c; break;
+	  case HEADSKIP+3: ((char *)&block_addr)[3]=c; break;
+	    // Block header: Length
+	  case HEADSKIP+4: ((char *)&block_len)[0]=c; break;
+	  case HEADSKIP+5: ((char *)&block_len)[1]=c; break;
+	  case HEADSKIP+6: ((char *)&block_len)[2]=c; break;
+	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
+	    // Skip empty blocks
+	    if (block_len==0) page_parse_state=HEADSKIP-1;
+	    else {
+	      // Block data
+	      printf("Block addr=$%08lx, len=$%08lx\n\r",
+		     block_addr,block_len);
+	    }
+	    break;
+	  case HEADSKIP+8:
+	    //	    lpoke(block_addr,c);
+	    block_addr++;
+	    block_len--;
+	    // Read next block
+	    if (!block_len) page_parse_state=HEADSKIP-1;
+	    else page_parse_state=HEADSKIP+8-1;
+            break;
 	  default:
 	    // ???
 	    break;
 	  }
+	  if (page_parse_state) page_parse_state++;
+#if 0
+          POKE(0x427,c);
+	  while(!PEEK(0xD610)) continue; POKE(0xD610,0);
+#endif
 	}
-	((char *)s->rx)[s->rx_data]=0;
-	printf("%s",s->rx);
+//	((char *)s->rx)[s->rx_data]=0;
+//	printf("%s",s->rx);
 	break;
    }
 
@@ -121,6 +175,8 @@ void fetch_page(char *hostname,int port,char *path)
   unsigned short i;
   IPV4 a;
 
+  h65_error=0;
+  
   // Clear any partial match to h65+$ff header
   last_bytes[3]=0;
   
@@ -180,4 +236,5 @@ void main(void)
 
   fetch_page(hostname,port,"/TEST.H65");
 
+  while(1) continue;
 }
