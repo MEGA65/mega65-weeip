@@ -11,6 +11,31 @@
 
 #include "memory.h"
 #include "random.h"
+#include "mouse.h"
+
+unsigned char mouse_pointer_sprite[63]={
+					0xFF,0x00,0x00,
+					0xC0,0x00,0x00,
+					0xA0,0x00,0x00,
+					0x90,0x00,0x00,
+					0x88,0x00,0x00,
+					0x84,0x00,0x00,
+					0x82,0x00,0x00,
+					0x81,0x00,0x00,
+					0x00,0x80,0x00,
+					0x00,0x40,0x00,
+					0x00,0x20,0x00,
+					0x00,0x10,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00,
+					0x00,0x00,0x00
+};
 
 void interrupt_handler(void)
 {
@@ -56,7 +81,9 @@ byte_t comunica (byte_t p)
          socket_release(s);
          break;
       case WEEIP_EV_DATA:
-	//	printf("Received %d bytes.\n",s->rx_data);
+	// printf("Received %d bytes.\n",s->rx_data);
+	// Show progress
+	printf(".");
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=((char *)s->rx)[i];
 	  //	  printf("(%d)",page_parse_state);
@@ -72,7 +99,7 @@ byte_t comunica (byte_t p)
 		&&last_bytes[2]==0x35
 		&&last_bytes[3]==0xFF) {
 	      page_parse_state=2-1; // gets incremented below
-	      printf("Found H65 header.\n");
+	      printf("\nFound H65 header.\n");
 	    }
 	    break;
 	  case 2:
@@ -111,11 +138,12 @@ byte_t comunica (byte_t p)
 	      h65_error=H65_DONE;
 	    } else {
 	      // Block data
-	      printf("Block addr=$%08lx, len=$%08lx\n\r",
+	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		     block_addr,block_len);
 	    }
 	    break;
 	  case HEADSKIP+8:
+            POKE(0xD020,PEEK(0xD020)+1);
 	    lpoke(block_addr,c);
 	    block_addr++;
 	    block_len--;
@@ -175,6 +203,46 @@ void setup_screen80(void)
 {
 }
 
+signed long screen_address_offset=0;
+signed long screen_address_offset_max=0;
+
+void scroll_down(long distance)
+{
+  screen_address_offset+=(distance/8)*(line_width*2);
+  if (screen_address_offset<0) screen_address_offset=0;
+  if (screen_address_offset>screen_address_offset_max) screen_address_offset=screen_address_offset_max;
+
+  // Set screen offset address
+  POKE(0xD060,(screen_address_offset>>0));
+  POKE(0xD061,(screen_address_offset>>8)+0x20);
+  POKE(0xD062,(screen_address_offset>>16)+0x01);
+  POKE(0xD063,(screen_address_offset>>24));
+
+  // Set screen offset address
+  POKE(0xD064,(screen_address_offset>>0));
+  POKE(0xD065,(screen_address_offset>>8)+0x20);
+}
+
+void update_mouse_position(void)
+{
+  unsigned short mx,my;
+  mouse_update_position(&mx,&my);
+  if (my<50) {
+    // Mouse is in top border, so scroll up by that amount
+//    scroll_down(-(50-my));
+scroll_down(-8);
+    mouse_warp_to(mx,50);
+  }
+  if (my>249) {
+    // Mouse is in bottom border, so scroll down by that amount
+//    scroll_down((my-249));
+    scroll_down(8);
+    mouse_warp_to(mx,249);
+  }
+  mouse_update_pointer();
+
+}
+
 void fetch_page(char *hostname,int port,char *path)
 {
   unsigned short i;
@@ -223,7 +291,7 @@ void fetch_page(char *hostname,int port,char *path)
   // Erase screen and colour RAM
 lfill(0x12000L,0x00,0x6000);
  for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
-lfill(0xFF80000L,0x00,0x6000);
+lfill(0xFF82000L,0x00,0x6000);
   
   while(1) {
     // XXX Actually only call it periodically
@@ -243,8 +311,23 @@ void main(void)
   mega65_io_enable();
   srand(random32(0));
 
+  // Get initial mouse position
+  mouse_update_position(NULL,NULL);
+  mouse_warp_to(160,100);
+  mouse_bind_to_sprite(0);
+  mouse_update_pointer();
+  mouse_set_bounding_box(24,50-20,320+23,250+20);
+
   prepare_network();
 
+  // Enable sprite 1 as mouse pointer
+  POKE(0xD015,0x01);
+  POKE(0xD000,200);
+  POKE(0xD001,130);
+  // Sprite data from casette buffer
+  POKE(0x7F8,0x380/0x40);
+  lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
+  
   fetch_page(hostname,port,"/TEST.H65");
 
   if (h65_error==H65_DONE) {
@@ -257,7 +340,7 @@ void main(void)
     // Line step
     POKE(0xD058,line_width*2);
     POKE(0xD059,0);
-    // Set screen address
+    // Set screen address to $12000
     POKE(0xD060,0x00);
     POKE(0xD061,0x20);
     POKE(0xD062,0x01);
@@ -266,7 +349,27 @@ void main(void)
     POKE(0xD065,0x20);
     // Set charset address
     POKE(0xD069,char_page);
-  }
+
+    if (line_count>50) {
+      screen_address_offset_max=(line_width*2)*(line_count-50);
+    }
+POKE(0xE010,line_count);
+POKE(0xE011,line_count>>8);
+    lcopy((unsigned long)&screen_address_offset_max,0xe000,4);
+  }  
   
-  while(1) continue;
+  while(1) {
+    update_mouse_position();
+
+    // Scroll using keyboard
+    if (PEEK(0xD610)==0x11) {
+      scroll_down(8);
+      POKE(0xD610,0);
+      } 
+    if (PEEK(0xD610)==0x91) {
+      scroll_down(-8);
+      POKE(0xD610,0);
+      } 
+    continue;
+    }
 }
