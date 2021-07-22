@@ -32,6 +32,9 @@ byte_t buf[1024];
 
 /* Function that is used as a call-back on socket events
  * */
+unsigned char last_bytes[4];
+int page_parse_state=0;
+
 byte_t comunica (byte_t p)
 {
   unsigned int i;
@@ -47,8 +50,32 @@ byte_t comunica (byte_t p)
          break;
       case WEEIP_EV_DATA:
 	printf("Received %d bytes.\n",s->rx_data);
+	for(i=0;i<s->rx_data;i++) {
+	  switch(page_parse_state) {
+	  case 0:
+	    // Look for H65+$FF header
+	    last_bytes[0]=last_bytes[1];
+	    last_bytes[1]=last_bytes[2];
+	    last_bytes[2]=last_bytes[3];
+	    last_bytes[3]=((char *)s->rx)[i];
+	    if (last_bytes[0]==0x48
+		&&last_bytes[1]==0x36
+		&&last_bytes[2]==0x35
+		&&last_bytes[3]==0xFF) {
+	      page_parse_state=1;
+	      printf("Found H65 header.\n");
+	    }
+	    break;
+	  case 1:
+	    // Reading H65 header fields
+	    break;
+	  default:
+	    // ???
+	    break;
+	  }
+	}
 	((char *)s->rx)[s->rx_data]=0;
-	//	printf("%s",s->rx);
+	printf("%s",s->rx);
 	break;
    }
 
@@ -94,6 +121,9 @@ void fetch_page(char *hostname,int port,char *path)
   unsigned short i;
   IPV4 a;
 
+  // Clear any partial match to h65+$ff header
+  last_bytes[3]=0;
+  
   // Revert to C64 40 column display and colours
   // and show progress of fetching the page
   POKE(0xD020,0x0e);
