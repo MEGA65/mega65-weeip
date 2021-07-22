@@ -28,9 +28,10 @@ byte_t pisca (byte_t p)
 }
 
 #define H65_TOONEW 1
+#define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
-unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour;
+unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
 unsigned short line_count;
 
 SOCKET *s;
@@ -91,6 +92,8 @@ byte_t comunica (byte_t p)
 	  case 10: border_colour=c; break;
 	  case 11: screen_colour=c; break;
 	  case 12: text_colour=c; break;
+	  case 13: char_page=c; break;
+	  case 14: d016_bits=c; break;
 	    // Block header: Address
 #define HEADSKIP 126
 	  case HEADSKIP+0: ((char *)&block_addr)[0]=c; break;
@@ -103,15 +106,17 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+6: ((char *)&block_len)[2]=c; break;
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
 	    // Skip empty blocks
-	    if (block_len==0) page_parse_state=HEADSKIP-1;
-	    else {
+	    if (block_len==0) {
+	      page_parse_state=HEADSKIP-1;
+	      h65_error=H65_DONE;
+	    } else {
 	      // Block data
 	      printf("Block addr=$%08lx, len=$%08lx\n\r",
 		     block_addr,block_len);
 	    }
 	    break;
 	  case HEADSKIP+8:
-	    //	    lpoke(block_addr,c);
+	    lpoke(block_addr,c);
 	    block_addr++;
 	    block_len--;
 	    // Read next block
@@ -176,7 +181,7 @@ void fetch_page(char *hostname,int port,char *path)
   IPV4 a;
 
   h65_error=0;
-  
+
   // Clear any partial match to h65+$ff header
   last_bytes[3]=0;
   
@@ -214,10 +219,16 @@ void fetch_page(char *hostname,int port,char *path)
   socket_set_callback(comunica);
   socket_set_rx_buffer(buf, 1024);
   socket_connect(&a,port);
-    
+
+  // Erase screen and colour RAM
+lfill(0x12000L,0x00,0x6000);
+ for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
+lfill(0xFF80000L,0x00,0x6000);
+  
   while(1) {
     // XXX Actually only call it periodically
     task_periodic();
+    if (h65_error) break;
   }
 }
 
@@ -236,5 +247,26 @@ void main(void)
 
   fetch_page(hostname,port,"/TEST.H65");
 
+  if (h65_error==H65_DONE) {
+    // V400/H640 etc (do first due to hot regs)
+    POKE(0xD031,d031_bits);
+    // $D016 value
+    POKE(0xD016,d016_bits);
+    // Enable 16-bit text mode
+    POKE(0xD054,0x40+d054_bits);
+    // Line step
+    POKE(0xD058,line_width*2);
+    POKE(0xD059,0);
+    // Set screen address
+    POKE(0xD060,0x00);
+    POKE(0xD061,0x20);
+    POKE(0xD062,0x01);
+    POKE(0xD063,0x00);
+    // Set colour RAM address
+    POKE(0xD065,0x20);
+    // Set charset address
+    POKE(0xD069,char_page);
+  }
+  
   while(1) continue;
 }
