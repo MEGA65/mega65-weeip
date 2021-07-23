@@ -171,6 +171,9 @@ byte_t comunica (byte_t p)
 
 void dump_bytes(char *msg,uint8_t *d,int count);
 
+void update_mouse_position(unsigned char do_scroll);
+
+
 void prepare_network(void)
 {
   unsigned char i;
@@ -194,14 +197,12 @@ void prepare_network(void)
   dhcp_autoconfig();
   while(!dhcp_configured) {
     task_periodic();
+    // Let the mouse move around
+    update_mouse_position(0);
   }
   printf("My IP is %d.%d.%d.%d\n",
 	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 }      
-
-void setup_screen80(void)
-{
-}
 
 signed long screen_address_offset=0;
 signed long screen_address_offset_max=0;
@@ -221,26 +222,6 @@ void scroll_down(long distance)
   // Set screen offset address
   POKE(0xD064,(screen_address_offset>>0));
   POKE(0xD065,(screen_address_offset>>8)+0x20);
-}
-
-void update_mouse_position(void)
-{
-  unsigned short mx,my;
-  mouse_update_position(&mx,&my);
-  if (my<50) {
-    // Mouse is in top border, so scroll up by that amount
-//    scroll_down(-(50-my));
-scroll_down(-8);
-    mouse_warp_to(mx,50);
-  }
-  if (my>249) {
-    // Mouse is in bottom border, so scroll down by that amount
-//    scroll_down((my-249));
-    scroll_down(8);
-    mouse_warp_to(mx,249);
-  }
-  mouse_update_pointer();
-
 }
 
 void fetch_page(char *hostname,int port,char *path)
@@ -296,8 +277,29 @@ lfill(0xFF82000L,0x00,0x6000);
   while(1) {
     // XXX Actually only call it periodically
     task_periodic();
+    update_mouse_position(0);
     if (h65_error) break;
   }
+}
+
+void update_mouse_position(unsigned char do_scroll)
+{
+  unsigned short mx,my;
+  mouse_update_position(&mx,&my);
+  if (my<50) {
+    // Mouse is in top border, so scroll up by that amount
+    //    scroll_down(-(50-my));
+    if (do_scroll) scroll_down(-8);
+    mouse_warp_to(mx,50);
+  }
+  if (my>249) {
+    // Mouse is in bottom border, so scroll down by that amount
+//    scroll_down((my-249));
+    if (do_scroll) scroll_down(8);
+    mouse_warp_to(mx,249);
+  }
+  mouse_update_pointer();
+
 }
 
 void main(void)
@@ -359,7 +361,7 @@ POKE(0xE011,line_count>>8);
   }  
   
   while(1) {
-    update_mouse_position();
+    update_mouse_position(1);
 
     // Scroll using keyboard
     if (PEEK(0xD610)==0x11) {
