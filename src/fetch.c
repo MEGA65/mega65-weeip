@@ -282,9 +282,15 @@ lfill(0xFF82000L,0x00,0x6000);
   }
 }
 
+unsigned char mouse_colours[8]={0x01,0x0e,0x0F,0x0C,0x0B,0x0C,0x0e,0x0F};
+
 void update_mouse_position(unsigned char do_scroll)
 {
   unsigned short mx,my;
+
+  // Cycle the mouse pointer colour
+  POKE(0xD027,mouse_colours[(PEEK(0xD7FA)>>2)&0x07]);
+
   mouse_update_position(&mx,&my);
   if (my<50) {
     // Mouse is in top border, so scroll up by that amount
