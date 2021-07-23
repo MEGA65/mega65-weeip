@@ -317,15 +317,13 @@ void update_mouse_position(unsigned char do_scroll)
   if (my<50) {
     POKE(0xE020,50-my);
     // Mouse is in top border, so scroll up by that amount
-    scroll_down(-(50-my));
-//    if (do_scroll) scroll_down(-8);
+    scroll_down(my-50L);
     mouse_warp_to(mx,50);
   }
   if (my>249) {
     // Mouse is in bottom border, so scroll down by that amount
     POKE(0xE021,my-249);
     scroll_down((my-249));
-//    if (do_scroll) scroll_down(8);
     mouse_warp_to(mx,249);
   }
   mouse_update_pointer();
