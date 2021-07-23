@@ -321,20 +321,19 @@ lfill(0xFF82000L,0x00,0x6000);
     if (h65_error) break;
     switch(PEEK(0xD610)) {
       case 0x52: case 0x72:  // Restart fetch
-        socket_release(s);
+        socket_disconnect(s);
         POKE(0xD610,0);
-        prepare_network();
         goto restart_fetch;
       case 0x03:
         // control-c / RUN/STOP -- abort fetch
         POKE(0xD610,0);
-        socket_release(s);
+        socket_disconnect(s);
         // XXX Should allow user to enter URL
         return;
     }
   }
 
-  socket_release(s);
+  socket_disconnect(s);
 }
 
 unsigned char mouse_colours[8]={0x01,0x0a,0x0F,0x0C,0x0B,0x0C,0x0a,0x0F};
@@ -489,6 +488,11 @@ POKE(0xE011,line_count>>8);
     if (PEEK(0xD610)==0x11) {
       scroll_down(8);
       POKE(0xD610,0);
+      } 
+    if (PEEK(0xD610)==0x52||PEEK(0xD610)==0x72) {
+      // R =  Reload page
+      POKE(0xD610,0);
+      fetch_page(hostname,port,path);
       } 
     if (PEEK(0xD610)==0x91) {
       scroll_down(-8);
