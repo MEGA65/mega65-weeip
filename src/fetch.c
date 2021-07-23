@@ -314,6 +314,8 @@ lfill(0xFF82000L,0x00,0x6000);
   
   while(1) {
     // XXX Actually only call it periodically
+    POKE(0x0427,PEEK(0x427)+1);
+
     task_periodic();
     update_mouse_position(0);
     if (h65_error) break;
@@ -321,6 +323,7 @@ lfill(0xFF82000L,0x00,0x6000);
       case 0x52: case 0x72:  // Restart fetch
         socket_release(s);
         POKE(0xD610,0);
+        prepare_network();
         goto restart_fetch;
       case 0x03:
         // control-c / RUN/STOP -- abort fetch
