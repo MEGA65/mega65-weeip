@@ -358,7 +358,7 @@ void main(void)
   POKE(0x7F8,0x380/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
   
-  fetch_page(hostname,port,"/TEST.H65");
+  fetch_page(hostname,port,"/INDEX.H65");
 
   if (h65_error==H65_DONE) {
     // V400/H640 etc (do first due to hot regs)
