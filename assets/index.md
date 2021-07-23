@@ -8,6 +8,10 @@ The pre-series units came in a special clear acrylic case:
 
 ![href=/index.h65](devkit.png)
 
+You can also read about this programme, the [fetch](/fetch.h65) 8-bit web browser, or the [MegaWat!?](/megawat.h65)
+presentation software for the MEGA65.
+
+
 
 
 
