@@ -377,7 +377,17 @@ POKE(0xE011,line_count>>8);
     if (PEEK(0xD610)==0x91) {
       scroll_down(-8);
       POKE(0xD610,0);
-      } 
+      }
+    if (PEEK(0xD610)==0x70) {
+      // Draw rainbow palette
+      for(i=0;i<256;i++) {
+        lfill(0x40000L+i*64,i,64);
+        lpoke(0x12000L+i*2,i&0xff);
+        lpoke(0x12000L+i*2+1,0x10+(i>>8));
+      }
+      POKE(0xD610,0);
+      }
+
     continue;
     }
 }
