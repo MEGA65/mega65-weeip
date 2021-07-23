@@ -304,14 +304,26 @@ lfill(0xFF82000L,0x00,0x6000);
   }
 }
 
-unsigned char mouse_colours[8]={0x01,0x0e,0x0F,0x0C,0x0B,0x0C,0x0e,0x0F};
+unsigned char mouse_colours[8]={0x01,0x0a,0x0F,0x0C,0x0B,0x0C,0x0a,0x0F};
+// Show active links by mouse pointer colour
+unsigned char mouse_link_colours[8]={0x06,0x0e,0x06,0x0E,0x06,0x0E,0x06,0x0E};
+
+unsigned long mouse_link_address=0;
+unsigned char link_box[6];
 
 void update_mouse_position(unsigned char do_scroll)
 {
-  unsigned short mx,my;
+  unsigned short mx,my,i;
 
-  // Cycle the mouse pointer colour
-  POKE(0xD027,mouse_colours[(PEEK(0xD7FA)>>2)&0x07]);
+  if (!mouse_link_address) {
+    // Cycle the mouse pointer colour
+    POKE(0xD027,mouse_colours[(PEEK(0xD7FA)>>2)&0x07]);
+  } else {
+    POKE(0xD027,mouse_link_colours[(PEEK(0xD7FA)>>2)&0x07]);
+  }
+
+  // By default clicking the mouse goes no where
+  mouse_link_address=0; 
 
   mouse_update_position(&mx,&my);
   if (my<50) {
@@ -319,13 +331,51 @@ void update_mouse_position(unsigned char do_scroll)
     // Mouse is in top border, so scroll up by that amount
     scroll_down(my-50L);
     mouse_warp_to(mx,50);
-  }
-  if (my>249) {
+    my=50;
+  } else if (my>249) {
     // Mouse is in bottom border, so scroll down by that amount
     POKE(0xE021,my-249);
     scroll_down((my-249));
     mouse_warp_to(mx,249);
+    my=249;
   }
+
+ {
+
+    // Work out mouse position
+    // Mouse is in H320, V200, so only 4 mouse pixels per character
+    my=(position+my-50)/4;
+    mx=(mx-24)/4;
+
+    // Don't check mouse clicks until scrolling is done  
+
+    if (do_scroll) {
+    // Check all bounding boxes
+    i=lpeek(0x18000L)+(lpeek(0x18001L)<<8);
+    if (i>1000) i=1000;
+    while (i>0) {
+      i--;
+      mouse_link_address=0x18002+6*i;
+      lcopy(mouse_link_address,(unsigned long)&link_box[0],6);
+
+      lcopy((unsigned long)&link_box[0],0xE0F8,6);
+      POKE(0xE0FE,mx);
+      POKE(0xE0FF,my);
+
+      mouse_link_address=0;
+      if (link_box[2]>mx) continue;
+      if (link_box[3]>my) continue;
+      if (link_box[4]<mx) continue;
+      if (link_box[5]<my) continue;
+      // Get address of URL
+      mouse_link_address=0x18000L+link_box[0]+(link_box[1]<<8);
+      // Copy it to $E100 for debug
+      lcopy(mouse_link_address,0xE100,0x100);
+      break;
+    } 
+  }
+  }
+  
   mouse_update_pointer();
 
 }

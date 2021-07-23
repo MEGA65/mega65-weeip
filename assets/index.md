@@ -1,6 +1,3 @@
-
-![image](mega65_320x64.png)
-
 # Welcome to the MEGA65!
 
 The **MEGA65** is a brand new retro-computer that is backwards compatible with the **Commodore 64** and
@@ -9,8 +6,8 @@ The **MEGA65** is a brand new retro-computer that is backwards compatible with t
 The **MEGA65** will soon be available to purchase, following the successful release of 100 pre-series units.
 The pre-series units came in a special clear acrylic case:
 
-![image](mega65_devkit_01.png)
+![href=/index.h65](devkit.png)
 
-![image](mega65_320x64.png)
+
 
 
