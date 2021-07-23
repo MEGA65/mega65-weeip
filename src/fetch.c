@@ -251,18 +251,34 @@ void fetch_page(char *hostname,int port,char *path)
   unsigned short i;
   IPV4 a;
 
+restart_fetch:
+  
+  // Reset video mode to C64 40 column mode while loading
+  POKE(0xD054,0);
+  POKE(0xD031,0);
+  POKE(0xD011,0x1B);
+  POKE(0xD016,0xC8);
+  POKE(0xD018,0x16);
+  POKE(0x0286,0x0e);
+  POKE(0xD020,0x0E);
+  POKE(0xD021,0x06);
+  printf("%cFetching %chttp://%s:%d%s\n",0x93,
+	 5,hostname,port,path);
+  POKE(0x0286,0x0e);
+  
   h65_error=0;
+  page_parse_state=0;
 
+  // Clear all memory out from last page
+  lfill(0x12000L,0,0xD800);
+  lfill(0x40000L,0,0x8000);
+  lfill(0x48000L,0,0x8000);
+  lfill(0x50000L,0,0x8000);
+  lfill(0x58000L,0,0x8000);
+  
   // Clear any partial match to h65+$ff header
   last_bytes[3]=0;
   
-  // Revert to C64 40 column display and colours
-  // and show progress of fetching the page
-  POKE(0xD020,0x0e);
-  POKE(0xD021,0x06);
-  POKE(0x0286,0x0e);
-  printf("%c",0x93);
-
   printf("Resolving hostname %s\n",hostname);
   if (dns_hostname_to_ip(hostname,&a)) {
     printf("Resolved to %d.%d.%d.%d\n",
@@ -301,12 +317,26 @@ lfill(0xFF82000L,0x00,0x6000);
     task_periodic();
     update_mouse_position(0);
     if (h65_error) break;
+    switch(PEEK(0xD610)) {
+      case 0x52: case 0x72:  // Restart fetch
+        socket_release(s);
+        POKE(0xD610,0);
+        goto restart_fetch;
+      case 0x03:
+        // control-c / RUN/STOP -- abort fetch
+        POKE(0xD610,0);
+        socket_release(s);
+        // XXX Should allow user to enter URL
+        return;
+    }
   }
+
+  socket_release(s);
 }
 
 unsigned char mouse_colours[8]={0x01,0x0a,0x0F,0x0C,0x0B,0x0C,0x0a,0x0F};
 // Show active links by mouse pointer colour
-unsigned char mouse_link_colours[8]={0x06,0x0e,0x06,0x0E,0x06,0x0E,0x06,0x0E};
+unsigned char mouse_link_colours[8]={0x06,0x06,0x0E,0x0E,0x06,0x06,0x0E,0x0E};
 
 unsigned long mouse_link_address=0;
 unsigned char link_box[6];
@@ -380,12 +410,15 @@ void update_mouse_position(unsigned char do_scroll)
 
 }
 
+  char hostname[64]="192.168.178.31";
+  char path[128]="/INDEX.H65";
+  char url[256]="";
+  int port=8000;
+
 void main(void)
 {
   EUI48 mac;
-  char *hostname="192.168.178.31";
-  int port=8000;
-  unsigned char i;
+  unsigned char i,hlen,url_ofs;
   
   POKE(0,65);
   mega65_io_enable();
@@ -408,7 +441,7 @@ void main(void)
   POKE(0x7F8,0x380/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
   
-  fetch_page(hostname,port,"/INDEX.H65");
+  fetch_page(hostname,port,path);
 
   if (h65_error==H65_DONE) {
     // V400/H640 etc (do first due to hot regs)
@@ -467,6 +500,29 @@ POKE(0xE011,line_count>>8);
       }
       POKE(0xD610,0);
       }
+    if (mouse_clicked()) {
+      if (mouse_link_address) {
+        // XXX Don't erase hostname, so that relative paths work automagically.
+        // We just set the length to 0, so that if we find a hostname, we can
+        // record it correctly. Similarly don't stomp on the port number
+        hlen=0;
+        url_ofs=0;
+        lcopy(mouse_link_address,(unsigned long)&url[0],256);
+        if (!strncmp("http://",url,7)) url_ofs=8;
+	while(url[url_ofs]!='/'&&url[url_ofs]!=':')
+	  { if (hlen<64) { hostname[hlen++]=url[url_ofs]; hostname[hlen]=0; } }
+	if (url[url_ofs]==':') {
+	  port=0; url_ofs++;
+	  while(url[url_ofs]>='0'&&url[url_ofs]<='9') {
+	    port*=10; port+=url[url_ofs++]-'0';
+	  }
+	}
+	if (strlen(&url[url_ofs])<128) { strcpy(path,&url[url_ofs]); }
+	else { path[0]='/'; path[1]=0; }
+	prepare_network();
+        fetch_page(hostname,port,path);
+      }
+    }
 
     continue;
     }
