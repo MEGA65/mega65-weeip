@@ -207,11 +207,33 @@ void prepare_network(void)
 signed long screen_address_offset=0;
 signed long screen_address_offset_max=0;
 
+signed long position=0;
+signed long max_position=0;
+
 void scroll_down(long distance)
 {
-  screen_address_offset+=(distance/8)*(line_width*2);
+
+  // Wait for vertical blank so that we don't have visible tearing.
+  while(PEEK(0xD012)<0xf0) continue;
+  while(PEEK(0xD012)>=0xf0) continue;
+
+
+  position+=distance;
+  if (position<0) position=0;
+  if (position>max_position) position=max_position;
+
+  screen_address_offset=(position/8)*(line_width*2);
   if (screen_address_offset<0) screen_address_offset=0;
-  if (screen_address_offset>screen_address_offset_max) screen_address_offset=screen_address_offset_max;
+  if (screen_address_offset>screen_address_offset_max) screen_address_offset=screen_address_offset_max;  
+
+  if (position&7) {
+    // Between chars, so we display part of the previous char
+//    screen_address_offset+=line_width*2;
+    POKE(0xD04E,0x60+7-(position&7));
+  } else {
+    // On character boundary
+    POKE(0xD04E,0x68);
+  }
 
   // Set screen offset address
   POKE(0xD060,(screen_address_offset>>0));
@@ -293,15 +315,17 @@ void update_mouse_position(unsigned char do_scroll)
 
   mouse_update_position(&mx,&my);
   if (my<50) {
+    POKE(0xE020,50-my);
     // Mouse is in top border, so scroll up by that amount
-    //    scroll_down(-(50-my));
-    if (do_scroll) scroll_down(-8);
+    scroll_down(-(50-my));
+//    if (do_scroll) scroll_down(-8);
     mouse_warp_to(mx,50);
   }
   if (my>249) {
     // Mouse is in bottom border, so scroll down by that amount
-//    scroll_down((my-249));
-    if (do_scroll) scroll_down(8);
+    POKE(0xE021,my-249);
+    scroll_down((my-249));
+//    if (do_scroll) scroll_down(8);
     mouse_warp_to(mx,249);
   }
   mouse_update_pointer();
@@ -352,14 +376,22 @@ void main(void)
     POKE(0xD060,0x00);
     POKE(0xD061,0x20);
     POKE(0xD062,0x01);
-    POKE(0xD063,0x00);
+    POKE(0xD063,0x00);    
     // Set colour RAM address
     POKE(0xD065,0x20);
     // Set charset address
     POKE(0xD069,char_page);
+    // Display 51 rows, so that we can do smooth scrolling
+    POKE(0xD07B,51-1);
+    // Reset smooth scroll (assumes PAL)
+    POKE(0xD04E,0x68);
+
+    screen_address_offset_max=0;
+    max_position=0;
 
     if (line_count>50) {
       screen_address_offset_max=(line_width*2)*(line_count-50);
+      max_position=(line_count-50)*8;
     }
 POKE(0xE010,line_count);
 POKE(0xE011,line_count>>8);
