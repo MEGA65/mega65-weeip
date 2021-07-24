@@ -99,7 +99,8 @@ byte_t comunica (byte_t p)
 		&&last_bytes[2]==0x35
 		&&last_bytes[3]==0xFF) {
 	      page_parse_state=2-1; // gets incremented below
-	      printf("\nFound H65 header.\n");
+	      // printf("\nFound H65 header.\n");
+	      printf("+");
 	    }
 	    break;
 	  case 2:
@@ -138,8 +139,8 @@ byte_t comunica (byte_t p)
 	      h65_error=H65_DONE;
 	    } else {
 	      // Block data
-	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
-		     block_addr,block_len);
+	      if (0) printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
+		            block_addr,block_len);
 	    }
 	    break;
 	  case HEADSKIP+8:
@@ -401,8 +402,6 @@ void update_mouse_position(unsigned char do_scroll)
       if (link_box[5]<my) continue;
       // Get address of URL
       mouse_link_address=0x18000L+link_box[0]+(link_box[1]<<8);
-      // Copy it to $E100 for debug
-      lcopy(mouse_link_address,0xE100,0x100);
       break;
     } 
   }
@@ -421,7 +420,10 @@ void main(void)
 {
   EUI48 mac;
   unsigned char i,hlen,url_ofs;
-  
+
+  // Enable logging of ethernet activity on the serial monitor interface
+  eth_log_mode=ETH_LOG_RX|ETH_LOG_TX;
+
   POKE(0,65);
   mega65_io_enable();
   srand(random32(0));
