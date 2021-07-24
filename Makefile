@@ -21,6 +21,9 @@ TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c sr
 
 all:	fetch.prg haustierbegriff.prg
 
+log2pcap: src/log2pcap.c
+	gcc -g -Wall -o log2pcap src/log2pcap.c
+
 fetch.prg:       $(TCPSRCS) src/fetch.c
 	git submodule init
 	git submodule update
