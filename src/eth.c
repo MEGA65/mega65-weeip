@@ -1,7 +1,9 @@
 /**
  * @file eth.c
- * @brief Ethernet management for the PIC18F67J60 chip.
- * @compiler CPIK 0.7.3 / MCC18 3.36
+ * @brief Ethernet management for the MEGA65 45GS100 integrated 100mbit Ethernet controller
+ * @compiler CC65
+ * @author Paul Gardner-Stephen (paul@m-e-g-a.org)
+ * Based on code by: 
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
@@ -16,8 +18,12 @@
 
 #include "memory.h"
 #include "hal.h"
+#include "debug.h"
+#include "time.h"
 
 #define _PROMISCUOUS
+
+static unsigned char eth_log_mode=0;
 
 static uint16_t eth_size;        // Packet size.
 uint16_t eth_tx_len=0;           // Bytes written to TX buffer
@@ -80,6 +86,9 @@ eth_drop()
   // eth_task().
 }
 
+char dbg_msg[80];
+unsigned char sixteenbytes[16];
+
 /**
  * Ethernet control task.
  * Shall be called when a packet arrives.
@@ -89,7 +98,10 @@ uint8_t eth_task (uint8_t p)
   /*
    * Check if there are incoming packets.
    * If not, then check in a while.
-   */  
+   */
+  unsigned short i;
+  unsigned char j;
+  struct m65_tm tm;
 
   if(!(PEEK(0xD6E1)&0x20)) {
     task_add(eth_task, 10, 0);
@@ -104,6 +116,20 @@ uint8_t eth_task (uint8_t p)
   /*
    * A packet is available.
    */
+
+  if (eth_log_mode&ETH_LOG_RX) {
+    getrtc(&tm);
+    debug_msg("");
+    snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth rx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(0xD012));
+    debug_msg(dbg_msg);
+    for(i=0;i<2048;i+=16) {
+      lcopy(ETH_RX_BUFFER+i,sixteenbytes,16);
+      snprintf(dbg_msg,80,"  %04x : ",i);
+      for(j=0;j<16;j++) snprintf(&dbg_msg[strlen(dbg_msg)],80-strlen(dbg_msg)," %02x",sixteenbytes[j]);
+      debug_msg(dbg_msg);
+    }
+  }
+  
   // +2 to skip length and flags field
   lcopy(ETH_RX_BUFFER+2L,(uint32_t)&eth_header, sizeof(eth_header));
   
@@ -187,6 +213,9 @@ void dump_bytes(char *msg,uint8_t *d,int count);
  */
 void eth_packet_send(void)
 {
+  unsigned short i;
+  unsigned char j;
+  struct m65_tm tm;
 
   // Set packet length
   mega65_io_enable();
@@ -196,6 +225,20 @@ void eth_packet_send(void)
   // Copy our working frame buffer to 
   lcopy((unsigned long)tx_frame_buf,ETH_TX_BUFFER,eth_tx_len);
 
+  if (eth_log_mode&ETH_LOG_TX) {
+    getrtc(&tm);
+    debug_msg("");
+    snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth tx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(0xD012));
+    debug_msg(dbg_msg);
+    for(i=0;i<eth_tx_len;i+=16) {
+      snprintf(dbg_msg,80,"  %04x : ",i);
+      for(j=0;j<16;j++) snprintf(&dbg_msg[strlen(dbg_msg)],80-strlen(dbg_msg)," %02x",tx_frame_buf[i+j]);
+      debug_msg(dbg_msg);
+    }
+  }
+  
+
+  
 #if 0
   printf("ETH TX: %x:%x:%x:%x:%x:%x\n",
 	 tx_frame_buf[0],tx_frame_buf[1],tx_frame_buf[2],tx_frame_buf[3],tx_frame_buf[4],tx_frame_buf[5]

@@ -111,6 +111,11 @@ extern SOCKET _sockets[MAX_SOCKET];
 extern HEADER _header;
 extern IPV4 ip_local;
 
+// Enable logging of ethernet activity to the MEGA65 serial monitor interface
+extern unsigned char eth_log_mode;
+#define ETH_LOG_RX 1
+#define ETH_LOG_TX 2
+
 //IPV4 ip_address(static char rom *str);
 extern SOCKET *socket_create(WEEIP_PROTOCOL protocol);
 extern void socket_release(SOCKET *s);
