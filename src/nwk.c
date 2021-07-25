@@ -15,12 +15,15 @@
 // On MEGA65 we have deep enough stack we don't need to schedule sending
 // ACKs, we can just send them immediately.
 // #define INSTANT_ACK
+// Report various things on serial monitor interface
+// #define DEBUG_ACK
 
 // INSTANT_CALLBACK must be enabled if you wish to have a window size that
 // corresponds to >1 packet, as otherwise the same segment will be read
 // for each of the packets that come between callback calls, as the same
 // buffer will get overwritten every time.
 #define INSTANT_CALLBACK
+
 
 /********************************************************************************
  ********************************************************************************
@@ -93,8 +96,8 @@ byte_t default_header[] = {
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x50, 0x00,
    // TCP Window size
-   0xFF, 0x00,   // ~64KB
-   //   0x06, 0x00, // ~1.5KB
+   //   0xFF, 0x00,   // ~64KB
+   0x06, 0x00, // ~1.5KB
    0x00, 0x00, 0x00, 0x00
 };
 
@@ -154,18 +157,19 @@ byte_t nwk_tick (byte_t sig)
       if(_sckt->type != SOCKET_TCP) continue;               // UDP socket or unused.
 
 
-      if(_sckt->time == 0) continue;                        // does not have timing requirements.
+      //      if(_sckt->time == 0) continue;                        // does not have timing requirements.
 
       /*
        * Do socket timing.
        */
-      //      _sckt->time--;
+      _sckt->time--;
       if(_sckt->time == 0) {
          /*
           * Timeout.
           * Check retransmissions.
           */
          if(_sckt->retry) {
+	   printf("tcp retry %d\n",_sckt->retry);
             _sckt->retry--;
             _sckt->time = TIMEOUT_TCP;
             switch(_sckt->state) {
@@ -182,14 +186,18 @@ byte_t nwk_tick (byte_t sig)
                case _FIN_SENT:
                case _FIN_ACK_REC:
                   _sckt->toSend = ACK;
+#ifdef DEBUG_ACK
 		  debug_msg("Asserting ACK: _FIN_ACK_REC state");
+#endif
                   break;
                case _FIN_REC:
                   _sckt->toSend = FIN | ACK;
+#ifdef DEBUG_ACK
 		  debug_msg("Asserting ACK: _FIN_REC state");
+#endif
                   break;
                default:
-                  _sckt->time = 0;
+		 _sckt->time = 0;TIMEOUT_TCP;
                   _sckt->timeout = FALSE;
                   break;
             }
@@ -201,7 +209,9 @@ byte_t nwk_tick (byte_t sig)
 #ifdef INSTANT_ACK
 	      nwk_upstream(0);
 #endif
+#ifdef DEBUG_ACK
 	      debug_msg("scheduling nwk_upstream 0 0");
+#endif
 	      task_cancel(nwk_upstream);
 	      task_add(nwk_upstream, 0, 0);
             } 
@@ -234,7 +244,9 @@ byte_t nwk_upstream (byte_t sig)
 {
    static int i;
 
+#ifdef DEBUG_ACK
    debug_msg("nwk_upstream called.");
+#endif
    
    if(!eth_clear_to_send()) {
       /*
@@ -242,7 +254,9 @@ byte_t nwk_upstream (byte_t sig)
        * Delay task execution.
        */
      printf("Waiting for TX clear\n");
+#ifdef DEBUG_ACK
      debug_msg("scheduling nwk_upstream 2 0");
+#endif
       task_add(nwk_upstream, 2, 0);
       return 0;
    }
@@ -253,7 +267,9 @@ byte_t nwk_upstream (byte_t sig)
    for_each(_sockets, _sckt) {     
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
+#ifdef DEBUG_ACK
       debug_msg("nwk_upstream sending a packet for socket");
+#endif
       
       /*
        * Pending message found, send it.
@@ -307,6 +323,9 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[1] = _sckt->remSeq.b[2];
          TCPH(n_ack).b[2] = _sckt->remSeq.b[1];
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
+
+	 if (_sckt->remSeq.d-_sckt->remSeqStart.d)
+	   printf("ACKing %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d);
 
          if(!_sckt->timeout) {
             /*
@@ -364,7 +383,9 @@ byte_t nwk_upstream (byte_t sig)
        */
       if(eth_ip_send()) {
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
+#ifdef DEBUG_ACK
 	 debug_msg("eth_packet_send() called");
+#endif
          eth_packet_send();
 
 	 _sckt->toSend = 0;
@@ -381,7 +402,9 @@ byte_t nwk_upstream (byte_t sig)
       /*
        * Reschedule 50ms later for eventual further processing.
        */
+#ifdef DEBUG_ACK
      debug_msg("scheduling nwk_upstream 5 0");
+#endif
       task_add(nwk_upstream, 5, 0);
    }
    
@@ -389,6 +412,16 @@ byte_t nwk_upstream (byte_t sig)
     * Job done, finish.
     */
    return 0;
+}
+
+unsigned long byte_order_swap_d(unsigned long in)
+{
+  unsigned long out;
+  ((unsigned char *)&out)[0]=((unsigned char *)&in)[3];
+  ((unsigned char *)&out)[1]=((unsigned char *)&in)[2];
+  ((unsigned char *)&out)[2]=((unsigned char *)&in)[1];
+  ((unsigned char *)&out)[3]=((unsigned char *)&in)[0];
+  return out;
 }
 
 /**
@@ -482,6 +515,8 @@ found:
 
 parse_tcp:
 
+   printf(":");
+   
    /*
     * TCP message.
     * Check flags.
@@ -499,8 +534,13 @@ parse_tcp:
           || (_sckt->seq.b[3] != TCPH(n_ack).b[0])) {
            /*
             * Out of order, drop it.
+	    * XXX This is when the other side has ACKed a different part
+	    * of our stream.
+	    * PGS: I think we lock-step and have only one unacknowledged packet
+	    * at a time, so can effectively ignore it (but should probably be
+	    * clever and re-send?)
             */
-           goto drop;
+	goto drop;
       }
       _flags |= ACK;
    }
@@ -513,6 +553,10 @@ parse_tcp:
       _sckt->remSeq.b[1] = TCPH(n_seq).b[2];
       _sckt->remSeq.b[2] = TCPH(n_seq).b[1];
       _sckt->remSeq.b[3] = TCPH(n_seq).b[0];
+
+      // Remember initial remote sequence # for convenient debugging
+      _sckt->remSeqStart.d=_sckt->remSeq.d;      
+      
       _sckt->remSeq.d++;
       _flags |= SYN;
    } else {
@@ -523,6 +567,9 @@ parse_tcp:
          || (TCPH(n_seq.b[1]) != _sckt->remSeq.b[2])
          || (TCPH(n_seq.b[2]) != _sckt->remSeq.b[1])
          || (TCPH(n_seq.b[3]) != _sckt->remSeq.b[0])) {
+	printf("request OOO ack: %ld != %ld\n",
+	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);
+	
          if(data_size) {
             /*
              * Out of order, send our number.
@@ -531,13 +578,18 @@ parse_tcp:
 #ifdef INSTANT_ACK
    	   nwk_upstream(0);
 #endif
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: Out-of-order rx");
 	   debug_msg("scheduling nwk_upstream 0 0");
+#endif
 	   task_cancel(nwk_upstream);
 	   task_add(nwk_upstream, 0, 0);
          }
          goto drop;
       }
+
+      printf("Received TCP segment %ld+\n",
+	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);      
       
       /*
        * Update stream sequence number.
@@ -578,7 +630,9 @@ parse_tcp:
             /*
              * Start incoming connection procedure.
              */
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _listen state");
+#endif
             _sckt->state = _SYN_REC;
             _sckt->toSend = SYN | ACK;
          }
@@ -589,7 +643,9 @@ parse_tcp:
             /*
              * Connection established.
              */
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _syn_sent state with syn or ack");
+#endif
             _sckt->state = _CONNECT;
             _sckt->toSend = ACK;
             ev = WEEIP_EV_CONNECT;
@@ -597,7 +653,9 @@ parse_tcp:
          }
 
          if(_flags & SYN) {
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _syn_sent state with syn");
+#endif
             _sckt->state = _SYN_REC;
             _sckt->toSend = SYN | ACK;
          }         
@@ -619,7 +677,9 @@ parse_tcp:
             /*
              * Start remote disconnection procedure.
              */
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _ack_wait state");
+#endif
             _sckt->state = _FIN_REC;
             _sckt->toSend = ACK | FIN;
             ev = WEEIP_EV_DISCONNECT;           // TESTE
@@ -654,7 +714,9 @@ parse_tcp:
                _sckt->rx_data = data_size;
 
             }
+#ifdef DEBUG_ACK
 	    debug_msg("asserting ack: data received");
+#endif
             _sckt->toSend = ACK;            
             ev = WEEIP_EV_DATA;
          }
@@ -665,7 +727,9 @@ parse_tcp:
             /*
              * Disconnection done.
              */
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _fin_sent state with fin or ack");
+#endif
             _sckt->state = _IDLE;
             _sckt->toSend = ACK;               
             ev = WEEIP_EV_DISCONNECT;
@@ -673,7 +737,9 @@ parse_tcp:
          }
 
          if(_flags & FIN) {
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _fin_ack_rec state with fin");
+#endif
             _sckt->state = _FIN_REC;
             _sckt->toSend = ACK;
             break;
@@ -699,7 +765,9 @@ parse_tcp:
             /*
              * Disconnection done.
              */
+#ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _fin_ack_rec state with fin");
+#endif
             _sckt->state = _IDLE;
             _sckt->toSend = ACK;
             ev = WEEIP_EV_DISCONNECT;
@@ -776,7 +844,9 @@ done:
 #ifdef INSTANT_ACK
       nwk_upstream(0);
 #endif
+#ifdef DEBUG_ACK
       debug_msg("scheduling nwk_upstream 0 0");
+#endif
       task_cancel(nwk_upstream);
       task_add(nwk_upstream, 0, 0);
    }
