@@ -620,11 +620,13 @@ parse_tcp:
 
    // If FIN flag is set, then we also acknowledge all data so far,
    // plus the FIN flag.
-   if(TCPH(flags) & FIN) {
-     _sckt->remSeq.b[0] = TCPH(n_ack).b[3];
-     _sckt->remSeq.b[1] = TCPH(n_ack).b[2];
-     _sckt->remSeq.b[2] = TCPH(n_ack).b[1];
-     _sckt->remSeq.b[3] = TCPH(n_ack).b[0];
+   if(TCPH(flags) & FIN||_sckt->state==_FIN_REC) {
+     
+     _sckt->remSeq.b[3]=TCPH(n_seq.b[0]);
+     _sckt->remSeq.b[2]=TCPH(n_seq.b[1]);
+     _sckt->remSeq.b[1]=TCPH(n_seq.b[2]);
+     _sckt->remSeq.b[0]=TCPH(n_seq.b[3]);
+     
      _sckt->remSeq.d+=data_size;
      _sckt->remSeq.d++;
      _flags |= FIN;
@@ -751,7 +753,6 @@ parse_tcp:
          if(_flags & ACK) {
             _sckt->state = _FIN_ACK_REC;
          }
-         break;
 
          if(_flags & FIN) {
 #ifdef DEBUG_ACK
@@ -762,6 +763,7 @@ parse_tcp:
             break;
          }
 	
+         break;
 	 
       case _FIN_REC:
          if(_flags & ACK) {
@@ -781,7 +783,7 @@ parse_tcp:
 #ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _fin_ack_rec state with fin");
 #endif
-            _sckt->state = _IDLE;
+            _sckt->state = _FIN_REC;
             _sckt->toSend = ACK;
             ev = WEEIP_EV_DISCONNECT;
          }         
