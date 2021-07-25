@@ -70,7 +70,7 @@ int page_parse_state=0;
 
 byte_t comunica (byte_t p)
 {
-  unsigned int i;
+  unsigned int i,count;
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
@@ -152,9 +152,19 @@ byte_t comunica (byte_t p)
 	    break;
 	  case HEADSKIP+8:
             POKE(0xD020,PEEK(0xD020)+1);
-	    lpoke(block_addr,c);
-	    block_addr++;
-	    block_len--;
+
+            // Work out how many bytes we can handle in one go.
+            count = s->rx_data - i;
+            if (count>block_len) count=block_len;
+
+            // Stash them and update it
+            lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
+	    block_addr+=count;
+	    block_len-=count;
+
+            // Update i based on the number of bytes digested
+            i+=count-1;
+
 	    // Read next block
 	    if (!block_len) page_parse_state=HEADSKIP-1;
 	    else page_parse_state=HEADSKIP+8-1;
