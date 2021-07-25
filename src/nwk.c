@@ -253,7 +253,7 @@ byte_t nwk_upstream (byte_t sig)
        * Ethernet not ready.
        * Delay task execution.
        */
-     printf("Waiting for TX clear\n");
+     printf("ETH TX wait\n");
 #ifdef DEBUG_ACK
      debug_msg("scheduling nwk_upstream 2 0");
 #endif
@@ -267,6 +267,8 @@ byte_t nwk_upstream (byte_t sig)
    for_each(_sockets, _sckt) {     
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
+      printf(">");
+      
 #ifdef DEBUG_ACK
       debug_msg("nwk_upstream sending a packet for socket");
 #endif
@@ -559,6 +561,7 @@ parse_tcp:
       
       _sckt->remSeq.d++;
       _flags |= SYN;
+
    } else {
       /*
        * Test remote sequence number.
@@ -614,13 +617,20 @@ parse_tcp:
       }
       goto done;
    }
-   
-   
-   if(TCPH(flags) & FIN) {
-      _sckt->remSeq.d++;
-      _flags |= FIN;
-   }
 
+   // If FIN flag is set, then we also acknowledge all data so far,
+   // plus the FIN flag.
+   if(TCPH(flags) & FIN) {
+     _sckt->remSeq.b[0] = TCPH(n_ack).b[3];
+     _sckt->remSeq.b[1] = TCPH(n_ack).b[2];
+     _sckt->remSeq.b[2] = TCPH(n_ack).b[1];
+     _sckt->remSeq.b[3] = TCPH(n_ack).b[0];
+     _sckt->remSeq.d+=data_size;
+     _sckt->remSeq.d++;
+     _flags |= FIN;
+      printf("FIN ACK = %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d);
+   }
+   
    /*
     * TCP state machine implementation.
     */
@@ -723,18 +733,25 @@ parse_tcp:
          break;
          
       case _FIN_SENT:
-         if(_flags & (FIN | ACK)) {
+
+	if(_flags & (FIN | ACK)) {
             /*
              * Disconnection done.
              */
 #ifdef DEBUG_ACK
 	   debug_msg("asserting ack: _fin_sent state with fin or ack");
 #endif
-            _sckt->state = _IDLE;
+	   _sckt->state = _IDLE;
             _sckt->toSend = ACK;               
             ev = WEEIP_EV_DISCONNECT;
-            break;
+	    // Allow the final state to be selected based on ACK and FIN flag state.
+	    //            break;
          }
+
+         if(_flags & ACK) {
+            _sckt->state = _FIN_ACK_REC;
+         }
+         break;
 
          if(_flags & FIN) {
 #ifdef DEBUG_ACK
@@ -744,12 +761,8 @@ parse_tcp:
             _sckt->toSend = ACK;
             break;
          }
-
-         if(_flags & ACK) {
-            _sckt->state = _FIN_ACK_REC;
-         }
-         break;
-
+	
+	 
       case _FIN_REC:
          if(_flags & ACK) {
             /*
