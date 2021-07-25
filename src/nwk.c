@@ -1,13 +1,21 @@
 /**
  * @file nwk.c
  * @brief Network and Transport layers.
- * @compiler CPIK 0.7.3 / MCC18 3.36
+ * @compiler CC65
+ * @author Paul Gardner-Stephen (paul@m-e-g-a.org)
+ * derived from:
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
 #include <stdio.h>
 
 #include "memory.h"
+#include "debug.h"
+
+// On MEGA65 we have deep enough stack we don't need to schedule sending
+// ACKs, we can just send them immediately.
+//#define INSTANT_ACK
+#define INSTANT_CALLBACK
 
 /********************************************************************************
  ********************************************************************************
@@ -165,9 +173,11 @@ byte_t nwk_tick (byte_t sig)
                case _FIN_SENT:
                case _FIN_ACK_REC:
                   _sckt->toSend = ACK;
+		  debug_msg("Asserting ACK: _FIN_ACK_REC state");
                   break;
                case _FIN_REC:
                   _sckt->toSend = FIN | ACK;
+		  debug_msg("Asserting ACK: _FIN_REC state");
                   break;
                default:
                   _sckt->time = 0;
@@ -178,9 +188,14 @@ byte_t nwk_tick (byte_t sig)
                /*
                 * Force nwk_upstream() to execute.
                 */
-               _sckt->timeout = TRUE;
-               task_cancel(nwk_upstream);
-               task_add(nwk_upstream, 0, 0);
+	      _sckt->timeout = TRUE;
+#ifdef INSTANT_ACK
+	      nwk_upstream(0);
+#else
+	      debug_msg("scheduling nwk_upstream 0 0");
+	      task_cancel(nwk_upstream);
+	      task_add(nwk_upstream, 0, 0);
+#endif
             } 
         } else {
             /*
@@ -188,7 +203,11 @@ byte_t nwk_tick (byte_t sig)
              * Socket down.
              */
             _sckt->state = _IDLE;
+#ifdef INSTANT_CALLBACK
+	    _sckt->callback(WEEIP_EV_DISCONNECT);
+#else
             task_add(_sckt->callback, 0, WEEIP_EV_DISCONNECT);
+#endif
          }
       }
    } 
@@ -206,12 +225,16 @@ byte_t nwk_tick (byte_t sig)
 byte_t nwk_upstream (byte_t sig)
 {
    static int i;
+
+   debug_msg("nwk_upstream called.");
+   
    if(!eth_clear_to_send()) {
       /*
        * Ethernet not ready.
        * Delay task execution.
        */
      printf("Waiting for TX clear\n");
+     debug_msg("scheduling nwk_upstream 2 0");
       task_add(nwk_upstream, 2, 0);
       return 0;
    }
@@ -222,6 +245,8 @@ byte_t nwk_upstream (byte_t sig)
    for_each(_sockets, _sckt) {     
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
+      debug_msg("nwk_upstream sending a packet for socket");
+      
       /*
        * Pending message found, send it.
        */
@@ -312,7 +337,11 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * Tell UDP that data was sent (no acknowledge).
           */
+#ifdef INSTANT_CALLBACK
+	 _sckt->callback(WEEIP_EV_DATA_SENT);
+#else
          task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT);
+#endif
       }
       
       /*
@@ -327,6 +356,7 @@ byte_t nwk_upstream (byte_t sig)
        */
       if(eth_ip_send()) {
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
+	 debug_msg("eth_packet_send() called");
          eth_packet_send();
 
 	 _sckt->toSend = 0;
@@ -343,6 +373,7 @@ byte_t nwk_upstream (byte_t sig)
       /*
        * Reschedule 50ms later for eventual further processing.
        */
+     debug_msg("scheduling nwk_upstream 5 0");
       task_add(nwk_upstream, 5, 0);
    }
    
@@ -489,8 +520,14 @@ parse_tcp:
              * Out of order, send our number.
              */
             _sckt->toSend = ACK;
+#ifdef INSTANT_ACK
+	   nwk_upstream(0);
+#else
+	    debug_msg("asserting ack: Out-of-order rx");
+	    debug_msg("scheduling nwk_upstream 0 0");
             task_cancel(nwk_upstream);
             task_add(nwk_upstream, 0, 0);
+#endif
          }
          goto drop;
       }
@@ -534,6 +571,7 @@ parse_tcp:
             /*
              * Start incoming connection procedure.
              */
+	   debug_msg("asserting ack: _listen state");
             _sckt->state = _SYN_REC;
             _sckt->toSend = SYN | ACK;
          }
@@ -544,6 +582,7 @@ parse_tcp:
             /*
              * Connection established.
              */
+	   debug_msg("asserting ack: _syn_sent state with syn or ack");
             _sckt->state = _CONNECT;
             _sckt->toSend = ACK;
             ev = WEEIP_EV_CONNECT;
@@ -551,6 +590,7 @@ parse_tcp:
          }
 
          if(_flags & SYN) {
+	   debug_msg("asserting ack: _syn_sent state with syn");
             _sckt->state = _SYN_REC;
             _sckt->toSend = SYN | ACK;
          }         
@@ -572,6 +612,7 @@ parse_tcp:
             /*
              * Start remote disconnection procedure.
              */
+	   debug_msg("asserting ack: _ack_wait state");
             _sckt->state = _FIN_REC;
             _sckt->toSend = ACK | FIN;
             ev = WEEIP_EV_DISCONNECT;           // TESTE
@@ -583,7 +624,11 @@ parse_tcp:
              * The peer acknowledged the previously sent data.
              */
             _sckt->state = _CONNECT;
+#ifdef INSTANT_CALLBACK
+	    _sckt->callback(WEEIP_EV_DATA_SENT);
+#else
             task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT);
+#endif
          }         
 
          if(data_size) {
@@ -602,6 +647,7 @@ parse_tcp:
                _sckt->rx_data = data_size;
 
             }
+	    debug_msg("asserting ack: data received");
             _sckt->toSend = ACK;            
             ev = WEEIP_EV_DATA;
          }
@@ -612,6 +658,7 @@ parse_tcp:
             /*
              * Disconnection done.
              */
+	   debug_msg("asserting ack: _fin_sent state with fin or ack");
             _sckt->state = _IDLE;
             _sckt->toSend = ACK;               
             ev = WEEIP_EV_DISCONNECT;
@@ -619,6 +666,7 @@ parse_tcp:
          }
 
          if(_flags & FIN) {
+	   debug_msg("asserting ack: _fin_ack_rec state with fin");
             _sckt->state = _FIN_REC;
             _sckt->toSend = ACK;
             break;
@@ -644,6 +692,7 @@ parse_tcp:
             /*
              * Disconnection done.
              */
+	   debug_msg("asserting ack: _fin_ack_rec state with fin");
             _sckt->state = _IDLE;
             _sckt->toSend = ACK;
             ev = WEEIP_EV_DISCONNECT;
@@ -717,16 +766,26 @@ done:
     */
    if(_sckt->toSend) {
       _sckt->retry = RETRIES_TCP;
+#ifdef INSTANT_ACK
+	   nwk_upstream(0);
+#else
+     debug_msg("scheduling nwk_upstream 0 0");
       task_cancel(nwk_upstream);
       task_add(nwk_upstream, 0, 0);
+#endif
    }
 
    /*
     * Verify event processing.
     * Add socket management task.
     */
-   if(ev != WEEIP_EV_NONE)
+   if(ev != WEEIP_EV_NONE) {
+#ifdef INSTANT_CALLBACK
+     _sckt->callback(ev);
+#else
       task_add(_sckt->callback, 0, ev);
+#endif
+   }
 
 drop:
    return;
