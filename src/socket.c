@@ -1,7 +1,9 @@
 /**
  * @file socket.c
  * @brief Socket API implementation.
- * @compiler CPIK 0.7.3 / MCC18 3.36
+ * @compiler CC65
+ * @author Paul Gardner-Stephen (paul@m-e-g-a.org)
+ * derived from:
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
@@ -30,6 +32,7 @@
  * THE SOFTWARE.
  ********************************************************************************
  ********************************************************************************/
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 #include "weeip.h"
@@ -268,6 +271,7 @@ socket_disconnect()
     * TCP socket.
     * Start sending FIN message.
     */
+   printf("TCP close\n");
    if(_sckt->state != _CONNECT) return FALSE;
    _sckt->state = _FIN_SENT;
    _sckt->toSend = FIN | ACK;
