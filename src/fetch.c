@@ -52,6 +52,9 @@ byte_t pisca (byte_t p)
    return 0; // XXX and what should it return?
 }
 
+// Wait for key press before starting
+#define DEBUG_WAIT
+
 #define H65_TOONEW 1
 #define H65_BADADDR 2
 #define H65_DONE 255
@@ -139,9 +142,11 @@ byte_t comunica (byte_t p)
 	      page_parse_state=HEADSKIP-1;
 	      h65_error=H65_DONE;
 	    } else if (block_addr<0xf000) {
+              printf("bad address $%08x\n",block_addr);
               h65_error=H65_BADADDR;
               return 0;
             } else if (block_len>0x20000) {
+              printf("bad length $%08x\n",block_len);
               h65_error=H65_BADADDR;
               return 0;
             } else {
@@ -335,6 +340,7 @@ lfill(0xFF82000L,0x00,0x6000);
     POKE(0x0427,PEEK(0x427)+1);
 
     task_periodic();
+
     update_mouse_position(0);
     if (h65_error) break;
     switch(PEEK(0xD610)) {
@@ -428,6 +434,70 @@ void update_mouse_position(unsigned char do_scroll)
 
 }
 
+void show_page(void)
+{
+  printf("h65_error=%d\n",h65_error);
+
+#if 0
+  POKE(0x0400,h65_error);
+  while(1) {
+    POKE(0xD020,PEEK(0xD020)+1);
+    if (PEEK(0xD610)) break;
+  }
+  while (PEEK(0xD610)) POKE(0xD610,0);
+#endif
+
+  if (h65_error!=H65_DONE) {
+    printf("h65_error=%d\nPress almost any key to continue...\n",h65_error);
+    while(!PEEK(0xD610)) continue;
+    POKE(0xD610,0);
+  } else if (h65_error==H65_DONE) {
+
+    // V400/H640 etc (do first due to hot regs)
+    POKE(0xD031,d031_bits);
+    // $D016 value
+    POKE(0xD016,d016_bits);
+    // Enable 16-bit text mode
+    POKE(0xD054,0x40+d054_bits);
+    // Line step
+    POKE(0xD058,line_width*2);
+    POKE(0xD059,0);
+    // Set screen address to $12000
+    POKE(0xD060,0x00);
+    POKE(0xD061,0x20);
+    POKE(0xD062,0x01);
+    POKE(0xD063,0x00);    
+    // Set colour RAM address
+    POKE(0xD065,0x20);
+    // Set charset address
+    POKE(0xD069,char_page);
+    // Display 51 rows, so that we can do smooth scrolling
+    POKE(0xD07B,51-1);
+    // Reset smooth scroll (assumes PAL)
+    POKE(0xD04E,0x68);
+
+    screen_address_offset_max=0;
+    max_position=0;
+
+    if (line_count>50) {
+      screen_address_offset_max=(line_width*2)*(line_count-50);
+      max_position=(line_count-50)*8;
+    }
+POKE(0xE010,line_count);
+POKE(0xE011,line_count>>8);
+    lcopy((unsigned long)&screen_address_offset_max,0xe000,4);
+
+#if 0
+  while(1) {
+    POKE(0xD020,PEEK(0xD020)+1);
+    if (PEEK(0xD610)) break;
+  }
+  while (PEEK(0xD610)) POKE(0xD610,0);
+#endif
+
+  }
+}
+
   char hostname[64]="192.168.178.31";
   char path[128]="/INDEX.H65";
   char url[256]="";
@@ -469,42 +539,9 @@ void main(void)
   lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
   
   fetch_page(hostname,port,path);
-
-  if (h65_error==H65_DONE) {
-    // V400/H640 etc (do first due to hot regs)
-    POKE(0xD031,d031_bits);
-    // $D016 value
-    POKE(0xD016,d016_bits);
-    // Enable 16-bit text mode
-    POKE(0xD054,0x40+d054_bits);
-    // Line step
-    POKE(0xD058,line_width*2);
-    POKE(0xD059,0);
-    // Set screen address to $12000
-    POKE(0xD060,0x00);
-    POKE(0xD061,0x20);
-    POKE(0xD062,0x01);
-    POKE(0xD063,0x00);    
-    // Set colour RAM address
-    POKE(0xD065,0x20);
-    // Set charset address
-    POKE(0xD069,char_page);
-    // Display 51 rows, so that we can do smooth scrolling
-    POKE(0xD07B,51-1);
-    // Reset smooth scroll (assumes PAL)
-    POKE(0xD04E,0x68);
-
-    screen_address_offset_max=0;
-    max_position=0;
-
-    if (line_count>50) {
-      screen_address_offset_max=(line_width*2)*(line_count-50);
-      max_position=(line_count-50)*8;
-    }
-POKE(0xE010,line_count);
-POKE(0xE011,line_count>>8);
-    lcopy((unsigned long)&screen_address_offset_max,0xe000,4);
-  }  
+  show_page();
+  mouse_clicked(); // Clear mouse click status
+  mouse_clicked(); // Clear mouse click status
   
   while(1) {
     update_mouse_position(1);
@@ -518,6 +555,7 @@ POKE(0xE011,line_count>>8);
       // R =  Reload page
       POKE(0xD610,0);
       fetch_page(hostname,port,path);
+      show_page();
       } 
     if (PEEK(0xD610)==0x91) {
       scroll_down(-8);
