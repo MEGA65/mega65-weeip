@@ -1,7 +1,9 @@
 /**
  * @file task.c
  * @brief Task scheduler and dispatcher.
- * @compiler CPIK 0.7.3 / MCC18 3.36
+ * @compiler CC65
+ * @author Paul Gardner-Stephen (paul@m-e-g-a.org)
+ * based on:
  * @author Bruno Basseto (bruno@wise-ware.org)
  * @version 0.
  */
@@ -47,12 +49,6 @@
  * Time counter.
  */
 volatile _uint32_t ticks;
-
-/**
- * Timer reload factor. Defines the timebase.
- * The current value stands for 10 ms.
- */
-#define TMR0_VALUE		(0xffff-407)
 
 /*
  *  Exponential byte timing for a 10ms timebase (in seconds).
@@ -190,6 +186,7 @@ void
 task_cancel_all()
 {
   volatile tid_t *task;
+  printf("Cancel all tasks.\n");
    for_each(_tasks, task) {
       task->fun = NULL;
    }
