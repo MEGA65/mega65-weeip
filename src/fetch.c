@@ -53,7 +53,7 @@ byte_t pisca (byte_t p)
 }
 
 // Wait for key press before starting
-#define DEBUG_WAIT
+//#define DEBUG_WAIT
 
 #define H65_TOONEW 1
 #define H65_BADADDR 2
@@ -273,6 +273,7 @@ void fetch_page(char *hostname,int port,char *path)
 {
   unsigned short i;
   IPV4 a;
+  unsigned char busy;
 
 restart_fetch:
   
@@ -357,7 +358,18 @@ lfill(0xFF82000L,0x00,0x6000);
     }
   }
 
+  // Close socket, and call network loop until it really is closed
   socket_disconnect(s);
+  busy=1;
+  while(busy) {
+    task_periodic();
+    busy=0;  
+    for_each(_sockets, _sckt) {
+      if(_sckt->type != SOCKET_TCP) continue;               // UDP socket or unused.
+      if (_sckt->state!=_IDLE) busy=1;
+    }
+  }
+
 }
 
 unsigned char mouse_colours[8]={0x01,0x0a,0x0F,0x0C,0x0B,0x0C,0x0a,0x0F};
