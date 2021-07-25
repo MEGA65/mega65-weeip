@@ -132,16 +132,6 @@ byte_t _flags;
 //   return res;
 //}
 
-void dump_bytes(char *msg,uint8_t *d,int count)
-{
-  printf("%s: ",msg);
-  while(count) {
-    printf(" %02x",*d);
-    d++; count--;
-  }
-  printf("\n");
-}
-
 /**
  * TCP timing control task.
  * Called periodically at a rate defined by TICK_TCP.
@@ -542,6 +532,7 @@ parse_tcp:
 	    * at a time, so can effectively ignore it (but should probably be
 	    * clever and re-send?)
             */
+	printf("Drop\n");
 	goto drop;
       }
       _flags |= ACK;
@@ -824,15 +815,10 @@ parse_tcp:
        tx_frame_buf[14+20]=0x00;
        
        // 6. Update ICMP checksum
-       tx_frame_buf[14+20+2]=0; tx_frame_buf[14+20+1]=0;
+       tx_frame_buf[14+20+2]=0; tx_frame_buf[14+20+2+1]=0;
        chks.b[0]=0; chks.b[1]=0;
        ip_checksum(&tx_frame_buf[14+20],data_size);
-       // XXX Ok, this is weird: The upper byte of the revised checksum is correct,
-       // but the lower is wrong. But most of the time, the lower byte of the original
-       // checksum is ok. So we are leaving it.  But expect some ping replies to not
-       // get through, as a result
-       // *(unsigned short *)&tx_frame_buf[14+20+2] = checksum_result();
-       tx_frame_buf[14+20+2] = checksum_result();
+       *(unsigned short *)tx_frame_buf[14+20+2] = checksum_result();
        
        // 7. Update IP checksum
        tx_frame_buf[14+10]=0; tx_frame_buf[14+11]=0;
