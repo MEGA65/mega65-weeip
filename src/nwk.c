@@ -14,7 +14,12 @@
 
 // On MEGA65 we have deep enough stack we don't need to schedule sending
 // ACKs, we can just send them immediately.
-//#define INSTANT_ACK
+// #define INSTANT_ACK
+
+// INSTANT_CALLBACK must be enabled if you wish to have a window size that
+// corresponds to >1 packet, as otherwise the same segment will be read
+// for each of the packets that come between callback calls, as the same
+// buffer will get overwritten every time.
 #define INSTANT_CALLBACK
 
 /********************************************************************************
@@ -191,11 +196,10 @@ byte_t nwk_tick (byte_t sig)
 	      _sckt->timeout = TRUE;
 #ifdef INSTANT_ACK
 	      nwk_upstream(0);
-#else
+#endif
 	      debug_msg("scheduling nwk_upstream 0 0");
 	      task_cancel(nwk_upstream);
 	      task_add(nwk_upstream, 0, 0);
-#endif
             } 
         } else {
             /*
@@ -521,13 +525,12 @@ parse_tcp:
              */
             _sckt->toSend = ACK;
 #ifdef INSTANT_ACK
-	   nwk_upstream(0);
-#else
-	    debug_msg("asserting ack: Out-of-order rx");
-	    debug_msg("scheduling nwk_upstream 0 0");
-            task_cancel(nwk_upstream);
-            task_add(nwk_upstream, 0, 0);
+   	   nwk_upstream(0);
 #endif
+	   debug_msg("asserting ack: Out-of-order rx");
+	   debug_msg("scheduling nwk_upstream 0 0");
+	   task_cancel(nwk_upstream);
+	   task_add(nwk_upstream, 0, 0);
          }
          goto drop;
       }
@@ -767,12 +770,11 @@ done:
    if(_sckt->toSend) {
       _sckt->retry = RETRIES_TCP;
 #ifdef INSTANT_ACK
-	   nwk_upstream(0);
-#else
-     debug_msg("scheduling nwk_upstream 0 0");
+      nwk_upstream(0);
+#endif
+      debug_msg("scheduling nwk_upstream 0 0");
       task_cancel(nwk_upstream);
       task_add(nwk_upstream, 0, 0);
-#endif
    }
 
    /*
