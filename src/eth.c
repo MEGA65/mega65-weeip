@@ -123,7 +123,7 @@ uint8_t eth_task (uint8_t p)
     snprintf(dbg_msg,80,"%02d:%02d:%02d/%d eth rx\n",tm.tm_hour,tm.tm_min,tm.tm_sec,PEEK(0xD012));
     debug_msg(dbg_msg);
     for(i=0;i<2048;i+=16) {
-      lcopy(ETH_RX_BUFFER+i,sixteenbytes,16);
+      lcopy(ETH_RX_BUFFER+i,(unsigned long)sixteenbytes,16);
       snprintf(dbg_msg,80,"  %04x : ",i);
       for(j=0;j<16;j++) snprintf(&dbg_msg[strlen(dbg_msg)],80-strlen(dbg_msg)," %02x",sixteenbytes[j]);
       debug_msg(dbg_msg);
@@ -337,8 +337,6 @@ eth_arp_send
 void
 eth_init()
 {
-   uint16_t t;
-
    eth_drop();
 
    /*

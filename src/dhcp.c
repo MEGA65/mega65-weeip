@@ -145,8 +145,7 @@ bool_t dhcp_autoconfig(void)
 void dhcp_send_query(void)
 {
   uint16_t dhcp_query_len=0;
-  unsigned char field_len;
-  unsigned char prefix_position,i;
+  unsigned char i;
   IPV4 ip_broadcast;
   
   socket_select(dhcp_socket);

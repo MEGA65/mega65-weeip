@@ -24,6 +24,8 @@
 // buffer will get overwritten every time.
 #define INSTANT_CALLBACK
 
+// Enable ICMP PING if desired.
+// #define ENABLE_ICMP
 
 /********************************************************************************
  ********************************************************************************
@@ -187,7 +189,7 @@ byte_t nwk_tick (byte_t sig)
 #endif
                   break;
                default:
-		 _sckt->time = 0;TIMEOUT_TCP;
+		 _sckt->time = TIMEOUT_TCP;
                   _sckt->timeout = FALSE;
                   break;
             }
@@ -232,8 +234,6 @@ byte_t nwk_tick (byte_t sig)
  */
 byte_t nwk_upstream (byte_t sig)
 {
-   static int i;
-
 #ifdef DEBUG_ACK
    debug_msg("nwk_upstream called.");
 #endif
@@ -792,6 +792,7 @@ parse_tcp:
      Parse ICMP messages.
      Only care about ECHO REQUEST for now
    */
+#ifdef ENABLE_ICMP
    if (ICMPH(type)==0x08) {
      if (ICMPH(fcode)==0x00) {
        // ICMP Echo request: 
@@ -831,7 +832,7 @@ parse_tcp:
        eth_packet_send();
      }
    }
-   
+#endif   
 
    goto drop;
    

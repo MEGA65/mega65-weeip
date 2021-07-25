@@ -280,6 +280,10 @@ void fetch_page(char *hostname,int port,char *path)
   unsigned char busy;
 
 restart_fetch:
+
+  // Reset ethernet adapter
+  eth_init();
+
   
   // Reset video mode to C64 40 column mode while loading
   POKE(0xD054,0);
@@ -506,7 +510,6 @@ void show_page(void)
 
 void main(void)
 {
-  EUI48 mac;
   unsigned char i,hlen,url_ofs;
 
   // Enable logging of ethernet activity on the serial monitor interface
@@ -560,15 +563,6 @@ void main(void)
       } 
     if (PEEK(0xD610)==0x91) {
       scroll_down(-8);
-      POKE(0xD610,0);
-      }
-    if (PEEK(0xD610)==0x70) {
-      // Draw rainbow palette
-      for(i=0;i<256;i++) {
-        lfill(0x40000L+i*64,i,64);
-        lpoke(0x12000L+i*2,i&0xff);
-        lpoke(0x12000L+i*2+1,0x10+(i>>8));
-      }
       POKE(0xD610,0);
       }
     if (mouse_clicked()) {
