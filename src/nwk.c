@@ -154,7 +154,7 @@ byte_t nwk_tick (byte_t sig)
       /*
        * Do socket timing.
        */
-      _sckt->time--;
+      if (_sckt->time) _sckt->time--;
       if(_sckt->time == 0) {
          /*
           * Timeout.
@@ -257,8 +257,6 @@ byte_t nwk_upstream (byte_t sig)
    for_each(_sockets, _sckt) {     
       if(!_sckt->toSend) continue;                          // no message to send for this socket.
 
-      printf(">");
-      
 #ifdef DEBUG_ACK
       debug_msg("nwk_upstream sending a packet for socket");
 #endif
@@ -317,7 +315,7 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
 
 	 if (_sckt->remSeq.d-_sckt->remSeqStart.d)
-	   printf("ACKing %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d);
+	   printf("ACKing %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d+data_size);
 
          if(!_sckt->timeout) {
             /*
@@ -553,6 +551,8 @@ parse_tcp:
       _sckt->remSeq.d++;
       _flags |= SYN;
 
+      printf("SYN%d",_sckt->state);
+      
    } else {
       /*
        * Test remote sequence number.
@@ -589,6 +589,13 @@ parse_tcp:
        * Update stream sequence number.
        */
       _sckt->remSeq.d += data_size;
+
+      // And ACK every packet, because we don't have buffer space for multiple ones,
+      // and its thus very easy for the sender to not know where we are upto, and for
+      // everything to generally get very confused if we have encountered any out-of-order
+      // packets.
+      _sckt->toSend = ACK;
+      
    }
 
    // XXX PGS moved this lower down, so that we can check any included data has the correct sequence
