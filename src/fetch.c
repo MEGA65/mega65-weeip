@@ -64,7 +64,7 @@ unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,sc
 unsigned short line_count;
 
 SOCKET *s;
-byte_t buf[1024];
+byte_t *buf=0xC000;
 
 /* Function that is used as a call-back on socket events
  * */
@@ -82,7 +82,6 @@ byte_t comunica (byte_t p)
 	socket_send(buf, strlen(buf));
 	break;
       case WEEIP_EV_DISCONNECT:
-         socket_release(s);
          break;
       case WEEIP_EV_DATA:
 	// printf("Received %d bytes.\n",s->rx_data);
@@ -151,13 +150,13 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-	      if (0) printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
+#if 0
+	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
+#endif
 	    }
 	    break;
 	  case HEADSKIP+8:
-            POKE(0xD020,PEEK(0xD020)+1);
-
             // Work out how many bytes we can handle in one go.
             count = s->rx_data - i;
             if (count>block_len) count=block_len;
@@ -295,15 +294,13 @@ restart_fetch:
 
   // Clear all memory out from last page
   lfill(0x12000L,0,0xD800);
-  lfill(0x40000L,0,0x8000);
-  lfill(0x48000L,0,0x8000);
-  lfill(0x50000L,0,0x8000);
-  lfill(0x58000L,0,0x8000);
+  lfill(0x40000L,0,0x0000); // 0 means 64KB
+  lfill(0x50000L,0,0x0000);
   
   // Clear any partial match to h65+$ff header
   last_bytes[3]=0;
   
-  printf("Resolving hostname %s\n",hostname);
+  printf("Resolving %s\n",hostname);
   if (dns_hostname_to_ip(hostname,&a)) {
     printf("Resolved to %d.%d.%d.%d\n",
 	   a.b[0],a.b[1],a.b[2],a.b[3]);
@@ -318,7 +315,7 @@ restart_fetch:
 	   "get %s http/1.1\n\r"
 	   "hOST: %s\n\r"
 	   "aCCEPT: */*\n\r"
-	   "uSER-aGENT: mega-browser mega65-weeip/20210722\n\r"
+	   "uSER-aGENT: fetch mega65-weeip/20210722\n\r"
 	   "\n\r",
 	   path,hostname);
   // Demunge PETSCII a bit
@@ -328,17 +325,13 @@ restart_fetch:
     
   s = socket_create(SOCKET_TCP);
   socket_set_callback(comunica);
-  socket_set_rx_buffer(buf, 1024);
+  socket_set_rx_buffer(buf, 2048);
   socket_connect(&a,port);
 
-  // Erase screen and colour RAM
-lfill(0x12000L,0x00,0x6000);
- for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
-lfill(0xFF82000L,0x00,0x6000);
-  
+  // Erase screen
+  for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
   while(1) {
     // XXX Actually only call it periodically
-    POKE(0x0427,PEEK(0x427)+1);
 
     task_periodic();
 
@@ -370,6 +363,8 @@ lfill(0xFF82000L,0x00,0x6000);
     }
   }
 
+  while(!mouse_clicked()) continue;
+
 }
 
 unsigned char mouse_colours[8]={0x01,0x0a,0x0F,0x0C,0x0B,0x0C,0x0a,0x0F};
@@ -395,14 +390,12 @@ void update_mouse_position(unsigned char do_scroll)
 
   mouse_update_position(&mx,&my);
   if (my<50) {
-    POKE(0xE020,50-my);
     // Mouse is in top border, so scroll up by that amount
     scroll_down(my-50L);
     mouse_warp_to(mx,50);
     my=50;
   } else if (my>249) {
     // Mouse is in bottom border, so scroll down by that amount
-    POKE(0xE021,my-249);
     scroll_down((my-249));
     mouse_warp_to(mx,249);
     my=249;
@@ -425,10 +418,6 @@ void update_mouse_position(unsigned char do_scroll)
       i--;
       mouse_link_address=0x18002+6*i;
       lcopy(mouse_link_address,(unsigned long)&link_box[0],6);
-
-      lcopy((unsigned long)&link_box[0],0xE0F8,6);
-      POKE(0xE0FE,mx);
-      POKE(0xE0FF,my);
 
       mouse_link_address=0;
       if (link_box[2]>mx) continue;
@@ -495,9 +484,6 @@ void show_page(void)
       screen_address_offset_max=(line_width*2)*(line_count-50);
       max_position=(line_count-50)*8;
     }
-POKE(0xE010,line_count);
-POKE(0xE011,line_count>>8);
-    lcopy((unsigned long)&screen_address_offset_max,0xe000,4);
 
 #if 0
   while(1) {
