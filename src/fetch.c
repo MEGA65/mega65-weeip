@@ -368,8 +368,6 @@ restart_fetch:
     }
   }
 
-  while(!mouse_clicked()) continue;
-
 }
 
 unsigned char mouse_colours[8]={0x01,0x0a,0x0F,0x0C,0x0B,0x0C,0x0a,0x0F};
