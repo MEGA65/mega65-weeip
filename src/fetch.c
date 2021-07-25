@@ -53,6 +53,7 @@ byte_t pisca (byte_t p)
 }
 
 #define H65_TOONEW 1
+#define H65_BADADDR 2
 #define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
@@ -133,11 +134,17 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+5: ((char *)&block_len)[1]=c; break;
 	  case HEADSKIP+6: ((char *)&block_len)[2]=c; break;
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
-	    // Skip empty blocks
+	    // Skip empty block
 	    if (block_len==0) {
 	      page_parse_state=HEADSKIP-1;
 	      h65_error=H65_DONE;
-	    } else {
+	    } else if (block_addr<0xf000) {
+              h65_error=H65_BADADDR;
+              return 0;
+            } else if (block_len>0x20000) {
+              h65_error=H65_BADADDR;
+              return 0;
+            } else {
 	      // Block data
 	      if (0) printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
@@ -422,7 +429,7 @@ void main(void)
   unsigned char i,hlen,url_ofs;
 
   // Enable logging of ethernet activity on the serial monitor interface
-  eth_log_mode=ETH_LOG_RX|ETH_LOG_TX;
+//  eth_log_mode=ETH_LOG_RX|ETH_LOG_TX;
 
   POKE(0,65);
   mega65_io_enable();
@@ -434,6 +441,12 @@ void main(void)
   mouse_bind_to_sprite(0);
   mouse_update_pointer();
   mouse_set_bounding_box(24,50-20,320+23,250+20);
+
+#ifdef DEBUG_WAIT
+  // Wait for keypress to allow me to connect debugger
+  while(!PEEK(0xD610)) continue;
+  POKE(0xD610,0);
+#endif
 
   prepare_network();
 
