@@ -104,6 +104,7 @@ typedef struct {
 	IPV4 remIP;                               ///< Remote IP address.
 	_uint32_t seq;                            ///< Local sequence number.
 	_uint32_t remSeq;                         ///< Remote sequence number.
+	_uint32_t remSeqStart;                    ///< Initial remote sequence number.
 } SOCKET;
 
 extern SOCKET *_sckt;
