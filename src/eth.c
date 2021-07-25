@@ -206,8 +206,6 @@ void eth_write(uint8_t *buf,uint16_t len)
   eth_tx_len+=len;
 }
 
-void dump_bytes(char *msg,uint8_t *d,int count);
-
 /**
  * Finish transfering an IP packet to the ethernet controller and start transmission.
  */
