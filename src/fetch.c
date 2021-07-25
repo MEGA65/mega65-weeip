@@ -57,6 +57,7 @@ byte_t pisca (byte_t p)
 
 #define H65_TOONEW 1
 #define H65_BADADDR 2
+#define H65_SENDHTTP 3
 #define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
@@ -79,7 +80,11 @@ byte_t comunica (byte_t p)
       case WEEIP_EV_CONNECT:
 	printf("Connected...\n");
 	// Buf is setup in fetch_page()
-	socket_send(buf, strlen(buf));
+        if (!socket_send(buf, strlen(buf))) 
+	  {
+	    printf("Error sending HTTP request.\n");
+	    h65_error=H65_SENDHTTP;
+	  }
 	break;
       case WEEIP_EV_DISCONNECT:
          break;
