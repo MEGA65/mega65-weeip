@@ -209,8 +209,6 @@ void prepare_network(void)
   POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
   printf("%c",0x93);
   
-  // Get MAC address from ethernet controller
-  for(i=0;i<6;i++) mac_local.b[i] = PEEK(0xD6E9+i);
   printf("My MAC address is %02x:%02x:%02x:%02x:%02x:%02x\n",
 	 mac_local.b[0],mac_local.b[1],mac_local.b[2],
 	 mac_local.b[3],mac_local.b[4],mac_local.b[5]);
@@ -220,6 +218,7 @@ void prepare_network(void)
   interrupt_handler();   
 
   // Do DHCP auto-configuration
+  dhcp_configured=0;
   printf("Configuring network via DHCP\n");
   dhcp_autoconfig();
   while(!dhcp_configured) {
@@ -281,10 +280,6 @@ void fetch_page(char *hostname,int port,char *path)
 
 restart_fetch:
 
-  // Reset ethernet adapter
-  eth_init();
-
-  
   // Reset video mode to C64 40 column mode while loading
   POKE(0xD054,0);
   POKE(0xD031,0);
@@ -519,6 +514,9 @@ void main(void)
   mega65_io_enable();
   srand(random32(0));
 
+  // Give ethernet interface time to auto negotiate etc
+  eth_init();
+
   // Get initial mouse position
   mouse_update_position(NULL,NULL);
   mouse_warp_to(160,100);
@@ -586,6 +584,7 @@ void main(void)
 	else { path[0]='/'; path[1]=0; }
 	prepare_network();
         fetch_page(hostname,port,path);
+	show_page();
       }
     }
 

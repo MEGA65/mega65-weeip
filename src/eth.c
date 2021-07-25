@@ -117,6 +117,7 @@ uint8_t eth_task (uint8_t p)
    * A packet is available.
    */
 
+  printf("-");
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);
     debug_msg("");
@@ -352,14 +353,9 @@ eth_init()
    POKE(0xD6E5,(PEEK(0xD6E5)&0xf3)|(1<<2));   
    
    /*
-    * Configure MAC address.
+    * Read MAC address from ETH controller
     */
-   POKE(0xD6E9,mac_local.b[0]);
-   POKE(0xD6EA,mac_local.b[1]);
-   POKE(0xD6EB,mac_local.b[2]);
-   POKE(0xD6EC,mac_local.b[3]);
-   POKE(0xD6ED,mac_local.b[4]);
-   POKE(0xD6EE,mac_local.b[5]);
+   lcopy(0xFFD36E9,(unsigned long)&mac_local.b[0],6);
 
    // Reset, then release from reset and reset TX FSM
    POKE(0xd6e0,0);
