@@ -200,12 +200,22 @@ void dump_bytes(char *msg,uint8_t *d,int count);
 
 void update_mouse_position(unsigned char do_scroll);
 
+void c64_40columns(void)
+{
+  // Reset video mode to C64 40 column mode while loading
+  POKE(0xD054,0);
+  POKE(0xD031,0);
+  POKE(0xD011,0x1B);
+  POKE(0xD016,0xC8);
+  POKE(0xD018,0x16);
+}
 
 void prepare_network(void)
 {
   unsigned char i;
 
   // Black screen with green text during network setup
+  c64_40columns();
   POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
   printf("%c",0x93);
   
@@ -278,17 +288,13 @@ void fetch_page(char *hostname,int port,char *path)
   IPV4 a;
   unsigned char busy;
 
-restart_fetch:
-
-  // Reset video mode to C64 40 column mode while loading
-  POKE(0xD054,0);
-  POKE(0xD031,0);
-  POKE(0xD011,0x1B);
-  POKE(0xD016,0xC8);
-  POKE(0xD018,0x16);
   POKE(0x0286,0x0e);
   POKE(0xD020,0x0E);
   POKE(0xD021,0x06);
+  c64_40columns();
+  
+restart_fetch:
+
   printf("%cFetching %chttp://%s:%d%s\n",0x93,
 	 5,hostname,port,path);
   POKE(0x0286,0x0e);
@@ -407,7 +413,7 @@ void update_mouse_position(unsigned char do_scroll)
 
     // Work out mouse position
     // Mouse is in H320, V200, so only 4 mouse pixels per character
-    my=(position+my-50)/4;
+    my=((position/2)+my-50)/4;
     mx=(mx-24)/4;
 
     // Don't check mouse clicks until scrolling is done  
@@ -582,7 +588,6 @@ void main(void)
 	}
 	if (strlen(&url[url_ofs])<128) { strcpy(path,&url[url_ofs]); }
 	else { path[0]='/'; path[1]=0; }
-	prepare_network();
         fetch_page(hostname,port,path);
 	show_page();
       }
