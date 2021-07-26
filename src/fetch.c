@@ -49,6 +49,7 @@ unsigned long block_addr,block_len;
 unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
 unsigned short line_count;
 
+unsigned char disconnected=0;
 SOCKET *s;
 byte_t *buf=0xC000;
 
@@ -72,6 +73,7 @@ byte_t comunica (byte_t p)
 	  }
 	break;
       case WEEIP_EV_DISCONNECT:
+	disconnected=1;
          break;
       case WEEIP_EV_DATA:
 	// printf("Received %d bytes.\n",s->rx_data);
@@ -274,6 +276,8 @@ void fetch_page(char *hostname,int port,char *path)
   IPV4 a;
   unsigned char busy;
 
+  disconnected=0;
+  
   POKE(0x0286,0x0e);
   POKE(0xD020,0x0E);
   POKE(0xD021,0x06);
@@ -326,7 +330,7 @@ restart_fetch:
 
   // Erase screen
   for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
-  while(1) {
+  while(!disconnected) {
     // XXX Actually only call it periodically
 
     task_periodic();
@@ -351,7 +355,10 @@ restart_fetch:
   // sent.
   printf("Disconnecting...\n");
   socket_disconnect(s);
-  for(i=0;0<16;i++) task_periodic();
+  for(i=0;0<16;i++) {
+    task_periodic();
+    if (disconnected) break;
+  }
   // And throw away our record of the TCP connection, just to be sure.
   socket_release(s);
   printf("Disconnected.\n");
