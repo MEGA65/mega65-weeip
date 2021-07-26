@@ -142,7 +142,7 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-#if 0
+#if 1
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
 #endif
@@ -154,6 +154,12 @@ byte_t comunica (byte_t p)
             if (count>block_len) count=block_len;
 
             // Stash them and update it
+	    printf("  %02x %02x %02x %02x... -> $%08lx\n",
+		   ((unsigned char *)s->rx)[0],
+		   ((unsigned char *)s->rx)[1],
+		   ((unsigned char *)s->rx)[2],
+		   ((unsigned char *)s->rx)[3],
+		   block_addr);
             lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
 	    block_addr+=count;
 	    block_len-=count;

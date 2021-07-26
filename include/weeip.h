@@ -101,7 +101,7 @@ typedef struct {
 	uint16_t tx_size;                         ///< Size of transmit packet.
 	uint16_t rx_data;                         ///< Size of received packet.
         uint16_t rx_oo_start;                     ///< Start of out-of-order held data
-        uint16_t rx_oo_len;                       ///< Length of out-of-order held data
+        uint16_t rx_oo_end;                       ///< End of out-of-order held data
   
   
 	task_t callback;                          ///< Task for socket management.

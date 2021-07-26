@@ -18,12 +18,6 @@
 // Report various things on serial monitor interface
 // #define DEBUG_ACK
 
-// INSTANT_CALLBACK must be enabled if you wish to have a window size that
-// corresponds to >1 packet, as otherwise the same segment will be read
-// for each of the packets that come between callback calls, as the same
-// buffer will get overwritten every time.
-#define INSTANT_CALLBACK
-
 // Enable ICMP PING if desired.
 // #define ENABLE_ICMP
 
@@ -35,6 +29,7 @@
 */
 #define SOCKET_TIMEOUT(S) (TIMEOUT_TCP + 32*(RETRIES_TCP - S->retry))
 //#define DEBUG_TCP_RETRIES
+
 
 /********************************************************************************
  ********************************************************************************
@@ -117,31 +112,8 @@ byte_t default_header[] = {
  */
 byte_t _flags;
 
-/**
- * Create an IP address from a string like "0.0.0.0"
- * @param str String to convert.
- * @return IP address.
- */
-//IPV4
-//ip_address(static char rom *str)
-//{
-//   IPV4 res;
-//   char c;
-//   register byte_t i;
-//
-//   res.d = 0;
-//   for(i=0; (*str) && (i<4); str++) {
-//      c = *str;
-//      if(c == '.') {
-//         i++;
-//         continue;
-//      }
-//      if(!isdigit(c)) continue;
-//      res.b[i] = 10 * res.b[i] + (c - '0');
-//   }
-//
-//   return res;
-//}
+void remove_rx_data(SOCKET *_sckt);
+
 
 /**
  * TCP timing control task.
@@ -224,11 +196,8 @@ byte_t nwk_tick (byte_t sig)
              * Socket down.
              */
             _sckt->state = _IDLE;
-#ifdef INSTANT_CALLBACK
 	    _sckt->callback(WEEIP_EV_DISCONNECT);
-#else
-            task_add(_sckt->callback, 0, WEEIP_EV_DISCONNECT,"callback");
-#endif
+	    remove_rx_data(_sckt);
          }
       }
    } 
@@ -240,12 +209,28 @@ byte_t nwk_tick (byte_t sig)
    return 0;
 }
 
+void remove_rx_data(SOCKET *_sckt)
+{
+  if (!_sckt->rx_data) {
+    _sckt->rx_data=0;
+    return;
+  }
+  if (_sckt->rx_oo_start) {
+    lcopy((unsigned long)_sckt->rx + _sckt->rx_data, (unsigned long)_sckt->rx,
+	  _sckt->rx_oo_end - _sckt->rx_data);
+    _sckt->rx_oo_start -= _sckt->rx_data;
+    _sckt->rx_oo_end -= _sckt->rx_data;
+  }
+  _sckt->rx_data=0;
+  
+}
+
 void compute_window_size(SOCKET *_sckt)
 {
   unsigned short available_window=0;
   // Now patch the header to take account of how much buffer space we _actually_ have available
   if (_sckt->rx_data>available_window) available_window=_sckt->rx_data;
-  if ((_sckt->rx_oo_start+_sckt->rx_oo_len)>available_window) available_window=_sckt->rx_oo_start+_sckt->rx_oo_len;
+  if (_sckt->rx_oo_end>available_window) available_window=_sckt->rx_oo_end;
   available_window=_sckt->rx_size - available_window;
   default_header[WINDOW_SIZE_OFFSET+0]=available_window>>8;
   default_header[WINDOW_SIZE_OFFSET+1]=available_window>>0;
@@ -380,11 +365,8 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * Tell UDP that data was sent (no acknowledge).
           */
-#ifdef INSTANT_CALLBACK
 	 _sckt->callback(WEEIP_EV_DATA_SENT);
-#else
-         task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT,"callback");
-#endif
+	 remove_rx_data(_sckt);
       }
       
       /*
@@ -441,6 +423,26 @@ unsigned long byte_order_swap_d(unsigned long in)
   ((unsigned char *)&out)[2]=((unsigned char *)&in)[1];
   ((unsigned char *)&out)[3]=((unsigned char *)&in)[0];
   return out;
+}
+
+void nwk_schedule_oo_ack(SOCKET *_sckt)
+{
+  /*
+   * Out of order, send our number.
+   */
+  printf("request OOO ack: %ld != %ld\n",
+	 byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);
+  
+  _sckt->toSend = ACK;
+#ifdef INSTANT_ACK
+  nwk_upstream(0);
+#endif
+#ifdef DEBUG_ACK
+  debug_msg("asserting ack: Out-of-order rx");
+  debug_msg("scheduling nwk_upstream 0 0");
+#endif
+  task_cancel(nwk_upstream);
+  task_add(nwk_upstream, 0, 0,"upstream");
 }
 
 /**
@@ -588,38 +590,97 @@ parse_tcp:
       /*
        * Test remote sequence number.
        */
+
+     if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
+     // XXX Correct buffer offset processing to handle variable
+     // header lengths
+     data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
+     
      for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
      rel_sequence.d-=_sckt->remSeq.d;
-     if (rel_sequence.d) {
-	printf("request OOO ack: %ld != %ld\n",
-	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);
-	
-         if(data_size) {
-            /*
-             * Out of order, send our number.
-             */
-            _sckt->toSend = ACK;
-#ifdef INSTANT_ACK
-   	   nwk_upstream(0);
-#endif
-#ifdef DEBUG_ACK
-	   debug_msg("asserting ack: Out-of-order rx");
-	   debug_msg("scheduling nwk_upstream 0 0");
-#endif
-	   task_cancel(nwk_upstream);
-	   task_add(nwk_upstream, 0, 0,"upstream");
-         }
-         goto drop;
-      }
 
-      printf("Received TCP segment %ld+\n",
+     printf("\n%5ld: rel_seq=%ld, rx:%d,%d to %d\n",
+	    _sckt->remSeq.d-_sckt->remSeqStart.d,
+	    rel_sequence.d,
+	    _sckt->rx_data,
+	    _sckt->rx_oo_start,_sckt->rx_oo_end);
+     
+     if (rel_sequence.d>_sckt->rx_size || rel_sequence.d+data_size>_sckt->rx_size) {
+       // Ignore segments that we can't possibly handle
+       printf("drop(a)");
+       if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
+     } else if (rel_sequence.w[0]==_sckt->rx_data) {
+       // Copy to end of data in RX buffer
+       printf("rx append %d@%d",data_size,_sckt->rx_data);
+       if (data_size+_sckt->rx_data>_sckt->rx_size)
+	 data_size=_sckt->rx_size-_sckt->rx_data;
+       if (data_size) {
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx_data + (uint32_t)_sckt->rx, data_size);
+       }
+       _sckt->rx_data += data_size;       
+     } else if (rel_sequence.w[0]==_sckt->rx_oo_end) {
+       // Copy to end of OO data in RX buffer
+       printf("oo append");
+       if (data_size+_sckt->rx_oo_end>_sckt->rx_size)
+	 data_size=_sckt->rx_size-_sckt->rx_oo_end;
+       if (data_size) {
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx_oo_end + (uint32_t)_sckt->rx, data_size);	 
+       }
+       _sckt->rx_oo_end += data_size;
+     } else if ((rel_sequence.w[0]+data_size)==_sckt->rx_oo_start) {
+       // Copy to start of OO data in RX buffer
+       printf("oo prepend");
+       if (data_size) {
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,
+	       rel_sequence.w[0] + ((unsigned long)_sckt->rx), data_size);	 
+       }
+       _sckt->rx_oo_end += rel_sequence.w[0];
+     } else if ((rel_sequence.w[0]+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
+       // It belongs in the window, but not at the start, so put in RX OO buffer
+       printf("oo stash");
+       if (data_size) {
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,rel_sequence.w[0] + (uint32_t)_sckt->rx, data_size);	 
+       }
+       _sckt->rx_oo_start = rel_sequence.w[0];
+       _sckt->rx_oo_end = rel_sequence.w[0] + data_size;
+     } else if (rel_sequence.d) {
+       printf("drop(b)");
+	if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
+     } else {
+       // rel_sequence.d == 0, so copy into start of buffer
+       if(_sckt->rx) {
+	 printf("stashing %d bytes\n",data_size);
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,(uint32_t)_sckt->rx, data_size);
+	 _sckt->rx_data = data_size;
+	 
+       }
+       
+     }
+
+     while(!PEEK(0xD610)) continue; POKE(0xD610,0);
+     
+     // Merge received data and RX OO area, if possible
+     if (_sckt->rx_data&&_sckt->rx_data==_sckt->rx_oo_start) {
+       printf("Merge OO for %d bytes\n",_sckt->rx_oo_end);
+       _sckt->rx_data=_sckt->rx_oo_end;
+       _sckt->rx_oo_end=0;
+     }
+     
+      printf("TCP seg %ld+\n",
 	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);      
       
       /*
        * Update stream sequence number.
        */
-      _sckt->remSeq.d += data_size;
+      _sckt->remSeq.d += _sckt->rx_data;
 
+      // Deliver data to programme
+      if (_sckt->rx_data) {
+	printf("Deliver %d bytes\n",_sckt->rx_data);
+	_sckt->callback(WEEIP_EV_DATA_SENT);
+	remove_rx_data(_sckt);
+      }
+      
       // And ACK every packet, because we don't have buffer space for multiple ones,
       // and its thus very easy for the sender to not know where we are upto, and for
       // everything to generally get very confused if we have encountered any out-of-order
@@ -731,29 +792,12 @@ parse_tcp:
              * The peer acknowledged the previously sent data.
              */
             _sckt->state = _CONNECT;
-#ifdef INSTANT_CALLBACK
-	    _sckt->callback(WEEIP_EV_DATA_SENT);
-#else
-            task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT,"callback");
-#endif
          }         
 
          if(data_size) {
             /*
              * Data received.
-             * Copy data into user socket buffer.
              */
-            if(_sckt->rx) {
-               if(data_size > _sckt->rx_size) 
-                  data_size = _sckt->rx_size;
-	       // XXX Correct buffer offset processing to handle variable
-	       // header lengths
-	       data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
-	       
-               lcopy(ETH_RX_BUFFER+16+data_ofs,(uint32_t)_sckt->rx, data_size);
-               _sckt->rx_data = data_size;
-
-            }
 #ifdef DEBUG_ACK
 	    debug_msg("asserting ack: data received");
 #endif
@@ -895,11 +939,8 @@ done:
     * Add socket management task.
     */
    if(ev != WEEIP_EV_NONE) {
-#ifdef INSTANT_CALLBACK
      _sckt->callback(ev);
-#else
-     task_add(_sckt->callback, 0, ev,"callback");
-#endif
+     remove_rx_data(_sckt);
    }
 
 drop:

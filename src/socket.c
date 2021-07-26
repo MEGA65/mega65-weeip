@@ -127,7 +127,7 @@ socket_set_rx_buffer
    _sckt->rx_size = size;
    _sckt->rx_data = 0;
    _sckt->rx_oo_start = 0;
-   _sckt->rx_oo_len = 0;
+   _sckt->rx_oo_end = 0;
 }
 
 /**

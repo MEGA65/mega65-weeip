@@ -205,7 +205,7 @@ uint8_t eth_task (uint8_t p)
 void eth_write(uint8_t *buf,uint16_t len)
 {
   if (len+eth_tx_len>=MTU) return;
-  lcopy((uint32_t)buf,&tx_frame_buf[eth_tx_len],len);
+  lcopy((uint32_t)buf,(unsigned long)&tx_frame_buf[eth_tx_len],len);
   eth_tx_len+=len;
 }
 
