@@ -207,7 +207,7 @@ socket_connect
    _sckt->toSend = SYN;
    _sckt->retry = RETRIES_TCP;
    task_cancel(nwk_upstream);
-   task_add(nwk_upstream, 0, 0);
+   task_add(nwk_upstream, 0, 0,"upstream");
    return TRUE;
 }
 
@@ -236,7 +236,7 @@ socket_send
    _sckt->toSend = ACK | PSH;
    _sckt->retry = RETRIES_TCP;
    task_cancel(nwk_upstream);
-   task_add(nwk_upstream, 0, 0);
+   task_add(nwk_upstream, 0, 0,"upstream");
    return TRUE;
 }
 
@@ -278,7 +278,7 @@ socket_disconnect()
    _sckt->retry = RETRIES_TCP;
 
    task_cancel(nwk_upstream);
-   task_add(nwk_upstream, 0, 0);
+   task_add(nwk_upstream, 0, 0,"upstream");
    return TRUE;
 }
 
@@ -293,7 +293,7 @@ socket_reset()
    if(_sckt->state != _IDLE) {
       _sckt->toSend = RST;
       task_cancel(nwk_upstream);
-      task_add(nwk_upstream, 0, 0);
+      task_add(nwk_upstream, 0, 0,"upstream");
    }
    _sckt->state = _IDLE;
 }
@@ -308,7 +308,7 @@ weeip_init()
    _sckt = _sockets;
    port_used = PORT_MIN + (rand16(PORT_MAX - PORT_MIN+1));
    id = rand16(0);
-   task_add(nwk_tick, TICK_TCP, 0);
+   task_add(nwk_tick, TICK_TCP, 0,"nwktick");
    eth_init();
    arp_init();
 }

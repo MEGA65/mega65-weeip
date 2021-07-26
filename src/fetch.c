@@ -37,21 +37,6 @@ unsigned char mouse_pointer_sprite[63]={
 0x00,0x00,0x00
 };
 
-void interrupt_handler(void)
-{
-      tick();
-      i_task_cancel(eth_task);
-      i_task_add(eth_task, 0, 0);
-}
-
-/* No idea what this does. */
-byte_t pisca (byte_t p)
-{
-  // Just adds itself to be run periodically?
-   task_add(pisca, 32, !p);
-   return 0; // XXX and what should it return?
-}
-
 // Wait for key press before starting
 //#define DEBUG_WAIT
 
@@ -225,7 +210,8 @@ void prepare_network(void)
   
   // Setup WeeIP
   weeip_init();
-  interrupt_handler();   
+  task_cancel(eth_task);
+  task_add(eth_task, 0, 0,"eth");
 
   // Do DHCP auto-configuration
   dhcp_configured=0;
@@ -361,17 +347,14 @@ restart_fetch:
     }
   }
 
-  // Close socket, and call network loop until it really is closed
+  // Close socket, and call network loop a few times to make sure the FIN ACK gets
+  // sent.
+  printf("Disconnecting...\n");
   socket_disconnect(s);
-  busy=1;
-  while(busy) {
-    task_periodic();
-    busy=0;  
-    for_each(_sockets, _sckt) {
-      if(_sckt->type != SOCKET_TCP) continue;               // UDP socket or unused.
-      if (_sckt->state!=_IDLE) busy=1;
-    }
-  }
+  for(i=0;0<16;i++) task_periodic();
+  // And throw away our record of the TCP connection, just to be sure.
+  socket_release(s);
+  printf("Disconnected.\n");
 
 }
 
@@ -504,7 +487,7 @@ void show_page(void)
   }
 }
 
-  char hostname[64]="192.168.178.31";
+  char hostname[64]="203.28.176.1";
   char path[128]="/INDEX.H65";
   char url[256]="";
   int port=8000;

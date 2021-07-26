@@ -23,6 +23,8 @@
 
 #define _PROMISCUOUS
 
+#define NOCRCCHECK
+
 static unsigned char eth_log_mode=0;
 
 static uint16_t eth_size;        // Packet size.
@@ -104,7 +106,7 @@ uint8_t eth_task (uint8_t p)
   struct m65_tm tm;
 
   if(!(PEEK(0xD6E1)&0x20)) {
-    task_add(eth_task, 10, 0);
+    task_add(eth_task, 10, 0,"ethtask");
     return 0;
   }
 
@@ -194,7 +196,7 @@ uint8_t eth_task (uint8_t p)
   eth_drop();
   // We processed a packet, so schedule ourselves immediately, in case there
   // are more packets coming.
-  task_add(eth_task, 0, 0);                    // try again to check more packets.
+  task_add(eth_task, 0, 0,"ethtask");                    // try again to check more packets.
   return 0;
 }
 
@@ -280,6 +282,7 @@ eth_ip_send()
 
    if(!query_cache(&ip, &mac)) {                   // find MAC
       arp_query(&ip);                              // yet unknown IP, query MAC and fail.
+      printf("A");
       return FALSE;
    }
 
@@ -348,6 +351,10 @@ eth_init()
 #else
    POKE(0xD6E5,PEEK(0xD6E5)|0x01);
 #endif
+#ifdef NOCRCCHECK
+   POKE(0xD6E5,PEEK(0xD6E5)|0x02);
+#endif
+
 
    // Set ETH TX Phase to 1
    POKE(0xD6E5,(PEEK(0xD6E5)&0xf3)|(1<<2));   

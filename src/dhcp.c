@@ -118,7 +118,7 @@ byte_t dhcp_autoconfig_retry(byte_t b)
     
     // This will automatically re-add us to the list
     dhcp_send_query();
-    task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0);
+    task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0,"dhcprtry");
   }
   return 0;
 }
@@ -137,7 +137,7 @@ bool_t dhcp_autoconfig(void)
   dhcp_configured=0;
 
   // Schedule ourselves to retransmit DHCP query until we are configured
-  task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0);
+  task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0,"dhcprtry");
   
   
 }
