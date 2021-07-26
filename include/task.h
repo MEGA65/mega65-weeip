@@ -16,6 +16,7 @@ typedef struct {
    task_t fun;                ///< Task address.
    byte_t par;                ///< Parameter value.
    byte_t tmr;                ///< Time to wait before calling.
+  char name[8+1];             ///< Name of task
 } tid_t;
 
 /**
@@ -41,11 +42,8 @@ extern bool_t wdt_tick;
 extern void tick();
 extern void task_init();
 extern void task_periodic(void);
-extern bool_t task_add(task_t f, byte_t tempo, byte_t par);
-extern bool_t i_task_add(task_t f, byte_t tempo, byte_t par);
+extern bool_t task_add(task_t f, byte_t tempo, byte_t par,char *name);
 extern bool_t task_cancel(task_t f);
-extern bool_t i_task_cancel(task_t f);
 extern void task_cancel_all();
-extern void i_task_cancel_all();
 
 #endif

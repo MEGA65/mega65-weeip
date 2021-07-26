@@ -11,6 +11,12 @@
 #include <stdio.h>
 #include "debug.h"
 
+// Periodically show the scheduled tasks 
+//#define DEBUG_TASKS
+// Show each task as it is called
+#define DEBUG_TASK_CALLS
+#define DEBUG_NAMED_TASK "ethtask"
+
 /********************************************************************************
  ********************************************************************************
  * The MIT License (MIT)
@@ -116,8 +122,9 @@ task_sleep
 bool_t 
 task_add
    (task_t f, 
-   byte_t tempo, 
-   byte_t par)
+    byte_t tempo, 
+    byte_t par,
+    char *name)
 {
    bool_t ok;
    volatile tid_t *task;
@@ -139,6 +146,8 @@ task_add
        task->fun = f;
        task->par = par;
        task->tmr = tempo;
+       strncpy(task->name,name,8);
+       task->name[8]=0;
        ok = TRUE;
        break;
      }
@@ -187,92 +196,6 @@ task_cancel_all()
 {
   volatile tid_t *task;
   printf("Cancel all tasks.\n");
-   for_each(_tasks, task) {
-      task->fun = NULL;
-   }
-}
-
-/**
- * Create a task for execution.
- * To be used into the interrupt thread.
- * @param f Task address.
- * @param time Time to call (0 = immediate).
- * @param par Task parameter.
- * @return TRUE if successful.
- */
-bool_t
-i_task_add
-   (task_t f,
-   byte_t tempo,
-   byte_t par)
-{
-  volatile tid_t *task;
-
-   if(f == NULL) return FALSE;
-
-   /*
-    * Search the task list for an empty slot.
-    */
-   for_each(_tasks, task) {
-      if(task->fun == NULL) {
-         /*
-          * Empty slot found.
-          * Save task information.
-          */
-         task->fun = f;
-         task->par = par;
-         task->tmr = tempo;
-         return TRUE;
-      }
-   }
-
-   /*
-    * The list is full by now, failed.
-    */
-   return FALSE;
-}
-
-/**
- * Cancel the execution of a task.
- * To be used into the interrupt thread.
- * @param f Task address.
- * @return FALSE if the task was already called.
- */
-bool_t
-i_task_cancel
-   (task_t f)
-{
-  volatile tid_t *task;
-
-   if(f == NULL) return FALSE;
-
-   /*
-    * Search for the task in the list.
-    */
-   for_each(_tasks, task) {
-      if(task->fun == f) {
-         /*
-          * Found. Remove it.
-          */
-         task->fun = NULL;
-         return TRUE;
-      }
-   }
-
-   /*
-    * Not found, failed.
-    */
-   return FALSE;
-}
-
-/**
- * Cancel all tasks.
- * To be used into the interrupt thread.
- */
-void
-i_task_cancel_all()
-{
-  volatile tid_t *task;
    for_each(_tasks, task) {
       task->fun = NULL;
    }
@@ -340,7 +263,15 @@ void task_periodic(void)
    static byte_t (*f)(byte_t);
    volatile static tid_t *task;
    static bool_t exe;
-
+#ifdef DEBUG_TASK_CALLS
+   static task_t last_task_fun = NULL;
+   static unsigned char rev_toggle = 0x00;
+#endif
+#ifdef DEBUG_TASKS
+   static char show_task_list_n=0;
+   if (!show_task_list_n) printf("Tasks=");
+#endif
+   
    /*
     * Call pending tasks.
     */
@@ -349,12 +280,32 @@ void task_periodic(void)
      f = task->fun;
      if(f == NULL) continue;
 
+#ifdef DEBUG_TASKS
+     if (!show_task_list_n) printf("%s,",task->name);
+#endif
+     
      /*
       * Check task timing.
       */
      exe = TRUE;
      if(task->tmr) continue;
-     
+
+#ifdef DEBUG_TASK_CALLS
+#ifdef DEBUG_NAMED_TASK
+     if (strstr(DEBUG_NAMED_TASK,task->name)) {
+#endif
+     if (task->fun!=last_task_fun) {
+       printf("[Task:%s]",task->name);
+       last_task_fun=task->fun;
+     } else {
+       // Show blinking cursor as function is repeatedly called
+       printf("%c %c%c",0x12+rev_toggle,0x9d,0x92);
+       rev_toggle^=0x80;
+     }
+#endif
+#ifdef DEBUG_NAMED_TASK
+     }
+#endif
      /*
       * Task is ready.
       * Remove from the list and run.
@@ -363,5 +314,7 @@ void task_periodic(void)
      f(task->par);
    }
    tick();
-   
+#ifdef DEBUG_TASKS
+   if (!show_task_list_n) printf("\n");
+#endif
 }
