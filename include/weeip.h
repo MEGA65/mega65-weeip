@@ -95,9 +95,15 @@ typedef struct {
 	byte_t toSend;                            ///< Flags to send on next packet.
 	void *rx;                                 ///< Reception buffer pointer.
 	void *tx;                                 ///< Transmission buffer pointer.
-	uint16_t rx_size;                         ///< Reception buffer size.
+
+       
+        uint16_t rx_size;                         ///< Reception buffer size.
 	uint16_t tx_size;                         ///< Size of transmit packet.
 	uint16_t rx_data;                         ///< Size of received packet.
+        uint16_t rx_oo_start;                     ///< Start of out-of-order held data
+        uint16_t rx_oo_len;                       ///< Length of out-of-order held data
+  
+  
 	task_t callback;                          ///< Task for socket management.
 	uint16_t port;                            ///< Local port number.
 	uint16_t remPort;                         ///< Remote port number.

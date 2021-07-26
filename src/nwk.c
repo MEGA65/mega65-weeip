@@ -101,13 +101,13 @@ IPV4 ip_local;
 /**
  * Default header.
  */
+#define WINDOW_SIZE_OFFSET 34
 byte_t default_header[] = {
    0x45, 0x08, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x40, 0x06,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x50, 0x00,
    // TCP Window size
-   //   0xFF, 0x00,   // ~64KB
    0x06, 0x00, // ~1.5KB
    0x00, 0x00, 0x00, 0x00
 };
@@ -240,11 +240,23 @@ byte_t nwk_tick (byte_t sig)
    return 0;
 }
 
+void compute_window_size(SOCKET *_sckt)
+{
+  unsigned short available_window=0;
+  // Now patch the header to take account of how much buffer space we _actually_ have available
+  if (_sckt->rx_data>available_window) available_window=_sckt->rx_data;
+  if ((_sckt->rx_oo_start+_sckt->rx_oo_len)>available_window) available_window=_sckt->rx_oo_start+_sckt->rx_oo_len;
+  available_window=_sckt->rx_size - available_window;
+  default_header[WINDOW_SIZE_OFFSET+0]=available_window>>8;
+  default_header[WINDOW_SIZE_OFFSET+1]=available_window>>0;
+}
+
 /**
  * Network upstream task. Send outgoing network messages.
  */
 byte_t nwk_upstream (byte_t sig)
 {
+      
 #ifdef DEBUG_ACK
    debug_msg("nwk_upstream called.");
 #endif
@@ -276,6 +288,9 @@ byte_t nwk_upstream (byte_t sig)
        * Pending message found, send it.
        */
       checksum_init();
+
+      compute_window_size(_sckt);
+      
       // XXX Correct buffer offset processing to handle variable
       // header lengths
       lcopy((uint32_t)default_header,(uint32_t)_header.b,40);
