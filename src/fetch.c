@@ -376,16 +376,18 @@ void update_mouse_position(unsigned char do_scroll)
 {
   unsigned short mx,my,i;
 
+  POKE(0xD020,do_scroll);
+  
   if (!mouse_link_address) {
     // Cycle the mouse pointer colour
     POKE(0xD027,mouse_colours[(PEEK(0xD7FA)>>2)&0x07]);
   } else {
     POKE(0xD027,mouse_link_colours[(PEEK(0xD7FA)>>2)&0x07]);
   }
-
+  
   // By default clicking the mouse goes no where
   mouse_link_address=0; 
-
+  
   mouse_update_position(&mx,&my);
   if (my<50) {
     // Mouse is in top border, so scroll up by that amount
@@ -398,35 +400,35 @@ void update_mouse_position(unsigned char do_scroll)
     mouse_warp_to(mx,249);
     my=249;
   }
-
- {
-
+  
+  {
+    
     // Work out mouse position
     // Mouse is in H320, V200, so only 4 mouse pixels per character
     my=((position/2)+my-50)/4;
     mx=(mx-24)/4;
-
+    
     // Don't check mouse clicks until scrolling is done  
 
     if (do_scroll) {
-    // Check all bounding boxes
-    i=lpeek(0x18000L)+(lpeek(0x18001L)<<8);
-    if (i>1000) i=1000;
-    while (i>0) {
-      i--;
-      mouse_link_address=0x18002+6*i;
-      lcopy(mouse_link_address,(unsigned long)&link_box[0],6);
-
-      mouse_link_address=0;
-      if (link_box[2]>mx) continue;
-      if (link_box[3]>my) continue;
-      if (link_box[4]<mx) continue;
-      if (link_box[5]<my) continue;
-      // Get address of URL
-      mouse_link_address=0x18000L+link_box[0]+(link_box[1]<<8);
-      break;
-    } 
-  }
+      // Check all bounding boxes
+      i=lpeek(0x18000L)+(lpeek(0x18001L)<<8);
+      if (i>1000) i=1000;
+      while (i>0) {
+	i--;
+	mouse_link_address=0x18002+6*i;
+	lcopy(mouse_link_address,(unsigned long)&link_box[0],6);
+	
+	mouse_link_address=0;
+	if (link_box[2]>mx) continue;
+	if (link_box[3]>my) continue;
+	if (link_box[4]<mx) continue;
+	if (link_box[5]<my) continue;
+	// Get address of URL
+	mouse_link_address=0x18000L+link_box[0]+(link_box[1]<<8);
+	break;
+      } 
+    }
   }
   
   mouse_update_pointer();
