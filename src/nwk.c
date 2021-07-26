@@ -27,6 +27,14 @@
 // Enable ICMP PING if desired.
 // #define ENABLE_ICMP
 
+/*
+  Use a graduated timeout that starts out fast, and then slows down,
+  so that we spread our timeouts over a longer preiod of time, but
+  at the same time, we don't wait forever for initial retries on a
+  local LAN
+*/
+#define SOCKET_TIMEOUT(S) (TIMEOUT_TCP + 32*(RETRIES_TCP - S->retry))
+
 /********************************************************************************
  ********************************************************************************
  * The MIT License (MIT)
@@ -163,7 +171,7 @@ byte_t nwk_tick (byte_t sig)
          if(_sckt->retry) {
 	   printf("tcp retry %d\n",_sckt->retry);
             _sckt->retry--;
-            _sckt->time = TIMEOUT_TCP;
+	    _sckt->time = SOCKET_TIMEOUT(_sckt);
             switch(_sckt->state) {
                case _SYN_SENT:
                case _ACK_REC:
@@ -174,7 +182,7 @@ byte_t nwk_tick (byte_t sig)
                   break;
                case _ACK_WAIT:
                   _sckt->toSend = ACK | PSH;
-                  break;
+                   break;
                case _FIN_SENT:
                case _FIN_ACK_REC:
                   _sckt->toSend = ACK;
@@ -189,7 +197,7 @@ byte_t nwk_tick (byte_t sig)
 #endif
                   break;
                default:
-		 _sckt->time = TIMEOUT_TCP;
+		 _sckt->time = SOCKET_TIMEOUT(_sckt);
                   _sckt->timeout = FALSE;
                   break;
             }
@@ -205,7 +213,7 @@ byte_t nwk_tick (byte_t sig)
 	      debug_msg("scheduling nwk_upstream 0 0");
 #endif
 	      task_cancel(nwk_upstream);
-	      task_add(nwk_upstream, 0, 0);
+	      task_add(nwk_upstream, 0, 0,"upstream");
             } 
         } else {
             /*
@@ -216,7 +224,7 @@ byte_t nwk_tick (byte_t sig)
 #ifdef INSTANT_CALLBACK
 	    _sckt->callback(WEEIP_EV_DISCONNECT);
 #else
-            task_add(_sckt->callback, 0, WEEIP_EV_DISCONNECT);
+            task_add(_sckt->callback, 0, WEEIP_EV_DISCONNECT,"callback");
 #endif
          }
       }
@@ -225,7 +233,7 @@ byte_t nwk_tick (byte_t sig)
    /*
     * Reschedule task for periodic execution.
     */
-   task_add(nwk_tick, TICK_TCP, 0);
+   task_add(nwk_tick, TICK_TCP, 0,"nwktick");
    return 0;
 }
 
@@ -247,7 +255,7 @@ byte_t nwk_upstream (byte_t sig)
 #ifdef DEBUG_ACK
      debug_msg("scheduling nwk_upstream 2 0");
 #endif
-      task_add(nwk_upstream, 2, 0);
+     task_add(nwk_upstream, 2, 0,"upstream");
       return 0;
    }
    
@@ -357,7 +365,7 @@ byte_t nwk_upstream (byte_t sig)
 #ifdef INSTANT_CALLBACK
 	 _sckt->callback(WEEIP_EV_DATA_SENT);
 #else
-         task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT);
+         task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT,"callback");
 #endif
       }
       
@@ -372,6 +380,8 @@ byte_t nwk_upstream (byte_t sig)
        * Send IP packet.
        */
       if(eth_ip_send()) {
+	printf("T");
+	
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
 #ifdef DEBUG_ACK
 	 debug_msg("eth_packet_send() called");
@@ -380,11 +390,12 @@ byte_t nwk_upstream (byte_t sig)
 
 	 _sckt->toSend = 0;
 	 _sckt->timeout = FALSE;
-	 _sckt->time = TIMEOUT_TCP;
+	 _sckt->time = SOCKET_TIMEOUT(_sckt);
 	 
       } else {
 	// Sending the IP packet failed, possibly because there was no ARP
 	// entry for the requested IP, if it is on the local network.
+	printf("F");
 
 	// So we don't clear the status that we need to send
       }
@@ -395,7 +406,7 @@ byte_t nwk_upstream (byte_t sig)
 #ifdef DEBUG_ACK
      debug_msg("scheduling nwk_upstream 5 0");
 #endif
-      task_add(nwk_upstream, 5, 0);
+     task_add(nwk_upstream, 5, 0,"upstream");
    }
    
    /*
@@ -577,7 +588,7 @@ parse_tcp:
 	   debug_msg("scheduling nwk_upstream 0 0");
 #endif
 	   task_cancel(nwk_upstream);
-	   task_add(nwk_upstream, 0, 0);
+	   task_add(nwk_upstream, 0, 0,"upstream");
          }
          goto drop;
       }
@@ -704,7 +715,7 @@ parse_tcp:
 #ifdef INSTANT_CALLBACK
 	    _sckt->callback(WEEIP_EV_DATA_SENT);
 #else
-            task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT);
+            task_add(_sckt->callback, 0, WEEIP_EV_DATA_SENT,"callback");
 #endif
          }         
 
@@ -857,7 +868,7 @@ done:
       debug_msg("scheduling nwk_upstream 0 0");
 #endif
       task_cancel(nwk_upstream);
-      task_add(nwk_upstream, 0, 0);
+      task_add(nwk_upstream, 0, 0,"upstream");
    }
 
    /*
@@ -868,7 +879,7 @@ done:
 #ifdef INSTANT_CALLBACK
      _sckt->callback(ev);
 #else
-      task_add(_sckt->callback, 0, ev);
+     task_add(_sckt->callback, 0, ev,"callback");
 #endif
    }
 
