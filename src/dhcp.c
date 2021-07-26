@@ -28,7 +28,7 @@ byte_t dhcp_reply_handler (byte_t p)
 {
   unsigned int type,len,offset;
   unsigned int i;
-  
+
   socket_select(dhcp_socket);
   switch(p) {
   case WEEIP_EV_DATA:
@@ -52,14 +52,14 @@ byte_t dhcp_reply_handler (byte_t p)
     
     // Set our IP from BOOTP field
     for(i=0;i<4;i++) ip_local.b[i] = dns_buf[0x10+i];
-    printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+    //    printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 
     // Only process DHCP fields if magic cookie is set
     if (dns_buf[0xec]!=0x63) break;
     if (dns_buf[0xed]!=0x82) break;
     if (dns_buf[0xee]!=0x53) break;
     if (dns_buf[0xef]!=0x63) break;
-    printf("Parsing DHCP fields.\n");
+    //    printf("Parsing DHCP fields.\n");
 
     offset=0xf0;
     while(dns_buf[offset]!=0xff) {
@@ -75,15 +75,15 @@ byte_t dhcp_reply_handler (byte_t p)
 	switch(type) {
 	case 0x01:
 	  for(i=0;i<4;i++) ip_mask.b[i] = dns_buf[offset+i];	  
-	  printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+	  //	  printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
 	  break;
 	case 0x03:
 	  for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
-	  printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+	  //	  printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
 	  break;
 	case 0x06:
 	  for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
-	  printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	  //	  printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
 	  break;
 	default:
 	  break;
@@ -95,7 +95,7 @@ byte_t dhcp_reply_handler (byte_t p)
 
     // Compute broadcast address
     for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
-    printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+    //    printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
     
     // XXX We SHOULD send a packet to acknowledge the offer.
     // It works for now without it, because we start responding to ARP requests which
@@ -103,7 +103,7 @@ byte_t dhcp_reply_handler (byte_t p)
     
     // Mark DHCP configuration complete, and free the socket
     dhcp_configured=1;
-    printf("DHCP configuration complete.\n");
+    //    printf("DHCP configuration complete.\n");
     socket_release(dhcp_socket);    
     
     break;
@@ -147,7 +147,7 @@ void dhcp_send_query(void)
   uint16_t dhcp_query_len=0;
   unsigned char i;
   IPV4 ip_broadcast;
-  
+
   socket_select(dhcp_socket);
   for(i=0;i<4;i++) ip_broadcast.b[i]=255;
   socket_connect(&ip_broadcast,67);
@@ -162,10 +162,12 @@ void dhcp_send_query(void)
   dns_query[dhcp_query_len++]=0x06; // HLEN
   dns_query[dhcp_query_len++]=0x00; // HOPS
   // Transaction ID
-  for(i=0;i<4;i++) {
-    dhcp_xid[i]=random32(256);
-    dns_query[dhcp_query_len++]=dhcp_xid[i];
-  }
+  // PGS Generate a single XID we use across multiple requests, to
+  // avoid race conditions where a reply might always come just as
+  // we have sent of a new request with a different XID.
+  // (I have seen this happen quite a number of times).
+  if (!dhcp_xid[0]) for(i=0;i<4;i++) dhcp_xid[i]=random32(256);
+  for (i=0;i<4;i++) dns_query[dhcp_query_len++]=dhcp_xid[i];  
   dns_query[dhcp_query_len++]=0x00; // SECS since start of request
   dns_query[dhcp_query_len++]=0x00; // SECS since start of request
   dns_query[dhcp_query_len++]=0x00; // FLAGS
