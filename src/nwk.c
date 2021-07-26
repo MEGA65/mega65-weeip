@@ -34,6 +34,7 @@
   local LAN
 */
 #define SOCKET_TIMEOUT(S) (TIMEOUT_TCP + 32*(RETRIES_TCP - S->retry))
+//#define DEBUG_TCP_RETRIES
 
 /********************************************************************************
  ********************************************************************************
@@ -169,7 +170,9 @@ byte_t nwk_tick (byte_t sig)
           * Check retransmissions.
           */
          if(_sckt->retry) {
+#ifdef DEBUG_TCP_RETRIES
 	   printf("tcp retry %d\n",_sckt->retry);
+#endif
             _sckt->retry--;
 	    _sckt->time = SOCKET_TIMEOUT(_sckt);
             switch(_sckt->state) {
