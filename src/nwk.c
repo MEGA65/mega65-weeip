@@ -450,6 +450,8 @@ unsigned long byte_order_swap_d(unsigned long in)
 void nwk_downstream(void)
 {
    WEEIP_EVENT ev;
+   _uint32_t rel_sequence;
+   static unsigned char i;
 
    ev = WEEIP_EV_NONE;
 
@@ -547,7 +549,7 @@ parse_tcp:
       /*
        * Test acked sequence number.
        */
-      if((_sckt->seq.b[0] != TCPH(n_ack).b[3])
+     if((_sckt->seq.b[0] != TCPH(n_ack).b[3])
           || (_sckt->seq.b[1] != TCPH(n_ack).b[2])
           || (_sckt->seq.b[2] != TCPH(n_ack).b[1])
           || (_sckt->seq.b[3] != TCPH(n_ack).b[0])) {
@@ -586,10 +588,9 @@ parse_tcp:
       /*
        * Test remote sequence number.
        */
-      if((TCPH(n_seq.b[0]) != _sckt->remSeq.b[3])
-         || (TCPH(n_seq.b[1]) != _sckt->remSeq.b[2])
-         || (TCPH(n_seq.b[2]) != _sckt->remSeq.b[1])
-         || (TCPH(n_seq.b[3]) != _sckt->remSeq.b[0])) {
+     for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
+     rel_sequence.d-=_sckt->remSeq.d;
+     if (rel_sequence.d) {
 	printf("request OOO ack: %ld != %ld\n",
 	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);
 	
