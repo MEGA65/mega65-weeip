@@ -314,7 +314,15 @@ byte_t nwk_upstream (byte_t sig)
              * Use old sequence number.
              */
             if(data_size) seq.d -= data_size;
-            if(_sckt->toSend & (SYN | FIN)) seq.d--;
+
+	    // XXX Why on earth do we subtract one here?
+	    // This messes up connections sometimes, because
+	    // we SYN, get SYN+ACK, and have sent a 2nd SYN
+	    // again before we read the SYN+ACK. But in the process
+	    // we have of course decremented the sequence number
+	    // by one, so the other side gets VERY confused, and says
+	    // RST!
+	    //            if(_sckt->toSend & (SYN | FIN)) seq.d--;
          }
 
          TCPH(n_seq).b[0] = seq.b[3];
