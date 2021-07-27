@@ -548,7 +548,7 @@ found:
 
 parse_tcp:
 
-   printf(":");
+   //   printf(":");
    
    /*
     * TCP message.
@@ -756,7 +756,7 @@ parse_tcp:
 	    _sckt->seq.d++;
 	    
             ev = WEEIP_EV_CONNECT;
-	    printf("Saw SYN\n");
+	    //printf("Saw SYN\n");
 	    break;
          }
 
