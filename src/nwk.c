@@ -454,8 +454,6 @@ void nwk_downstream(void)
    _uint32_t rel_sequence;
    static unsigned char i;
 
-   printf("/");
-   
    ev = WEEIP_EV_NONE;
 
    /*
@@ -490,17 +488,12 @@ void nwk_downstream(void)
 	  if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
 	    goto drop;                                           // not for us.
 
-   printf("!");
-      
    if(IPH(protocol) == IP_PROTO_ICMP) goto parse_icmp;
 
-   printf("#");
-   
    /*
     * Search for a waiting socket.
     */
    for_each(_sockets, _sckt) {
-     printf("&");
       if(_sckt->type == SOCKET_FREE) continue;                 // unused socket.
       if(_sckt->port != TCPH(destination)) continue;           // another port.
       if(_sckt->type == SOCKET_UDP) {                          // another protocol.
