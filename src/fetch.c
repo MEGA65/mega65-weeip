@@ -145,7 +145,7 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-#if 1
+#if 0
 	      POKE(0x286,5);
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
@@ -187,8 +187,6 @@ byte_t comunica (byte_t p)
 
    return 0;
 }
-
-void dump_bytes(char *msg,uint8_t *d,int count);
 
 void update_mouse_position(unsigned char do_scroll);
 
@@ -270,7 +268,7 @@ void scroll_down(long distance)
   POKE(0xD062,(screen_address_offset>>16)+0x01);
   POKE(0xD063,(screen_address_offset>>24));
 
-  // Set screen offset address
+  // Set screen colour RAM offset address
   POKE(0xD064,(screen_address_offset>>0));
   POKE(0xD065,(screen_address_offset>>8)+0x20);
 }
@@ -313,6 +311,8 @@ restart_fetch:
 
   // Clear all memory out from last page
   lfill(0x12000L,0,0xD800);
+  // Erase screen
+  for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
   lfill(0xFF82000L,0,0x6000);
   lfill(0x40000L,0,0x0000); // 0 means 64KB
   lfill(0x50000L,0,0x0000);
@@ -334,8 +334,6 @@ restart_fetch:
   socket_set_rx_buffer(buf, 2048);
   socket_connect(&a,port);
 
-  // Erase screen
-  for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
   while(!disconnected) {
     // XXX Actually only call it periodically
 
@@ -382,8 +380,6 @@ void update_mouse_position(unsigned char do_scroll)
 {
   unsigned short mx,my,i;
 
-  POKE(0xD020,do_scroll);
-  
   if (!mouse_link_address) {
     // Cycle the mouse pointer colour
     POKE(0xD027,mouse_colours[(PEEK(0xD7FA)>>2)&0x07]);
@@ -536,7 +532,7 @@ void main(void)
 
   prepare_network();
 
-  // Enable sprite 1 as mouse pointer
+  // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
   POKE(0xD000,200);
   POKE(0xD001,130);

@@ -230,9 +230,7 @@ arp_mens
        * Address request.
        * Check local address.
        */
-     printf("ARPREQ");
       if(ARP(dest_ip).d != ip_local.d) return;
-      printf("ME");
       
       /*
        * Looking for us.
