@@ -648,7 +648,7 @@ parse_tcp:
        if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
      }
 
-     while(!PEEK(0xD610)) continue; POKE(0xD610,0);
+     //     while(!PEEK(0xD610)) continue; POKE(0xD610,0);
      
      // Merge received data and RX OO area, if possible
      if (_sckt->rx_data&&_sckt->rx_data==_sckt->rx_oo_start) {
