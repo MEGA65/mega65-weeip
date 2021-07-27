@@ -743,6 +743,10 @@ parse_tcp:
 #endif
             _sckt->state = _CONNECT;
             _sckt->toSend = ACK;
+
+	    // Advance sequence # by one to ack the ack
+	    _sckt->seq.d++;
+	    
             ev = WEEIP_EV_CONNECT;
 	    printf("Saw SYN\n");
 	    break;
