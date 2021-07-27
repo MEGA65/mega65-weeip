@@ -76,12 +76,11 @@ byte_t comunica (byte_t p)
 	disconnected=1;
          break;
       case WEEIP_EV_DATA:
-	// printf("Received %d bytes.\n",s->rx_data);
 	// Show progress
 	printf(".");
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=((char *)s->rx)[i];
-	  //	  printf("(%d)",page_parse_state);
+	  //	  printf("(%x)",page_parse_state);
 	  switch(page_parse_state) {
 	  case 0:
 	    // Look for H65+$FF header
@@ -130,8 +129,10 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
 	    // Skip empty block
 	    if (block_len==0) {
-	      page_parse_state=HEADSKIP-1;
+	      printf("\nDONE!\n");
+	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
+	      break;
 	    } else if (block_addr<0xf000) {
               printf("bad address $%08x\n",block_addr);
               h65_error=H65_BADADDR;
@@ -143,8 +144,10 @@ byte_t comunica (byte_t p)
             } else {
 	      // Block data
 #if 1
+	      POKE(0x286,5);
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
+	      POKE(0x286,14);
 #endif
 	    }
 	    break;
@@ -359,7 +362,7 @@ restart_fetch:
 
   // Close socket, and call network loop a few times to make sure the FIN ACK gets
   // sent.
-  printf("Disconnecting...\n");
+  printf("Disconnecting... %d\n",h65_error);
   socket_disconnect(s);
   for(i=0;0<16;i++) {
     task_periodic();
