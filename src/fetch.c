@@ -282,6 +282,7 @@ void fetch_page(char *hostname,int port,char *path)
   unsigned char busy;
 
   disconnected=0;
+  position=0;
   
   POKE(0x0286,0x0e);
   POKE(0xD020,0x0E);
@@ -312,6 +313,7 @@ restart_fetch:
 
   // Clear all memory out from last page
   lfill(0x12000L,0,0xD800);
+  lfill(0xFF82000L,0,0x6000);
   lfill(0x40000L,0,0x0000); // 0 means 64KB
   lfill(0x50000L,0,0x0000);
   
