@@ -19,7 +19,7 @@
 // #define DEBUG_ACK
 
 // Enable ICMP PING if desired.
-// #define ENABLE_ICMP
+#define ENABLE_ICMP
 
 /*
   Use a graduated timeout that starts out fast, and then slows down,
@@ -79,7 +79,8 @@ static _uint32_t seq;
 #define UDPH(X) _header.t.udp.X
 #define IPH(X) _header.ip.X
 
-#define MTU 2048
+// Smaller MTU to save memory
+#define MTU 1000
 extern unsigned char tx_frame_buf[MTU];
 extern unsigned short eth_tx_len;
 
@@ -103,7 +104,7 @@ byte_t default_header[] = {
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x50, 0x00,
    // TCP Window size
-   0x06, 0x00, // ~1.5KB
+   0x06, 0x00, // ~1.5KB by default
    0x00, 0x00, 0x00, 0x00
 };
 
@@ -471,7 +472,7 @@ void nwk_downstream(void)
    ip_checksum((byte_t*)&_header, 20);
    if(chks.u != 0xffff) goto drop;
 
-#if 1
+#if 0
    printf("\nI am %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
    printf("P=%02x: %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
 	  IPH(protocol),
@@ -522,7 +523,7 @@ found:
    /*
     * Update socket data.
     */
-   printf("found socket: source.d=$%08lx\n",IPH(source).d);
+   //   printf("found socket: source.d=$%08lx\n",IPH(source).d);
    _sckt->remIP.d = IPH(source).d;
    _sckt->remPort = TCPH(source);
    _sckt->listening = FALSE;
@@ -902,7 +903,11 @@ parse_tcp:
        tx_frame_buf[14+20+2]=0; tx_frame_buf[14+20+2+1]=0;
        chks.b[0]=0; chks.b[1]=0;
        ip_checksum(&tx_frame_buf[14+20],data_size);
-       *(unsigned short *)tx_frame_buf[14+20+2] = checksum_result();
+       // XXX For some reason if we do the following assignment as single
+       // operation, it crashes the programme. But doing it this way,
+       // seems to be fine. Go figure :/
+       tx_frame_buf[14+20+2] = (checksum_result());
+       tx_frame_buf[14+20+3] = (checksum_result())>>8;
        
        // 7. Update IP checksum
        tx_frame_buf[14+10]=0; tx_frame_buf[14+11]=0;
