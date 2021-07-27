@@ -598,7 +598,7 @@ parse_tcp:
      
      for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
      rel_sequence.d-=_sckt->remSeq.d;
-
+     
      printf("\n%5ld: rel_seq=%ld, rx:%d,%d to %d\n",
 	    _sckt->remSeq.d-_sckt->remSeqStart.d,
 	    rel_sequence.d,
@@ -645,16 +645,7 @@ parse_tcp:
        _sckt->rx_oo_end = rel_sequence.w[0] + data_size;
      } else if (rel_sequence.d) {
        printf("drop(b)");
-	if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
-     } else {
-       // rel_sequence.d == 0, so copy into start of buffer
-       if(_sckt->rx) {
-	 printf("stashing %d bytes\n",data_size);
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,(uint32_t)_sckt->rx, data_size);
-	 _sckt->rx_data = data_size;
-	 
-       }
-       
+       if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
      }
 
      while(!PEEK(0xD610)) continue; POKE(0xD610,0);
@@ -664,6 +655,7 @@ parse_tcp:
        printf("Merge OO for %d bytes\n",_sckt->rx_oo_end);
        _sckt->rx_data=_sckt->rx_oo_end;
        _sckt->rx_oo_end=0;
+       _sckt->rx_oo_start=0;
      }
      
       printf("TCP seg %ld+\n",
