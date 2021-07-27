@@ -14,8 +14,8 @@
 // Periodically show the scheduled tasks 
 //#define DEBUG_TASKS
 // Show each task as it is called
-#define DEBUG_TASK_CALLS
-#define DEBUG_NAMED_TASK "ethtask"
+//#define DEBUG_TASK_CALLS
+//#define DEBUG_NAMED_TASK "ethtask"
 
 /********************************************************************************
  ********************************************************************************
