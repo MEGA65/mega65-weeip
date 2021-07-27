@@ -117,6 +117,7 @@ extern SOCKET *_sckt;
 extern SOCKET _sockets[MAX_SOCKET];
 extern HEADER _header;
 extern IPV4 ip_local;
+extern IPV4 ip_dhcpserver;
 
 // Enable logging of ethernet activity to the MEGA65 serial monitor interface
 extern unsigned char eth_log_mode;

@@ -16,6 +16,7 @@ unsigned char dhcp_configured=0;
 unsigned char dhcp_xid[4]={0};
 
 extern IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
+IPV4 ip_dhcpserver;
 
 // Share data buffer with DNS client to save space
 // NOTE: dns_query must be at least 512 bytes long
@@ -174,8 +175,16 @@ void dhcp_send_query_or_request(unsigned char requestP)
   dns_query[dhcp_query_len++]=0x00; // SECS since start of request
   dns_query[dhcp_query_len++]=0x00; // FLAGS
   dns_query[dhcp_query_len++]=0x00; // FLAGS
-  // Various empty fields
-  for(i=0;i<16;i++) dns_query[dhcp_query_len++]=0x00;
+  // Various empty fields  
+  for(i=0;i<16;i++) dns_query[dhcp_query_len+i]=0x00;
+  if (!requestP) {
+  } else {
+    // Client IP
+    for(i=0;i<4;i++) dns_query[dhcp_query_len+i]=ip_local.b[i];
+    // Server IP
+    for(i=0;i<4;i++) dns_query[dhcp_query_len+8+i]=ip_dhcpserver.b[i];
+  }
+  i+=16;
   // our MAC address padded to 192 bytes
   for(i=0;i<6;i++) dns_query[dhcp_query_len++]=mac_local.b[i];
   for(;i<16+192;i++) dns_query[dhcp_query_len++]=0x00;
@@ -184,19 +193,32 @@ void dhcp_send_query_or_request(unsigned char requestP)
   dns_query[dhcp_query_len++]=0x82;
   dns_query[dhcp_query_len++]=0x53;
   dns_query[dhcp_query_len++]=0x63;
-  // DHCP discover
   dns_query[dhcp_query_len++]=0x35;
   dns_query[dhcp_query_len++]=0x01;
-  dns_query[dhcp_query_len++]=0x01;
+  if (requestP)
+    dns_query[dhcp_query_len++]=0x03;   // DHCP request (i.e., client accepting offer)
+  else
+    dns_query[dhcp_query_len++]=0x01;   // DHCP discover
   // Pad to word boundary
   dns_query[dhcp_query_len++]=0x00;
-  // Request subnetmask, router, domainname, DNS server
-  dns_query[dhcp_query_len++]=0x37;
-  dns_query[dhcp_query_len++]=0x04;
-  dns_query[dhcp_query_len++]=0x01;
-  dns_query[dhcp_query_len++]=0x03;
-  dns_query[dhcp_query_len++]=0x0f;
-  dns_query[dhcp_query_len++]=0x06;
+  if (requestP) {
+    // BOOTP option $32 Confirm IP address
+    dns_query[dhcp_query_len++]=0x32;
+    dns_query[dhcp_query_len++]=0x04;
+    for(i=0;i<4;i++) dns_query[dhcp_query_len++]=ip_local.b[i];
+    // BOOTP $36 Confirm DHCP server 
+    dns_query[dhcp_query_len++]=0x36;
+    dns_query[dhcp_query_len++]=0x04;
+    for(i=0;i<4;i++) dns_query[dhcp_query_len++]=ip_dhcpserver.b[i];
+  } else {
+    // Request subnetmask, router, domainname, DNS server
+    dns_query[dhcp_query_len++]=0x37;
+    dns_query[dhcp_query_len++]=0x04;
+    dns_query[dhcp_query_len++]=0x01;
+    dns_query[dhcp_query_len++]=0x03;
+    dns_query[dhcp_query_len++]=0x0f;
+    dns_query[dhcp_query_len++]=0x06;
+  }
   // End of request
   dns_query[dhcp_query_len++]=0xff;
 
