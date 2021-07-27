@@ -251,7 +251,7 @@ byte_t nwk_upstream (byte_t sig)
        * Ethernet not ready.
        * Delay task execution.
        */
-     printf("ETH TX wait\n");
+     //     printf("ETH TX wait\n");
 #ifdef DEBUG_ACK
      debug_msg("scheduling nwk_upstream 2 0");
 #endif
@@ -326,7 +326,7 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
 
 	 if (_sckt->remSeq.d-_sckt->remSeqStart.d)
-	   printf("ACKing %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d+data_size);
+	   //	   printf("ACKing %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d+data_size);
 
          if(!_sckt->timeout) {
             /*
@@ -380,8 +380,6 @@ byte_t nwk_upstream (byte_t sig)
        * Send IP packet.
        */
       if(eth_ip_send()) {
-	printf("T");
-	
          if(data_size) eth_write((byte_t*)_sckt->tx, data_size);
 #ifdef DEBUG_ACK
 	 debug_msg("eth_packet_send() called");
@@ -395,7 +393,6 @@ byte_t nwk_upstream (byte_t sig)
       } else {
 	// Sending the IP packet failed, possibly because there was no ARP
 	// entry for the requested IP, if it is on the local network.
-	printf("F");
 
 	// So we don't clear the status that we need to send
       }
@@ -430,9 +427,10 @@ void nwk_schedule_oo_ack(SOCKET *_sckt)
   /*
    * Out of order, send our number.
    */
+#if 0
   printf("request OOO ack: %ld != %ld\n",
 	 byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);
-  
+#endif  
   _sckt->toSend = ACK;
 #ifdef INSTANT_ACK
   nwk_upstream(0);
@@ -455,6 +453,8 @@ void nwk_downstream(void)
    _uint32_t rel_sequence;
    static unsigned char i;
 
+   printf("/");
+   
    ev = WEEIP_EV_NONE;
 
    /*
@@ -471,11 +471,14 @@ void nwk_downstream(void)
    ip_checksum((byte_t*)&_header, 20);
    if(chks.u != 0xffff) goto drop;
 
-#if 0
-   printf("I am %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
-   printf("%d.%d.%d.%d -> %d.%d.%d.%d\n",
+#if 1
+   printf("\nI am %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+   printf("P=%02x: %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n",
+	  IPH(protocol),
 	  IPH(source).b[0],IPH(source).b[1],IPH(source).b[2],IPH(source).b[3],
-	  IPH(destination).b[0],IPH(destination).b[1],IPH(destination).b[2],IPH(destination).b[3]);
+	  NTOHS(TCPH(source)),
+	  IPH(destination).b[0],IPH(destination).b[1],IPH(destination).b[2],IPH(destination).b[3],
+	  NTOHS(TCPH(destination)));
 #endif   
    /*
     * Destination address.
@@ -486,12 +489,17 @@ void nwk_downstream(void)
 	  if (ip_local.d != 0x0000000L)                          // Waiting for DHCP configuration
 	    goto drop;                                           // not for us.
 
+   printf("!");
+      
    if(IPH(protocol) == IP_PROTO_ICMP) goto parse_icmp;
+
+   printf("#");
    
    /*
     * Search for a waiting socket.
     */
    for_each(_sockets, _sckt) {
+     printf("&");
       if(_sckt->type == SOCKET_FREE) continue;                 // unused socket.
       if(_sckt->port != TCPH(destination)) continue;           // another port.
       if(_sckt->type == SOCKET_UDP) {                          // another protocol.
@@ -514,7 +522,7 @@ found:
    /*
     * Update socket data.
     */
-   //   printf("found socket: source.d=$%08lx\n",IPH(source).d);
+   printf("found socket: source.d=$%08lx\n",IPH(source).d);
    _sckt->remIP.d = IPH(source).d;
    _sckt->remPort = TCPH(source);
    _sckt->listening = FALSE;
@@ -563,8 +571,10 @@ parse_tcp:
 	    * at a time, so can effectively ignore it (but should probably be
 	    * clever and re-send?)
             */
-	printf("Drop\n");
-	goto drop;
+       if (_sckt->state>=_CONNECT) {
+	 printf("Drop\n");
+	 goto drop;
+       }
       }
       _flags |= ACK;
    }
@@ -584,7 +594,7 @@ parse_tcp:
       _sckt->remSeq.d++;
       _flags |= SYN;
 
-      printf("SYN%d",_sckt->state);
+      //      printf("SYN%d",_sckt->state);
       
    } else {
       /*
@@ -598,20 +608,22 @@ parse_tcp:
      
      for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
      rel_sequence.d-=_sckt->remSeq.d;
-     
+
+#if 0
      printf("\n%5ld: rel_seq=%ld, rx:%d,%d to %d\n",
 	    _sckt->remSeq.d-_sckt->remSeqStart.d,
 	    rel_sequence.d,
 	    _sckt->rx_data,
 	    _sckt->rx_oo_start,_sckt->rx_oo_end);
+#endif
      
      if (rel_sequence.d>_sckt->rx_size || rel_sequence.d+data_size>_sckt->rx_size) {
        // Ignore segments that we can't possibly handle
-       printf("drop(a)");
+       //       printf("drop(a)");
        if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
      } else if (rel_sequence.w[0]==_sckt->rx_data) {
        // Copy to end of data in RX buffer
-       printf("rx append %d@%d",data_size,_sckt->rx_data);
+       //       printf("rx append %d@%d",data_size,_sckt->rx_data);
        if (data_size+_sckt->rx_data>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_data;
        if (data_size) {
@@ -620,7 +632,7 @@ parse_tcp:
        _sckt->rx_data += data_size;       
      } else if (rel_sequence.w[0]==_sckt->rx_oo_end) {
        // Copy to end of OO data in RX buffer
-       printf("oo append");
+       // printf("oo append");
        if (data_size+_sckt->rx_oo_end>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_oo_end;
        if (data_size) {
@@ -629,7 +641,7 @@ parse_tcp:
        _sckt->rx_oo_end += data_size;
      } else if ((rel_sequence.w[0]+data_size)==_sckt->rx_oo_start) {
        // Copy to start of OO data in RX buffer
-       printf("oo prepend");
+       //       printf("oo prepend");
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,
 	       rel_sequence.w[0] + ((unsigned long)_sckt->rx), data_size);	 
@@ -637,14 +649,14 @@ parse_tcp:
        _sckt->rx_oo_end += rel_sequence.w[0];
      } else if ((rel_sequence.w[0]+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
        // It belongs in the window, but not at the start, so put in RX OO buffer
-       printf("oo stash");
+       //       printf("oo stash");
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,rel_sequence.w[0] + (uint32_t)_sckt->rx, data_size);	 
        }
        _sckt->rx_oo_start = rel_sequence.w[0];
        _sckt->rx_oo_end = rel_sequence.w[0] + data_size;
      } else if (rel_sequence.d) {
-       printf("drop(b)");
+       //       printf("drop(b)");
        if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
      }
 
@@ -652,15 +664,11 @@ parse_tcp:
      
      // Merge received data and RX OO area, if possible
      if (_sckt->rx_data&&_sckt->rx_data==_sckt->rx_oo_start) {
-       printf("MOO:%d\n",_sckt->rx_oo_end);
        _sckt->rx_data=_sckt->rx_oo_end;
        _sckt->rx_oo_end=0;
        _sckt->rx_oo_start=0;
      }
      
-      printf("TCPseg@%ld\n",
-	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);      
-      
       /*
        * Update stream sequence number.
        */
@@ -668,8 +676,6 @@ parse_tcp:
 
       // Deliver data to programme
       if (_sckt->rx_data) {
-	printf("Dvr %d\n",_sckt->rx_data);
-	
 	_sckt->callback(WEEIP_EV_DATA);
 	remove_rx_data(_sckt);
       }
@@ -712,7 +718,7 @@ parse_tcp:
      _sckt->remSeq.d+=data_size;
      _sckt->remSeq.d++;
      _flags |= FIN;
-      printf("FIN ACK = %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d);
+     //      printf("FIN ACK = %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d);
    }
    
    /*
@@ -733,6 +739,7 @@ parse_tcp:
          break;
          
       case _SYN_SENT:
+
          if(_flags & (ACK | SYN)) {
             /*
              * Connection established.
@@ -743,7 +750,8 @@ parse_tcp:
             _sckt->state = _CONNECT;
             _sckt->toSend = ACK;
             ev = WEEIP_EV_CONNECT;
-            break;
+	    printf("Saw SYN\n");
+	    break;
          }
 
          if(_flags & SYN) {
@@ -754,7 +762,8 @@ parse_tcp:
             _sckt->toSend = SYN | ACK;
          }         
          break;
-      
+      	
+	 
       case _SYN_REC:
          if(_flags & ACK) {
             /*
