@@ -67,6 +67,7 @@ byte_t comunica (byte_t p)
 	printf("Connected...\n");
 	//	while(1) continue;
 	// Buf is setup in fetch_page()
+
         if (!socket_send(buf, strlen(buf))) 
 	  {
 	    printf("Error sending HTTP request.\n");
@@ -292,7 +293,20 @@ restart_fetch:
   printf("%cFetching %chttp://%s:%d%s\n",0x93,
 	 5,hostname,port,path);
   POKE(0x0286,0x0e);
-  
+
+  // NOTE: PETSCII so things are inverted
+  snprintf(buf,1024,
+	   "get %s http/1.1\n\r"
+	   "hOST: %s\n\r"
+	   "aCCEPT: */*\n\r"
+	   "uSER-aGENT: fetch mega65-weeip/20210727\n\r"
+	   "\n\r",
+	   path,hostname);
+  // Demunge PETSCII a bit
+  for(i=0;buf[i];i++) {
+    if (buf[i]>=0xc1) buf[i]-=0x60;
+  }
+      
   h65_error=0;
   page_parse_state=0;
 
@@ -313,20 +327,6 @@ restart_fetch:
     return;
   }
   
-
-  // NOTE: PETSCII so things are inverted
-  snprintf(buf,1024,
-	   "get %s http/1.1\n\r"
-	   "hOST: %s\n\r"
-	   "aCCEPT: */*\n\r"
-	   "uSER-aGENT: fetch mega65-weeip/20210722\n\r"
-	   "\n\r",
-	   path,hostname);
-  // Demunge PETSCII a bit
-  for(i=0;buf[i];i++) {
-    if (buf[i]>=0xc1) buf[i]-=0x60;
-  }
-    
   s = socket_create(SOCKET_TCP);
   socket_set_callback(comunica);
   socket_set_rx_buffer(buf, 2048);
