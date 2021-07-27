@@ -186,7 +186,6 @@ socket_connect
     * Select a local port number.
     */
    _sckt->port = HTONS(port_used);
-   printf("TCP port is %d\n",port_used);
    if(port_used == PORT_MAX) port_used = PORT_MIN;
    else port_used++;
 
