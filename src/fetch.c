@@ -65,6 +65,7 @@ byte_t comunica (byte_t p)
    switch(p) {
       case WEEIP_EV_CONNECT:
 	printf("Connected...\n");
+	//	while(1) continue;
 	// Buf is setup in fetch_page()
         if (!socket_send(buf, strlen(buf))) 
 	  {
@@ -157,12 +158,6 @@ byte_t comunica (byte_t p)
             if (count>block_len) count=block_len;
 
             // Stash them and update it
-	    printf("  %02x %02x %02x %02x... -> $%08lx\n",
-		   ((unsigned char *)s->rx)[0],
-		   ((unsigned char *)s->rx)[1],
-		   ((unsigned char *)s->rx)[2],
-		   ((unsigned char *)s->rx)[3],
-		   block_addr);
             lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
 	    block_addr+=count;
 	    block_len-=count;
