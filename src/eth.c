@@ -132,7 +132,6 @@ uint8_t eth_task (uint8_t p)
    * A packet is available.
    */
 
-  printf("-");
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);
     debug_msg("");
