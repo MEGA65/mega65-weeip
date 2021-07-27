@@ -9,7 +9,9 @@
 #include "memory.h"
 #include "random.h"
 
-// approx 255ms between DHCP requests
+// Don't request DHCP retries too quickly
+// as the network tick loop may be called
+// very fast during configuration
 #define DHCP_RETRY_TICKS 255
 
 unsigned char dhcp_configured=0;
@@ -50,7 +52,7 @@ byte_t dhcp_reply_handler (byte_t p)
     if (dns_buf[0x02]!=0x06) break;
     if (dns_buf[0x03]!=0x00) break;
     
-    // Ok, its for us. Extract the info we need.
+    // Ok, its for us. Extract the info we need.    
     
     // Set our IP from BOOTP field
     for(i=0;i<4;i++) ip_local.b[i] = dns_buf[0x10+i];
@@ -61,53 +63,59 @@ byte_t dhcp_reply_handler (byte_t p)
     if (dns_buf[0xed]!=0x82) break;
     if (dns_buf[0xee]!=0x53) break;
     if (dns_buf[0xef]!=0x63) break;
-    //    printf("Parsing DHCP fields.\n");
 
-    offset=0xf0;
-    while(dns_buf[offset]!=0xff) {
-      if (!dns_buf[offset]) offset++;
-      else {
-	type = dns_buf[offset];
-	// Skip field type
-	offset++;
-	// Parse and skip length marker
-	len=dns_buf[offset];
-	offset++;
-	// offset now points to the data field.
-	switch(type) {
-	case 0x01:
-	  for(i=0;i<4;i++) ip_mask.b[i] = dns_buf[offset+i];	  
-	  //	  printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
-	  break;
-	case 0x03:
-	  for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
-	  //	  printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
-	  break;
-	case 0x06:
-	  for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
-	  //	  printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
-	  break;
-	default:
-	  break;
-	}
-	// Skip over length and continue
-	offset+=len;
-      }      
+    //    printf("Parsing DHCP fields $%002x\n",dns_buf[0xf2]);
+
+    if (dns_buf[0xf2]==0x02) {
+      offset=0xf0;
+      while(dns_buf[offset]!=0xff) {
+	if (!dns_buf[offset]) offset++;
+	else {
+	  type = dns_buf[offset];
+	  // Skip field type
+	  offset++;
+	  // Parse and skip length marker
+	  len=dns_buf[offset];
+	  offset++;
+	  // offset now points to the data field.
+	  switch(type) {
+	  case 0x01:
+	    for(i=0;i<4;i++) ip_mask.b[i] = dns_buf[offset+i];	  
+	    //	  printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+	    break;
+	  case 0x03:
+	    for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
+	    //	  printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+	    break;
+	  case 0x06:
+	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
+	    //	  printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	    break;
+	  default:
+	    break;
+	  }
+	  // Skip over length and continue
+	  offset+=len;
+	}      
+      }
+      
+      // Compute broadcast address
+      for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
+      //    printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+      
+      // XXX We SHOULD send a packet to acknowledge the offer.
+      // It works for now without it, because we start responding to ARP requests which
+      // sensible DHCP servers will perform to verify occupancy of the IP.
+      //      printf("Sending DHCP ACK\n");
+      dhcp_send_query_or_request(1);
+    } else if (dns_buf[0xf2]==0x05) {
+      // Mark DHCP configuration complete, and free the socket
+      dhcp_configured=1;
+      //      printf("DHCP configuration complete.\n");
+      socket_release(dhcp_socket);
+    } else {
+      //      printf("Unknown DHCP message\n");
     }
-
-    // Compute broadcast address
-    for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
-    //    printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
-    
-    // XXX We SHOULD send a packet to acknowledge the offer.
-    // It works for now without it, because we start responding to ARP requests which
-    // sensible DHCP servers will perform to verify occupancy of the IP.
-    
-    
-    // Mark DHCP configuration complete, and free the socket
-    dhcp_configured=1;
-    //    printf("DHCP configuration complete.\n");
-    socket_release(dhcp_socket);    
     
     break;
   }
@@ -184,7 +192,7 @@ void dhcp_send_query_or_request(unsigned char requestP)
     // Server IP
     for(i=0;i<4;i++) dns_query[dhcp_query_len+8+i]=ip_dhcpserver.b[i];
   }
-  i+=16;
+  dhcp_query_len+=16;
   // our MAC address padded to 192 bytes
   for(i=0;i<6;i++) dns_query[dhcp_query_len++]=mac_local.b[i];
   for(;i<16+192;i++) dns_query[dhcp_query_len++]=0x00;
