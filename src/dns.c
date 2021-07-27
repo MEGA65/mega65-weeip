@@ -12,9 +12,9 @@
 unsigned char dns_query_returned=0;
 IPV4 dns_return_ip;
 SOCKET *dns_socket;
-unsigned char dns_query[1024];
+unsigned char dns_query[512];
 uint16_t dns_query_len=0;
-unsigned char dns_buf[1024];
+unsigned char dns_buf[512];
 
 void dns_construct_hostname_to_ip_query(char *hostname)
 {  
@@ -194,7 +194,7 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   
   dns_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dns_reply_handler);
-  socket_set_rx_buffer(dns_buf,1024);
+  socket_set_rx_buffer(dns_buf,sizeof dns_buf);
   
   // Before we get any further, send an ARP query for the DNS server
   // (or if it isn't on the same network segment, for our gateway.)

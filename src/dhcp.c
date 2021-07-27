@@ -18,11 +18,12 @@ unsigned char dhcp_xid[4]={0};
 extern IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
 
 // Share data buffer with DNS client to save space
+// NOTE: dns_query must be at least 512 bytes long
 extern unsigned char dns_query[512];
-extern unsigned char dns_buf[1024];
+extern unsigned char dns_buf[256];
 SOCKET *dhcp_socket;
 
-void dhcp_send_query(void);
+void dhcp_send_query_or_request(unsigned char requestP);
 
 byte_t dhcp_reply_handler (byte_t p)
 {
@@ -101,6 +102,7 @@ byte_t dhcp_reply_handler (byte_t p)
     // It works for now without it, because we start responding to ARP requests which
     // sensible DHCP servers will perform to verify occupancy of the IP.
     
+    
     // Mark DHCP configuration complete, and free the socket
     dhcp_configured=1;
     //    printf("DHCP configuration complete.\n");
@@ -117,7 +119,7 @@ byte_t dhcp_autoconfig_retry(byte_t b)
   if (!dhcp_configured) {
     
     // This will automatically re-add us to the list
-    dhcp_send_query();
+    dhcp_send_query_or_request(0);
     task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0,"dhcprtry");
   }
   return 0;
@@ -129,9 +131,9 @@ bool_t dhcp_autoconfig(void)
   
   dhcp_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dhcp_reply_handler);
-  socket_set_rx_buffer(dns_buf,1024);
+  socket_set_rx_buffer(dns_buf,sizeof dns_buf);
 
-  dhcp_send_query();
+  dhcp_send_query_or_request(0);
 
   // Mark ourselves as not yet having configured by DHCP
   dhcp_configured=0;
@@ -142,7 +144,7 @@ bool_t dhcp_autoconfig(void)
   
 }
 
-void dhcp_send_query(void)
+void dhcp_send_query_or_request(unsigned char requestP)
 {
   uint16_t dhcp_query_len=0;
   unsigned char i;
