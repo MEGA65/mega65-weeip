@@ -652,13 +652,13 @@ parse_tcp:
      
      // Merge received data and RX OO area, if possible
      if (_sckt->rx_data&&_sckt->rx_data==_sckt->rx_oo_start) {
-       printf("Merge OO for %d bytes\n",_sckt->rx_oo_end);
+       printf("MOO:%d\n",_sckt->rx_oo_end);
        _sckt->rx_data=_sckt->rx_oo_end;
        _sckt->rx_oo_end=0;
        _sckt->rx_oo_start=0;
      }
      
-      printf("TCP seg %ld+\n",
+      printf("TCPseg@%ld\n",
 	       byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);      
       
       /*
@@ -668,8 +668,9 @@ parse_tcp:
 
       // Deliver data to programme
       if (_sckt->rx_data) {
-	printf("Deliver %d bytes\n",_sckt->rx_data);
-	_sckt->callback(WEEIP_EV_DATA_SENT);
+	printf("Dvr %d\n",_sckt->rx_data);
+	
+	_sckt->callback(WEEIP_EV_DATA);
 	remove_rx_data(_sckt);
       }
       
