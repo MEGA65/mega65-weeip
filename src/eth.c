@@ -102,26 +102,14 @@ uint8_t eth_task (uint8_t p)
    * If not, then check in a while.
    */
   unsigned short i;
-  unsigned char j=PEEK(0xD6EF);
+  unsigned char j;
   struct m65_tm tm;
 
-  unsigned char cpu_side=j&3;
-  unsigned char eth_side=(j>>2)&3;
-
-#if 0
   // Check the RXIRQ flag to see if we have frames waiting or not
   if(!(PEEK(0xD6E1)&0x20)) {
     task_add(eth_task, 10, 0,"ethtask");
     return 0;
   }
-#else
-  // XXX Kludge until the Ethernet controller gets updated to have a working
-  // RX ready flag.
-  if (((cpu_side-eth_side)&3)==3) {
-    task_add(eth_task, 10, 0,"ethtask");
-    return 0;
-  }
-#endif
   
   // Get next received packet
   // Just $01 and $03 should be enough, but then packets may be received in triplicate
