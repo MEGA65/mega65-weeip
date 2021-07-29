@@ -552,6 +552,7 @@ void parse_url(unsigned long addr)
       if (hlen<64) { hostname[hlen++]=buf[url_ofs++]; hostname[hlen]=0; }
       else break;
     }
+  if (hlen) port=80;
   if (buf[url_ofs]==':') {
     port=0; url_ofs++;
     while(buf[url_ofs]>='0'&&buf[url_ofs]<='9') {
