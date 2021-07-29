@@ -455,7 +455,9 @@ void show_page(void)
     while(!PEEK(0xD610)) continue;
     POKE(0xD610,0);
   } else if (h65_error==H65_DONE) {
-
+    // Show mouse pointer
+    POKE(0xD015,0x01);
+    
     // V400/H640 etc (do first due to hot regs)
     POKE(0xD031,d031_bits);
     // $D016 value
@@ -512,12 +514,17 @@ void parse_url(unsigned long addr)
   // since there should be no need to parse URLs, while there
   // is outstanding TCP RX data, since we load pages entirely
   // before allowing clicking on links etc
-  lcopy(addr,(unsigned char *)buf,256);
-
+  lcopy(addr,(unsigned char *)buf,256);  
+  
   // Update browsing history
-  if (strlen(buf)<160) {
-    lcopy(0xD000+3*80,0xD000+5*80,160*10);
-    lfill(0xD000+80,0x20,160);
+  if (buf[0]&&(strlen(buf)<160)) {
+    lpoke(0xd005,'!');
+    for(hlen=11;hlen>1;hlen--) {
+      lcopy(0xD000+80-160+hlen*160,0xD000+80+hlen*160,160);
+    }
+    // the URL from the 2nd line of the screen (this is how the
+    // G = goto url key works.
+    lfill(0xD000+80*3,0x20,160);
     lcopy(addr,0xD000+80*3,strlen(buf));
   }
   
@@ -619,17 +626,25 @@ void enter_url(void)
       if (line_num) {
 	// Copy previous URL and allow editing it
 	lcopy(0xD000+80+line_num*160,0xD000+80,160);
-	line_num=0; url_ofs=0;	
+	line_num=0; url_ofs=159;
+	// Place cursor at the end of the URL
+	while(url_ofs&&lpeek(0xD000+80+url_ofs)==' ') url_ofs--;
+	if (url_ofs<159) url_ofs++;
       } else {
 	// return on editing URL tries to load it.
-
+	POKE(0xD020,0);
+	
 	// But first, null terminate it.
 	c=159;
-	while(c&&lpeek(0xD000+80+c)==' ') {
+	while(c&&(lpeek(0xD000+80+c)==0x20)) {
 	  lpoke(0xD000+80+c,0);
 	  c--;
 	}
-	return;
+	// But only return the URL if it is blank
+	if (c) return;
+	else
+	  // Reverse the null termination so that we don't do silly things
+	  lfill(0xD000+80,0x20,160);
       }
       break;
     case 0x14: // back space
@@ -702,8 +717,6 @@ void main(void)
 
   // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
-  POKE(0xD000,200);
-  POKE(0xD001,130);
   // Sprite data from casette buffer
   POKE(0x7F8,0x380/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
