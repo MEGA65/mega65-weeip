@@ -40,6 +40,7 @@ unsigned char mouse_pointer_sprite[63]={
 // Wait for key press before starting
 //#define DEBUG_WAIT
 
+#define H65_BEFORE 0
 #define H65_TOONEW 1
 #define H65_BADADDR 2
 #define H65_SENDHTTP 3
@@ -507,20 +508,26 @@ char path[128]="/INDEX.H65";
 int port=8000;
 
 char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
+char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
 
 void parse_url(unsigned long addr)
 {
-  unsigned char hlen,url_ofs;
+  unsigned char hlen,url_ofs,plen;
 
   // NOTE: We are using the TCP receive buffer for the URL
   // since there should be no need to parse URLs, while there
   // is outstanding TCP RX data, since we load pages entirely
   // before allowing clicking on links etc
   lcopy(addr,(unsigned char *)buf,256);  
+
+  printf("Parsing '%s'\n",buf);
   
   // Update browsing history
+  // By checking the string length like this, we rather magically
+  // don't add pages to the history when we are going back through
+  // the browser history.
   if (buf[0]&&(strlen(buf)<160)) {
-    lpoke(0xd005,'!');
+    // Rotate history slots down
     for(hlen=11;hlen>1;hlen--) {
       lcopy(0xD000+80-160+hlen*160,0xD000+80+hlen*160,160);
     }
@@ -538,8 +545,9 @@ void parse_url(unsigned long addr)
   
   hlen=0;
   url_ofs=0;
+  plen=0;
   if (!strncmp(httpcolonslashslash,buf,7)) url_ofs=7;
-  while(buf[url_ofs]&&buf[url_ofs]!='/'&&buf[url_ofs]!=':')
+  while(buf[url_ofs]!=' '&&buf[url_ofs]&&buf[url_ofs]!='/'&&buf[url_ofs]!=':')
     {
       if (hlen<64) { hostname[hlen++]=buf[url_ofs++]; hostname[hlen]=0; }
       else break;
@@ -550,11 +558,16 @@ void parse_url(unsigned long addr)
       port*=10; port+=buf[url_ofs++]-'0';
     }
   }
-  if (strlen(&buf[url_ofs])<128) { strcpy(path,&buf[url_ofs]); }
-  else { path[0]='/'; path[1]=0; }
+  while(buf[url_ofs]&&buf[url_ofs]!=' ') {
+    if (plen<127) path[plen++]=buf[url_ofs++];
+  }
+  path[plen]=0;
+  // If no path, then we use /index.h65
+  if (!plen) strcpy(path,indexdoth65);
+
 }
 
-void enter_url(void)
+void select_url(void)
 {
   unsigned char c;
   unsigned char url_ofs;
@@ -733,8 +746,16 @@ void main(void)
   POKE(0x7F8,0x380/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
 
+  // Get initial URL, and display it.
+  // This allows having preset URLs if we pre-load
+  // the RAM at $Dxxx with the bookmarks
+  // If loading the page fails, then it will get caught
+  // in the main loop, because m65_error will flag it.
+  select_url();
+  parse_url(0xD000 + 80);
   fetch_page(hostname,port,path);
   show_page();
+  
   mouse_clicked(); // Clear mouse click status
   mouse_clicked(); // Clear mouse click status
   
@@ -745,13 +766,27 @@ void main(void)
     // Check for keyboard input
     i=PEEK(0xD610); POKE(0xD610,0);
     switch(i) {
+    case 0x5f:
+      // Navigate back, but only if we have a previous
+      // page to load
+      if (lpeek(0xD000 + 5*80)!=0x20) {
+	// Copy all history entries up one slot
+	lcopy(0xD000 + 5*80, 0xD000 + 3*80,80*20);
+	// Clear the bottom slot, now that it is empty
+	lfill(0xD000 + 24*80,0x20,2*80);
+	// Request loading of the previous URL
+	lcopy(0xD000 + 3*80,0xe000,160);
+	parse_url(0xD000 + 3*80);
+	reload=1;
+      }
+      break;
     case 0x11:
       // Cursor down = scroll page down one line
       scroll_down(8);
       break;
     case 0x67:
       // G = Goto URL
-      enter_url();
+      select_url();
       parse_url(0xD000 + 80);
       reload=1;
       break;
@@ -774,9 +809,14 @@ void main(void)
       }
     }
 
-    if (reload) {
-      fetch_page(hostname,port,path);
-      show_page();
+    // Reload page if requested, and keep trying if page load fails for some reason.
+    if (reload||h65_error!=H65_DONE) {
+      h65_error=H65_BEFORE;
+      while(h65_error!=H65_DONE) {
+	fetch_page(hostname,port,path);
+	show_page();
+	if (h65_error!=H65_DONE) select_url();
+      }
     }
   }
 }
