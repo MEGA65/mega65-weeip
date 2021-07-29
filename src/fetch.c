@@ -563,7 +563,11 @@ void parse_url(unsigned long addr)
   }
   path[plen]=0;
   // If no path, then we use /index.h65
-  if (!plen) strcpy(path,indexdoth65);
+  if (!plen) { strcpy(path,indexdoth65); }
+  else if (path[plen-1]=='/'&&(plen<100)) {
+    // URL ends in /. User probably needs a filename on the end
+    strcpy(&path[plen-1],indexdoth65);
+  }  
 
 }
 
