@@ -498,6 +498,8 @@ void show_page(void)
   }
 }
 
+// Note: These will be interpretted as ASCII by fetch, but CC65 will encode them
+// as PETSCII, so text must be upper case here, which will resolve to lower-case
 char hostname[64]="203.28.176.1";
 char path[128]="/INDEX.H65";
 int port=8000;
@@ -527,9 +529,125 @@ void parse_url(unsigned long addr)
   else { path[0]='/'; path[1]=0; }
 }
 
+void enter_url(void)
+{
+  unsigned char c;
+  unsigned char url_ofs;
+  unsigned char line_num=0;
+  
+  // H640,V200, VIC-III attributes
+  POKE(0xD031,0xa0);
+  // $D016 value
+  POKE(0xD016,0xC9);
+  // Enable 8-bit text mode
+  POKE(0xD054,0x40);
+  // Line step
+  POKE(0xD058,80);
+  POKE(0xD059,0);
+  // Set screen address to $D000
+  POKE(0xD060,0x00);
+  POKE(0xD061,0xD0);
+  POKE(0xD062,0x00);
+  POKE(0xD063,0x00);    
+  // Set colour RAM offset to $1000
+  POKE(0xD065,0x10);
+  // Set charset address
+  // XXX Assumes ASCII font loaded by web page at $F000-$F7FF (!!)
+  POKE(0xD069,0xf0);
+  // Display 25 rows, so that we can do smooth scrolling
+  POKE(0xD07B,25-1);
+  // Reset smooth scroll (assumes PAL)
+  POKE(0xD04E,0x68);
+
+  // Hide mouse pointer, since we don't support it here
+  POKE(0xD015,0);
+  
+  position=0; max_position=0;
+  screen_address_offset_max=0;
+
+  // Reset screen colour
+  lfill(0xFF81000L,0x0e,2000);
+  // Underline and reset colour of heading
+  lfill(0xff81000,0x87,19);
+
+  while(1) {
+
+    // Make sure we re-draw during vertical blank, so that we don't
+    // see any tearing
+    while(PEEK(0xD012)<0xf0) continue;
+
+    if (line_num) {
+      // A previous URL is selected, so highlight it
+      lfill(0xFF81000+80,0x0e,2000-80);
+      lfill(0xFF81000+80+line_num*160,0x21,80*2);
+    } else {
+      // Highlight URL line being typed into
+      lfill(0xff81000+80,0x21,80*2);
+      // Reset text colour of remainder of screen
+      lfill(0xFF81000+80+160,0x0e,2000-80*3);
+    }
+    lpoke(0xFF81000L+80+url_ofs,line_num?0x3e:0x31);    
+    
+    // Draw/undraw hardware cursor
+    c=PEEK(0xD610); POKE(0xd610,0);
+    if (!c) continue;
+    else lpoke(0xFF81000L+80+url_ofs,0x01);
+    
+    switch(c) {
+    case 0x11: // down
+      line_num++;
+      break;
+    case 0x91: // up
+      line_num--;
+      break;
+    case 0x1d: // right
+      line_num=0;
+      if (url_ofs<159) url_ofs++;
+      break;
+    case 0x9d: // left
+      line_num=0;
+      if (url_ofs) url_ofs--;
+      break;
+    case 0x0d: // return
+      break;
+    case 0x14: // back space
+      line_num=0;
+      if (url_ofs&&url_ofs<160) {
+	lcopy(0xD000+80+url_ofs,0xD000+79+url_ofs,160-url_ofs);
+      }
+      lpoke(0xD000+80+159,' ');
+      if (url_ofs) url_ofs--;
+      break;
+    case 0x94: // insert
+      line_num=0;
+      if (url_ofs<158) {
+	lcopy(0xD000+80+url_ofs,0xD000+81+url_ofs,158-url_ofs);
+      }
+      lpoke(0xD000+80+url_ofs,' ');
+      break;
+    default:
+      line_num=0;
+      lpoke(0xD000+80+url_ofs,c);
+      if (url_ofs<159) url_ofs++;
+      break;
+    }
+    // Loop around the line number selection
+    if (line_num>200) line_num=11;
+    else if (line_num>11) line_num=0;
+  }
+}
+
+unsigned char type_url[19]=
+  {0x54,0x79,0x70,0x65,0x20, // Type
+   0x6f,0x72,0x20, // or
+   0x73,0x65,0x6c,0x65,0x63,0x74,0x20, // select
+   0x55,0x52,0x4c, // URL
+   0x3a // :
+  };
+
 void main(void)
 {
-  unsigned char i;
+  unsigned char i,reload;
 
   // Enable logging of ethernet activity on the serial monitor interface
 //  eth_log_mode=ETH_LOG_RX|ETH_LOG_TX;
@@ -538,6 +656,10 @@ void main(void)
   mega65_io_enable();
   srand(random32(0));
 
+  // Clear out URL history area
+  lfill(0xD000L,0x20,4096);
+  lcopy((unsigned long)type_url,0xD000L,19);
+  
   // Give ethernet interface time to auto negotiate etc
   eth_init();
 
@@ -570,6 +692,7 @@ void main(void)
   mouse_clicked(); // Clear mouse click status
   
   while(1) {
+    reload=0;
     update_mouse_position(1);
 
     // Check for keyboard input
@@ -579,10 +702,15 @@ void main(void)
       // Cursor down = scroll page down one line
       scroll_down(8);
       break;
-    case 0x52: case 0x72:
+    case 0x67:
+      // G = Goto URL
+      enter_url();
+      parse_url(0xD000 + 80);
+      reload=1;
+      break;
+    case 0x72:
       // R =  Reload page
-      fetch_page(hostname,port,path);
-      show_page();
+      reload=1;
       break;
     case 0x91:
       // Cursor up == scroll page up one line
@@ -594,12 +722,14 @@ void main(void)
         // XXX Don't erase hostname, so that relative paths work automagically.
         // We just set the length to 0, so that if we find a hostname, we can
         // record it correctly. Similarly don't stomp on the port number
+	reload=1;
 	parse_url(mouse_link_address);
-        fetch_page(hostname,port,path);
-	show_page();
       }
     }
 
-    continue;
+    if (reload) {
+      fetch_page(hostname,port,path);
+      show_page();
     }
+  }
 }
