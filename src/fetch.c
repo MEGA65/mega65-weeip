@@ -525,7 +525,15 @@ void parse_url(unsigned long addr)
     // the URL from the 2nd line of the screen (this is how the
     // G = goto url key works.
     lfill(0xD000+80*3,0x20,160);
-    lcopy(addr,0xD000+80*3,strlen(buf));
+    if (buf[0]=='/') {
+      // Put http://host:port on front of paths
+      snprintf(&buf[256],256,"http://%s:%d%s",hostname,port,buf);
+      // fix ASCII encoding of http text    
+      buf[256]=0x68; buf[257]=0x74; buf[258]=0x74; buf[259]=0x70;
+      lcopy((unsigned long)&buf[256],0xD000+80*3,strlen(&buf[256]));
+    } else
+      // Otherwise leave path untouched
+      lcopy(addr,0xD000+80*3,strlen(buf));
   }
   
   hlen=0;
