@@ -498,14 +498,38 @@ void show_page(void)
   }
 }
 
-  char hostname[64]="203.28.176.1";
-  char path[128]="/INDEX.H65";
-  char url[256]="";
-  int port=8000;
+char hostname[64]="203.28.176.1";
+char path[128]="/INDEX.H65";
+int port=8000;
+
+void parse_url(unsigned long addr)
+{
+  unsigned char hlen,url_ofs;
+
+  // NOTE: We are using the TCP receive buffer for the URL
+  // since there should be no need to parse URLs, while there
+  // is outstanding TCP RX data, since we load pages entirely
+  // before allowing clicking on links etc
+  lcopy(addr,(unsigned char *)buf,256);
+  
+  hlen=0;
+  url_ofs=0;
+  if (!strncmp("http://",buf,7)) url_ofs=8;
+  while(buf[url_ofs]!='/'&&buf[url_ofs]!=':')
+    { if (hlen<64) { hostname[hlen++]=buf[url_ofs]; hostname[hlen]=0; } }
+  if (buf[url_ofs]==':') {
+    port=0; url_ofs++;
+    while(buf[url_ofs]>='0'&&buf[url_ofs]<='9') {
+      port*=10; port+=buf[url_ofs++]-'0';
+    }
+  }
+  if (strlen(&buf[url_ofs])<128) { strcpy(path,&buf[url_ofs]); }
+  else { path[0]='/'; path[1]=0; }
+}
 
 void main(void)
 {
-  unsigned char i,hlen,url_ofs;
+  unsigned char i;
 
   // Enable logging of ethernet activity on the serial monitor interface
 //  eth_log_mode=ETH_LOG_RX|ETH_LOG_TX;
@@ -539,7 +563,7 @@ void main(void)
   // Sprite data from casette buffer
   POKE(0x7F8,0x380/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
-  
+
   fetch_page(hostname,port,path);
   show_page();
   mouse_clicked(); // Clear mouse click status
@@ -548,40 +572,29 @@ void main(void)
   while(1) {
     update_mouse_position(1);
 
-    // Scroll using keyboard
-    if (PEEK(0xD610)==0x11) {
+    // Check for keyboard input
+    i=PEEK(0xD610); POKE(0xD610,0);
+    switch(i) {
+    case 0x11:
+      // Cursor down = scroll page down one line
       scroll_down(8);
-      POKE(0xD610,0);
-      } 
-    if (PEEK(0xD610)==0x52||PEEK(0xD610)==0x72) {
+      break;
+    case 0x52: case 0x72:
       // R =  Reload page
-      POKE(0xD610,0);
       fetch_page(hostname,port,path);
       show_page();
-      } 
-    if (PEEK(0xD610)==0x91) {
+      break;
+    case 0x91:
+      // Cursor up == scroll page up one line
       scroll_down(-8);
-      POKE(0xD610,0);
-      }
+      break;
+    }
     if (mouse_clicked()) {
       if (mouse_link_address) {
         // XXX Don't erase hostname, so that relative paths work automagically.
         // We just set the length to 0, so that if we find a hostname, we can
         // record it correctly. Similarly don't stomp on the port number
-        hlen=0;
-        url_ofs=0;
-        lcopy(mouse_link_address,(unsigned long)&url[0],256);
-        if (!strncmp("http://",url,7)) url_ofs=8;
-	while(url[url_ofs]!='/'&&url[url_ofs]!=':')
-	  { if (hlen<64) { hostname[hlen++]=url[url_ofs]; hostname[hlen]=0; } }
-	if (url[url_ofs]==':') {
-	  port=0; url_ofs++;
-	  while(url[url_ofs]>='0'&&url[url_ofs]<='9') {
-	    port*=10; port+=url[url_ofs++]-'0';
-	  }
-	}
-	if (strlen(&url[url_ofs])<128) { strcpy(path,&url[url_ofs]); }
-	else { path[0]='/'; path[1]=0; }
+	parse_url(mouse_link_address);
         fetch_page(hostname,port,path);
 	show_page();
       }
