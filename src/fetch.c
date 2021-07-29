@@ -513,6 +513,13 @@ void parse_url(unsigned long addr)
   // is outstanding TCP RX data, since we load pages entirely
   // before allowing clicking on links etc
   lcopy(addr,(unsigned char *)buf,256);
+
+  // Update browsing history
+  if (strlen(buf)<160) {
+    lcopy(0xD000+3*80,0xD000+5*80,160*10);
+    lfill(0xD000+80,0x20,160);
+    lcopy(addr,0xD000+80*3,strlen(buf));
+  }
   
   hlen=0;
   url_ofs=0;
@@ -609,6 +616,21 @@ void enter_url(void)
       if (url_ofs) url_ofs--;
       break;
     case 0x0d: // return
+      if (line_num) {
+	// Copy previous URL and allow editing it
+	lcopy(0xD000+80+line_num*160,0xD000+80,160);
+	line_num=0; url_ofs=0;	
+      } else {
+	// return on editing URL tries to load it.
+
+	// But first, null terminate it.
+	c=159;
+	while(c&&lpeek(0xD000+80+c)==' ') {
+	  lpoke(0xD000+80+c,0);
+	  c--;
+	}
+	return;
+      }
       break;
     case 0x14: // back space
       line_num=0;
