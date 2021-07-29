@@ -14,7 +14,7 @@
 // very fast during configuration
 #define DHCP_RETRY_TICKS 255
 
-unsigned char dhcp_configured=0;
+unsigned char dhcp_configured=0,dhcp_acks=0;
 unsigned char dhcp_xid[4]={0};
 
 extern IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
@@ -56,16 +56,20 @@ byte_t dhcp_reply_handler (byte_t p)
     
     // Set our IP from BOOTP field
     for(i=0;i<4;i++) ip_local.b[i] = dns_buf[0x10+i];
-    //    printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
-
+#ifdef DEBUG_DHCP
+    printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+#endif
+    
     // Only process DHCP fields if magic cookie is set
     if (dns_buf[0xec]!=0x63) break;
     if (dns_buf[0xed]!=0x82) break;
     if (dns_buf[0xee]!=0x53) break;
     if (dns_buf[0xef]!=0x63) break;
-
-    //    printf("Parsing DHCP fields $%002x\n",dns_buf[0xf2]);
-
+ 
+#ifdef DEBUG_DHCP
+    printf("Parsing DHCP fields $%002x\n",dns_buf[0xf2]);
+#endif
+    
     if (dns_buf[0xf2]==0x02) {
       offset=0xf0;
       while(dns_buf[offset]!=0xff) {
@@ -81,15 +85,21 @@ byte_t dhcp_reply_handler (byte_t p)
 	  switch(type) {
 	  case 0x01:
 	    for(i=0;i<4;i++) ip_mask.b[i] = dns_buf[offset+i];	  
-	    //	  printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+#ifdef DEBUG_DHCP
+	    printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+#endif
 	    break;
 	  case 0x03:
 	    for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
-	    //	  printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+#ifdef DEBUG_DHCP
+	    printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+#endif
 	    break;
 	  case 0x06:
 	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
-	    //	  printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+#ifdef DEBUG_DHCP
+	    printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+#endif
 	    break;
 	  default:
 	    break;
@@ -101,20 +111,34 @@ byte_t dhcp_reply_handler (byte_t p)
       
       // Compute broadcast address
       for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
-      //    printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
-      
+#ifdef DEBUG_DHCP
+      printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+#endif      
       // XXX We SHOULD send a packet to acknowledge the offer.
       // It works for now without it, because we start responding to ARP requests which
       // sensible DHCP servers will perform to verify occupancy of the IP.
-      //      printf("Sending DHCP ACK\n");
+#ifdef DEBUG_DHCP
+      printf("Sending DHCP ACK\n");
+#endif
       dhcp_send_query_or_request(1);
+      // Fritz box only sends DHCP ACK, not message type 5, so we just give up
+      // after a couple of goes
+      dhcp_acks++;
+      if (dhcp_acks>2) {
+	dhcp_configured=1;
+	socket_release(dhcp_socket);
+      }
     } else if (dns_buf[0xf2]==0x05) {
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
-      //      printf("DHCP configuration complete.\n");
+#ifdef DEBUG_DHCP
+      printf("DHCP configuration complete.\n");
+#endif
       socket_release(dhcp_socket);
     } else {
-      //      printf("Unknown DHCP message\n");
+#ifdef DEBUG_DHCP
+      printf("Unknown DHCP message\n");
+#endif
     }
     
     break;
@@ -137,6 +161,9 @@ byte_t dhcp_autoconfig_retry(byte_t b)
 bool_t dhcp_autoconfig(void)
 { 
   if (dhcp_configured) return 1;
+
+  // Initially we have seen zero DHCP acks
+  dhcp_acks=0;
   
   dhcp_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dhcp_reply_handler);
