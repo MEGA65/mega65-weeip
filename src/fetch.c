@@ -599,7 +599,8 @@ void enter_url(void)
 
     // Make sure we re-draw during vertical blank, so that we don't
     // see any tearing
-    while(PEEK(0xD012)<0xf0) continue;
+    while(!(PEEK(0xD011)&0x80)) continue;
+    while(PEEK(0xD012)<0x10||PEEK(0xD012)>0x20) continue;
 
     if (line_num) {
       // A previous URL is selected, so highlight it
