@@ -506,6 +506,8 @@ char hostname[64]="203.28.176.1";
 char path[128]="/INDEX.H65";
 int port=8000;
 
+char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
+
 void parse_url(unsigned long addr)
 {
   unsigned char hlen,url_ofs;
@@ -527,9 +529,7 @@ void parse_url(unsigned long addr)
     lfill(0xD000+80*3,0x20,160);
     if (buf[0]=='/') {
       // Put http://host:port on front of paths
-      snprintf(&buf[256],256,"http://%s:%d%s",hostname,port,buf);
-      // fix ASCII encoding of http text    
-      buf[256]=0x68; buf[257]=0x74; buf[258]=0x74; buf[259]=0x70;
+      snprintf(&buf[256],256,"%s%s:%d%s",httpcolonslashslash,hostname,port,buf);
       lcopy((unsigned long)&buf[256],0xD000+80*3,strlen(&buf[256]));
     } else
       // Otherwise leave path untouched
@@ -538,9 +538,12 @@ void parse_url(unsigned long addr)
   
   hlen=0;
   url_ofs=0;
-  if (!strncmp("http://",buf,7)) url_ofs=8;
-  while(buf[url_ofs]!='/'&&buf[url_ofs]!=':')
-    { if (hlen<64) { hostname[hlen++]=buf[url_ofs]; hostname[hlen]=0; } }
+  if (!strncmp(httpcolonslashslash,buf,7)) url_ofs=7;
+  while(buf[url_ofs]&&buf[url_ofs]!='/'&&buf[url_ofs]!=':')
+    {
+      if (hlen<64) { hostname[hlen++]=buf[url_ofs++]; hostname[hlen]=0; }
+      else break;
+    }
   if (buf[url_ofs]==':') {
     port=0; url_ofs++;
     while(buf[url_ofs]>='0'&&buf[url_ofs]<='9') {
