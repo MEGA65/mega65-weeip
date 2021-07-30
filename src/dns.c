@@ -79,7 +79,7 @@ byte_t dns_reply_handler (byte_t p)
   socket_select(dns_socket);
   switch(p) {
   case WEEIP_EV_DATA:
-
+    
     // Check that query ID matches
     if (dns_buf[0]!=dns_query[0]) break;
     if (dns_buf[1]!=dns_query[1]) break;
@@ -198,12 +198,15 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   
   // Before we get any further, send an ARP query for the DNS server
   // (or if it isn't on the same network segment, for our gateway.)
-  arp_query(&ip_dnsserver);
-  arp_query(&ip_gate);
+  // to prime things.
+  // XXX Should not be necessary, as it will happen automatically?
+  //  arp_query(&ip_dnsserver);
+  //  arp_query(&ip_gate);
   // Then wait until we get a reply.
-  while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
-    task_periodic();     
-  }   
+  //  while((!query_cache(&ip_dnsserver,&mac)) &&(!query_cache(&ip_gate,&mac)) ) {
+  //    task_periodic();     
+  //  }
+  //  printf("ARPed");
   
   socket_select(dns_socket);
   socket_connect(&ip_dnsserver,53);

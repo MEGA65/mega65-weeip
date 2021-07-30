@@ -294,7 +294,7 @@ eth_ip_send()
 
    if(!query_cache(&ip, &mac)) {                   // find MAC
       arp_query(&ip);                              // yet unknown IP, query MAC and fail.
-      printf("A");
+      //      printf("A");
       return FALSE;
    }
 
