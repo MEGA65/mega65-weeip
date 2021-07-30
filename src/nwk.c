@@ -216,7 +216,7 @@ void remove_rx_data(SOCKET *_sckt)
     _sckt->rx_data=0;
     return;
   }
-  if (_sckt->rx_oo_start) {
+  if (_sckt->rx_oo_start&&(_sckt->rx_oo_end>_sckt->rx_data)) {
     lcopy((unsigned long)_sckt->rx + _sckt->rx_data, (unsigned long)_sckt->rx,
 	  _sckt->rx_oo_end - _sckt->rx_data);
     _sckt->rx_oo_start -= _sckt->rx_data;
@@ -539,7 +539,8 @@ found:
    data_size -= 28;
    if(_sckt->rx) {
       if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
-      lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+8,(uint32_t)_sckt->rx, data_size);
+      if (data_size)
+	lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+8,(uint32_t)_sckt->rx, data_size);
       _sckt->rx_data = data_size;
    }
    
