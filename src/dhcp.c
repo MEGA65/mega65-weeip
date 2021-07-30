@@ -53,6 +53,13 @@ byte_t dhcp_reply_handler (byte_t p)
     if (dns_buf[0x03]!=0x00) break;
     
     // Ok, its for us. Extract the info we need.    
+
+    // Default mask 255.255.255.0
+    for(i=0;i<3;i++) ip_mask.b[i] = 0xff; ip_mask.b[3]=0;
+    // DNS defaults to the DHCP server, unless specified later in an option
+    // (This is required because although we ask for it in our request,
+    // Fritz Boxes at least seem to not always provide it, even when asked.)
+    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[20+i];
     
     // Set our IP from BOOTP field
     for(i=0;i<4;i++) ip_local.b[i] = dns_buf[0x10+i];
@@ -72,7 +79,7 @@ byte_t dhcp_reply_handler (byte_t p)
     
     if (dns_buf[0xf2]==0x02) {
       offset=0xf0;
-      while(dns_buf[offset]!=0xff) {
+      while(dns_buf[offset]!=0xff&&(offset<512)) {
 	if (!dns_buf[offset]) offset++;
 	else {
 	  type = dns_buf[offset];
@@ -98,7 +105,7 @@ byte_t dhcp_reply_handler (byte_t p)
 	  case 0x06:
 	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
 #ifdef DEBUG_DHCP
-	    printf("DNS is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	    printf("DNS option is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
 #endif
 	    break;
 	  default:
@@ -128,6 +135,7 @@ byte_t dhcp_reply_handler (byte_t p)
 	dhcp_configured=1;
 	socket_release(dhcp_socket);
       }
+
     } else if (dns_buf[0xf2]==0x05) {
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
@@ -248,10 +256,11 @@ void dhcp_send_query_or_request(unsigned char requestP)
   } else {
     // Request subnetmask, router, domainname, DNS server
     dns_query[dhcp_query_len++]=0x37;
-    dns_query[dhcp_query_len++]=0x04;
+    dns_query[dhcp_query_len++]=0x05;
     dns_query[dhcp_query_len++]=0x01;
     dns_query[dhcp_query_len++]=0x03;
     dns_query[dhcp_query_len++]=0x0f;
+    dns_query[dhcp_query_len++]=0x06;
     dns_query[dhcp_query_len++]=0x06;
   }
   // End of request
