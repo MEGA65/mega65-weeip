@@ -19,7 +19,7 @@
 // #define DEBUG_ACK
 
 // Enable ICMP PING if desired.
-#define ENABLE_ICMP
+//#define ENABLE_ICMP
 
 /*
   Use a graduated timeout that starts out fast, and then slows down,
