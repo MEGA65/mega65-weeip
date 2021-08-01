@@ -12,6 +12,7 @@
 #include "memory.h"
 #include "random.h"
 #include "mouse.h"
+#include "debug.h"
 
 unsigned char mouse_pointer_sprite[63]={
 0xfC,0x00,0x00,
@@ -80,7 +81,8 @@ byte_t comunica (byte_t p)
          break;
       case WEEIP_EV_DATA:
 	// Show progress
-	printf(".");
+	printf(".%d",s->rx_data);
+	//	while(1) continue;
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=((char *)s->rx)[i];
 	  //	  printf("(%x)",page_parse_state);
@@ -146,7 +148,7 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-#if 0
+#if 1
 	      POKE(0x286,5);
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
@@ -159,10 +161,18 @@ byte_t comunica (byte_t p)
             count = s->rx_data - i;
             if (count>block_len) count=block_len;
 
-            // Stash them and update it
-            lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
-	    block_addr+=count;
-	    block_len-=count;
+	    if (count>0) {
+	      // Stash them and update it
+	      lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
+
+#if 1
+	      snprintf(s->rx,80,"%d @ $%08lx",count,block_addr);
+	      debug_msg(s->rx);
+#endif
+	      
+	      block_addr+=count;
+	      block_len-=count;
+	    }
 
             // Update i based on the number of bytes digested
             i+=count-1;
@@ -210,9 +220,8 @@ void prepare_network(void)
   POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
   printf("%c",0x93);
   
-  printf("My MAC address is %02x:%02x:%02x:%02x:%02x:%02x\n",
-	 mac_local.b[0],mac_local.b[1],mac_local.b[2],
-	 mac_local.b[3],mac_local.b[4],mac_local.b[5]);
+  printf("MAC %02x",mac_local.b[0]);
+  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);
   
   // Setup WeeIP
   weeip_init();
@@ -221,7 +230,7 @@ void prepare_network(void)
 
   // Do DHCP auto-configuration
   dhcp_configured=0;
-  printf("Configuring network via DHCP\n");
+  printf("\nRequesting IP...\n");
   dhcp_autoconfig();
   while(!dhcp_configured) {
     task_periodic();
@@ -240,7 +249,7 @@ signed long max_position=0;
 
 void scroll_down(long distance)
 {
-
+  
   // Wait for vertical blank so that we don't have visible tearing.
   while(PEEK(0xD012)<0xf0) continue;
   while(PEEK(0xD012)>=0xf0) continue;
@@ -315,7 +324,7 @@ restart_fetch:
   // Erase screen
   for(i=0;i<24*1024;i+=2) lpoke(0x12000L+i,' ');
   lfill(0xFF82000L,0,0x6000);
-  lfill(0x40000L,0,0x0000); // 0 means 64KB
+  lfill(0x40000L,0,0x0000);  // len=0 means len=64KB
   lfill(0x50000L,0,0x0000);
   
   // Clear any partial match to h65+$ff header
@@ -361,6 +370,7 @@ restart_fetch:
   printf("Disconnecting... %d\n",h65_error);
   socket_disconnect(s);
   for(i=0;0<16;i++) {
+    printf("i=%d\n",i);
     task_periodic();
     if (disconnected) break;
   }
@@ -394,12 +404,12 @@ void update_mouse_position(unsigned char do_scroll)
   mouse_update_position(&mx,&my);
   if (my<50) {
     // Mouse is in top border, so scroll up by that amount
-    scroll_down(my-50L);
+    if (do_scroll) scroll_down(my-50L);
     mouse_warp_to(mx,50);
     my=50;
   } else if (my>249) {
     // Mouse is in bottom border, so scroll down by that amount
-    scroll_down((my-249));
+    if (do_scroll) scroll_down((my-249));
     mouse_warp_to(mx,249);
     my=249;
   }
@@ -440,6 +450,8 @@ void update_mouse_position(unsigned char do_scroll)
 
 void show_page(void)
 {
+  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
+  
   printf("h65_error=%d\n",h65_error);
 
 #if 0
@@ -756,8 +768,10 @@ void main(void)
   // the RAM at $Dxxx with the bookmarks
   // If loading the page fails, then it will get caught
   // in the main loop, because m65_error will flag it.
+
   select_url();
   parse_url(0xD000 + 80);
+
   fetch_page(hostname,port,path);
   show_page();
   
@@ -824,4 +838,5 @@ void main(void)
       }
     }
   }
+
 }
