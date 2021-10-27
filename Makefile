@@ -19,7 +19,7 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch.prg haustierbegriff.prg
+all:	fetch.prg haustierbegriff.prg ethtest.c
 
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
@@ -29,6 +29,11 @@ fetch.prg:       $(TCPSRCS) src/fetch.c
 	git submodule update
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-unpacked.prg --mapfile $*.map $(TCPSRCS) src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 	exomizer sfx sys -o $*.prg fetch-unpacked.prg
+
+ethtest.prg:       $(TCPSRCS) src/ethtest.c
+	git submodule init
+	git submodule update
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o ethtest.prg --mapfile $*.map $(TCPSRCS) src/ethtest.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 
 fetchkc.prg:       $(TCPSRCS) src/fetch.c
 	git submodule init
