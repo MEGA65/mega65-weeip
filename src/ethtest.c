@@ -1,6 +1,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <tests.h>
 
 #include "task.h"
 #include "weeip.h"
@@ -756,8 +757,11 @@ void main(void)
 
   prepare_network();
 
-  while(1) {
+  while(!dhcp_configured) {
     POKE(0xD020,PEEK(0xD020)+1);
   }
 
+  // Indicate that DHCP succeeded
+  unit_test_report(1, 0, TEST_PASS);
+  unit_test_report(1, 1, TEST_DONEALL);  
 }
