@@ -177,7 +177,7 @@ bool_t dhcp_autoconfig(void)
   
   dhcp_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dhcp_reply_handler);
-  socket_set_rx_buffer(dns_buf,sizeof dns_buf);
+  socket_set_rx_buffer((uint32_t)&dns_buf[0],sizeof dns_buf);
 
   dhcp_send_query_or_request(0);
 

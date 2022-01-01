@@ -173,7 +173,7 @@ unsigned char value=0;
 
 bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
 {
-  EUI48 mac;
+  //  EUI48 mac;
   unsigned char next_retry,retries;
 
   // Check if IP address, and if so, parse directly.
@@ -194,7 +194,7 @@ bool_t dns_hostname_to_ip(char *hostname,IPV4 *ip)
   
   dns_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dns_reply_handler);
-  socket_set_rx_buffer(dns_buf,sizeof dns_buf);
+  socket_set_rx_buffer((uint32_t)&dns_buf[0],sizeof dns_buf);
   
   // Before we get any further, send an ARP query for the DNS server
   // (or if it isn't on the same network segment, for our gateway.)

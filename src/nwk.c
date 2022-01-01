@@ -104,7 +104,7 @@ byte_t default_header[] = {
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x50, 0x00,
    // TCP Window size
-   0x06, 0x00, // ~1.5KB by default
+   0xff, 0xff, // ~64KB by default
    0x00, 0x00, 0x00, 0x00
 };
 
@@ -229,11 +229,13 @@ void remove_rx_data(SOCKET *_sckt)
 
 void compute_window_size(SOCKET *_sckt)
 {
-  unsigned short available_window=0;
+  uint32_t available_window=0;
   // Now patch the header to take account of how much buffer space we _actually_ have available
-  if (_sckt->rx_data>available_window) available_window=_sckt->rx_data;
-  if (_sckt->rx_oo_end>available_window) available_window=_sckt->rx_oo_end;
-  available_window=_sckt->rx_size - available_window;
+  available_window=_sckt->rx_size - _sckt->rx_data;
+  if (available_window>0xffff) available_window=0xffff;
+  
+  //  printf("\n[Window=%ld,sz=%ld,used=%ld]\n",available_window,_sckt->rx_size,_sckt->rx_data);
+  
   default_header[WINDOW_SIZE_OFFSET+0]=available_window>>8;
   default_header[WINDOW_SIZE_OFFSET+1]=available_window>>0;
 }
@@ -395,6 +397,8 @@ byte_t nwk_upstream (byte_t sig)
 	 debug_msg("eth_packet_send() called");
 #endif
          eth_packet_send();
+
+	 printf("X");
 
 	 _sckt->toSend = 0;
 	 _sckt->timeout = FALSE;
@@ -577,6 +581,7 @@ parse_tcp:
 	    * is being reported.
             */
        if (_sckt->state>=_CONNECT) {
+#if 0
 	 printf("OoO ACK %02x%02x%02x%02x vs %02x%02x%02x%02x\n",
 		TCPH(n_ack).b[3],
 		TCPH(n_ack).b[2],
@@ -587,6 +592,7 @@ parse_tcp:
 		_sckt->seq.b[2],
 		_sckt->seq.b[3]
 		);
+#endif
 	 //	 goto drop;
        }
       }
@@ -623,7 +629,7 @@ parse_tcp:
      for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
      rel_sequence.d-=_sckt->remSeq.d;
 
-#if 1
+#if 0
      printf("\n%6lx: rel_seq=%ld, rx:%d,%d to %d\n",
 	    _sckt->remSeq.d-_sckt->remSeqStart.d,
 	    rel_sequence.d,

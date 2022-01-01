@@ -120,7 +120,7 @@ socket_select
 void 
 socket_set_rx_buffer
    (buffer_t b,
-   int size)
+    uint32_t size)
 {
    if(_sckt == NULL) return;
    _sckt->rx = b;

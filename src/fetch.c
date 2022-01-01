@@ -53,7 +53,7 @@ unsigned short line_count;
 
 unsigned char disconnected=0;
 SOCKET *s;
-byte_t *buf=0xC000;
+byte_t *buf=(byte_t *)0xC000;
 
 /* Function that is used as a call-back on socket events
  * */
@@ -83,7 +83,7 @@ byte_t comunica (byte_t p)
 	printf(".%d",s->rx_data);
 	//	while(1) continue;
 	for(i=0;i<s->rx_data;i++) {
-	  unsigned char c=((char *)s->rx)[i];
+	  unsigned char c=lpeek(s->rx+i);
 	  //	  printf("(%x)",page_parse_state);
 	  switch(page_parse_state) {
 	  case 0:
@@ -162,11 +162,11 @@ byte_t comunica (byte_t p)
 
 	    if (count>0) {
 	      // Stash them and update it
-	      lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
+	      lcopy(s->rx+i,block_addr,count);
 
 #if 0
-	      snprintf(s->rx,80,"%d @ $%08lx",count,block_addr);
-	      debug_msg(s->rx);
+	      snprintf(buf,80,"%d @ $%08lx",count,block_addr);
+	      debug_msg(buf);
 #endif
 	      
 	      block_addr+=count;
@@ -342,7 +342,7 @@ restart_fetch:
   socket_set_callback(comunica);
   // socket_set_rx_buffer(buf, 2048);
   // 128KB of Attic RAM for TCP RX buffer if present
-  socket_set_rx_buffer(0x8000000L, 32*1024);
+  socket_set_rx_buffer(0x8000000L, 128*1024);
   socket_connect(&a,port);
 
   while(!disconnected) {
@@ -530,7 +530,7 @@ void parse_url(unsigned long addr)
   // since there should be no need to parse URLs, while there
   // is outstanding TCP RX data, since we load pages entirely
   // before allowing clicking on links etc
-  lcopy(addr,(unsigned char *)buf,256);  
+  lcopy(addr,(unsigned long)&buf[0],256);  
 
   printf("Parsing '%s'\n",buf);
   

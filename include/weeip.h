@@ -97,11 +97,11 @@ typedef struct {
 	void *tx;                                 ///< Transmission buffer pointer.
 
        
-        uint16_t rx_size;                         ///< Reception buffer size.
+        uint32_t rx_size;                         ///< Reception buffer size.
 	uint16_t tx_size;                         ///< Size of transmit packet.
-	uint16_t rx_data;                         ///< Size of received packet.
-        uint16_t rx_oo_start;                     ///< Start of out-of-order held data
-        uint16_t rx_oo_end;                       ///< End of out-of-order held data
+	uint32_t rx_data;                         ///< Bytes available in RX buffer
+        uint32_t rx_oo_start;                     ///< Start of out-of-order held data
+        uint32_t rx_oo_end;                       ///< End of out-of-order held data
   
   
 	task_t callback;                          ///< Task for socket management.
@@ -128,7 +128,7 @@ extern unsigned char eth_log_mode;
 extern SOCKET *socket_create(WEEIP_PROTOCOL protocol);
 extern void socket_release(SOCKET *s);
 extern void socket_select(SOCKET *s);
-extern void socket_set_rx_buffer(buffer_t b, int size);
+extern void socket_set_rx_buffer(buffer_t b, uint32_t size);
 extern void socket_set_callback(task_t c);
 extern bool_t socket_listen(uint16_t p);
 extern bool_t socket_connect(IPV4 *a, uint16_t p);
