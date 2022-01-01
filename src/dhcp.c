@@ -9,6 +9,8 @@
 #include "memory.h"
 #include "random.h"
 
+// #define DEBUG_DHCP
+
 // Don't request DHCP retries too quickly
 // as the network tick loop may be called
 // very fast during configuration
@@ -74,9 +76,9 @@ byte_t dhcp_reply_handler (byte_t p)
     if (dns_buf[0xef]!=0x63) break;
  
 #ifdef DEBUG_DHCP
-    printf("Parsing DHCP fields $%002x\n",dns_buf[0xf2]);
+    //    printf("Parsing DHCP fields $%002x\n",dns_buf[0xf2]);
 #endif
-    
+
     if (dns_buf[0xf2]==0x02) {
       offset=0xf0;
       while(dns_buf[offset]!=0xff&&(offset<512)) {
@@ -96,7 +98,7 @@ byte_t dhcp_reply_handler (byte_t p)
 	    printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
 #endif
 	    break;
-	  case 0x03:
+	  case 0x03: case 0x36:
 	    for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
 #ifdef DEBUG_DHCP
 	    printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
@@ -105,7 +107,7 @@ byte_t dhcp_reply_handler (byte_t p)
 	  case 0x06:
 	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
 #ifdef DEBUG_DHCP
-	    printf("DNS option is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	    //	    printf("DNS server is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
 #endif
 	    break;
 	  default:
@@ -125,7 +127,7 @@ byte_t dhcp_reply_handler (byte_t p)
       // It works for now without it, because we start responding to ARP requests which
       // sensible DHCP servers will perform to verify occupancy of the IP.
 #ifdef DEBUG_DHCP
-      printf("Sending DHCP ACK\n");
+      //      printf("Sending DHCP ACK\n");
 #endif
       dhcp_send_query_or_request(1);
       // Fritz box only sends DHCP ACK, not message type 5, so we just give up
@@ -140,12 +142,12 @@ byte_t dhcp_reply_handler (byte_t p)
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
 #ifdef DEBUG_DHCP
-      printf("DHCP configuration complete.\n");
+      //      printf("DHCP configuration complete.\n");
 #endif
       socket_release(dhcp_socket);
     } else {
 #ifdef DEBUG_DHCP
-      printf("Unknown DHCP message\n");
+      //      printf("Unknown DHCP message\n");
 #endif
     }
     
