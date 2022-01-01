@@ -41,11 +41,10 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-fetch.prg:       $(TCPSRCS) src/fetch.c
+fetch.prg:       $(TCPSRCS) src/fetch.c src/helper.s
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-unpacked.prg --mapfile $*.map $(TCPSRCS) src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
-	exomizer sfx sys -o $*.prg fetch-unpacked.prg
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
 ethtest.prg:       $(TCPSRCS) src/ethtest.c src/helper.s
 	git submodule init
@@ -60,6 +59,5 @@ fetchkc.prg:       $(TCPSRCS) src/fetch.c
 haustierbegriff.prg:       $(TCPSRCS) src/haustierbegriff.c
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o petterm-unpacked.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
-	exomizer sfx sys -o $*.prg petterm-unpacked.prg
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o haustierbegriff.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
 
