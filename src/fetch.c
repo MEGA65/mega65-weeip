@@ -66,7 +66,6 @@ byte_t comunica (byte_t p)
    socket_select(s);
    switch(p) {
       case WEEIP_EV_CONNECT:
-	printf("Connected...\n");
 	//	while(1) continue;
 	// Buf is setup in fetch_page()
 
@@ -134,7 +133,7 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
 	    // Skip empty block
 	    if (block_len==0) {
-	      printf("\nDONE!\n");
+	      //	      printf("\nDONE!\n");
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
 	      break;
@@ -148,7 +147,7 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-#if 1
+#if 0
 	      POKE(0x286,5);
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
@@ -165,7 +164,7 @@ byte_t comunica (byte_t p)
 	      // Stash them and update it
 	      lcopy((unsigned long)&(((char *)s->rx)[i]),block_addr,count);
 
-#if 1
+#if 0
 	      snprintf(s->rx,80,"%d @ $%08lx",count,block_addr);
 	      debug_msg(s->rx);
 #endif
@@ -332,8 +331,8 @@ restart_fetch:
   
   printf("Resolving %s\n",hostname);
   if (dns_hostname_to_ip(hostname,&a)) {
-    printf("Resolved to %d.%d.%d.%d\n",
-	   a.b[0],a.b[1],a.b[2],a.b[3]);
+    printf("Resolved to %d.%d.%d.%d:%d\n",
+	   a.b[0],a.b[1],a.b[2],a.b[3],port);
   } else {
     printf("Failed to resolve hostname.\n");
     return;
@@ -370,7 +369,6 @@ restart_fetch:
   printf("Disconnecting... %d\n",h65_error);
   socket_disconnect(s);
   for(i=0;0<16;i++) {
-    printf("i=%d\n",i);
     task_periodic();
     if (disconnected) break;
   }
@@ -450,7 +448,7 @@ void update_mouse_position(unsigned char do_scroll)
 
 void show_page(void)
 {
-  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
+  //  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
   
   printf("h65_error=%d\n",h65_error);
 
@@ -515,9 +513,9 @@ void show_page(void)
 
 // Note: These will be interpretted as ASCII by fetch, but CC65 will encode them
 // as PETSCII, so text must be upper case here, which will resolve to lower-case
-char hostname[64]="203.28.176.1";
+char hostname[64]="192.168.176.31";
 char path[128]="/INDEX.H65";
-int port=8000;
+int port=80;
 
 char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
 char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
@@ -729,7 +727,7 @@ void main(void)
   unsigned char i,reload;
 
   // Enable logging of ethernet activity on the serial monitor interface
-//  eth_log_mode=ETH_LOG_RX|ETH_LOG_TX;
+  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;
 
   POKE(0,65);
   mega65_io_enable();
@@ -756,7 +754,7 @@ void main(void)
 #endif
 
   prepare_network();
-
+  
   // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
   // Sprite data from casette buffer
