@@ -273,7 +273,7 @@ socket_disconnect()
     * TCP socket.
     * Start sending FIN message.
     */
-   printf("TCP close\n");
+   //   printf("TCP close\n");
    if(_sckt->state != _CONNECT) return FALSE;
    _sckt->state = _FIN_SENT;
    _sckt->toSend = FIN | ACK;

@@ -549,7 +549,7 @@ found:
 
 parse_tcp:
 
-   //   printf(":");
+   printf(":");
    
    /*
     * TCP message.
@@ -575,7 +575,7 @@ parse_tcp:
 	    * clever and re-send?)
             */
        if (_sckt->state>=_CONNECT) {
-	 printf("Drop\n");
+	 //	 printf("Drop\n");
 	 goto drop;
        }
       }
@@ -619,11 +619,12 @@ parse_tcp:
 	    _sckt->rx_data,
 	    _sckt->rx_oo_start,_sckt->rx_oo_end);
 #endif
-     
+
      if (rel_sequence.d>_sckt->rx_size || rel_sequence.d+data_size>_sckt->rx_size) {
        // Ignore segments that we can't possibly handle
        //       printf("drop(a)");
-       if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
+       if (data_size) { nwk_schedule_oo_ack(_sckt);
+	 goto drop; }
      } else if (rel_sequence.w[0]==_sckt->rx_data) {
        // Copy to end of data in RX buffer
        //       printf("rx append %d@%d",data_size,_sckt->rx_data);
@@ -660,7 +661,8 @@ parse_tcp:
        _sckt->rx_oo_end = rel_sequence.w[0] + data_size;
      } else if (rel_sequence.d) {
        //       printf("drop(b)");
-       if (data_size) { nwk_schedule_oo_ack(_sckt); goto drop; }
+       if (data_size) { nwk_schedule_oo_ack(_sckt);
+	 goto drop; }
      }
 
      //     while(!PEEK(0xD610)) continue; POKE(0xD610,0);
