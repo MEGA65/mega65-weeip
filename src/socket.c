@@ -221,7 +221,7 @@ socket_connect
  */
 bool_t 
 socket_send
-   (buffer_t fdata,
+   (localbuffer_t fdata,
    int size)
 {
    if(_sckt == NULL) return FALSE;

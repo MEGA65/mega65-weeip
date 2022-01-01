@@ -54,7 +54,11 @@
 #define uint8_t unsigned char
 #define byte_t unsigned char
 
-typedef unsigned char * buffer_t;
+// 32-bit buffer_t to allow RX buffer to be outside of the first 64KB
+// (all accesses to it are via DMA, so this isn't a problem)
+typedef uint32_t buffer_t;
+// localbuffer_t is for buffers in the same 64KB RAM bank as the running program
+typedef unsigned char * localbuffer_t;
 typedef char * string_t;
 
 typedef enum {

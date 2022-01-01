@@ -217,7 +217,8 @@ void remove_rx_data(SOCKET *_sckt)
     return;
   }
   if (_sckt->rx_oo_start&&(_sckt->rx_oo_end>_sckt->rx_data)) {
-    lcopy((unsigned long)_sckt->rx + _sckt->rx_data, (unsigned long)_sckt->rx,
+    // Shuffle down rx_data bytes in the buffer
+    lcopy(_sckt->rx + _sckt->rx_data, _sckt->rx,
 	  _sckt->rx_oo_end - _sckt->rx_data);
     _sckt->rx_oo_start -= _sckt->rx_data;
     _sckt->rx_oo_end -= _sckt->rx_data;
@@ -540,7 +541,7 @@ found:
    if(_sckt->rx) {
       if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
       if (data_size)
-	lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+8,(uint32_t)_sckt->rx, data_size);
+	lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+8,_sckt->rx, data_size);
       _sckt->rx_data = data_size;
    }
    
@@ -571,12 +572,22 @@ parse_tcp:
 	    * XXX This is when the other side has ACKed a different part
 	    * of our stream.
 	    * PGS: I think we lock-step and have only one unacknowledged packet
-	    * at a time, so can effectively ignore it (but should probably be
-	    * clever and re-send?)
+	    * at a time, so can effectively ignore it. But we should probably resend
+	    * our single unacknowledged packet again, since that's most likely what
+	    * is being reported.
             */
        if (_sckt->state>=_CONNECT) {
-	 //	 printf("Drop\n");
-	 goto drop;
+	 printf("OoO ACK %02x%02x%02x%02x vs %02x%02x%02x%02x\n",
+		TCPH(n_ack).b[3],
+		TCPH(n_ack).b[2],
+		TCPH(n_ack).b[1],
+		TCPH(n_ack).b[0],		
+		_sckt->seq.b[0],
+		_sckt->seq.b[1],
+		_sckt->seq.b[2],
+		_sckt->seq.b[3]
+		);
+	 //	 goto drop;
        }
       }
       _flags |= ACK;
@@ -612,12 +623,14 @@ parse_tcp:
      for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
      rel_sequence.d-=_sckt->remSeq.d;
 
-#if 0
-     printf("\n%5ld: rel_seq=%ld, rx:%d,%d to %d\n",
+#if 1
+     printf("\n%6lx: rel_seq=%ld, rx:%d,%d to %d\n",
 	    _sckt->remSeq.d-_sckt->remSeqStart.d,
 	    rel_sequence.d,
 	    _sckt->rx_data,
 	    _sckt->rx_oo_start,_sckt->rx_oo_end);
+     while(!PEEK(0xD610)) continue;
+     POKE(0xd610,0);
 #endif
 
      if (rel_sequence.d>_sckt->rx_size || rel_sequence.d+data_size>_sckt->rx_size) {
@@ -631,7 +644,7 @@ parse_tcp:
        if (data_size+_sckt->rx_data>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_data;
        if (data_size) {
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx_data + (uint32_t)_sckt->rx, data_size);
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_data, data_size);
        }
        _sckt->rx_data += data_size;       
      } else if (rel_sequence.w[0]==_sckt->rx_oo_end) {
@@ -640,22 +653,21 @@ parse_tcp:
        if (data_size+_sckt->rx_oo_end>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_oo_end;
        if (data_size) {
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx_oo_end + (uint32_t)_sckt->rx, data_size);	 
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_oo_end, data_size);	 
        }
        _sckt->rx_oo_end += data_size;
      } else if ((rel_sequence.w[0]+data_size)==_sckt->rx_oo_start) {
        // Copy to start of OO data in RX buffer
        //       printf("oo prepend");
        if (data_size) {
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,
-	       rel_sequence.w[0] + ((unsigned long)_sckt->rx), data_size);	 
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,  _sckt->rx + rel_sequence.w[0], data_size);	 
        }
        _sckt->rx_oo_end += rel_sequence.w[0];
      } else if ((rel_sequence.w[0]+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
        // It belongs in the window, but not at the start, so put in RX OO buffer
        //       printf("oo stash");
        if (data_size) {
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,rel_sequence.w[0] + (uint32_t)_sckt->rx, data_size);	 
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + rel_sequence.w[0], data_size);	 
        }
        _sckt->rx_oo_start = rel_sequence.w[0];
        _sckt->rx_oo_end = rel_sequence.w[0] + data_size;

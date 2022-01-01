@@ -340,7 +340,9 @@ restart_fetch:
   
   s = socket_create(SOCKET_TCP);
   socket_set_callback(comunica);
-  socket_set_rx_buffer(buf, 2048);
+  // socket_set_rx_buffer(buf, 2048);
+  // 128KB of Attic RAM for TCP RX buffer if present
+  socket_set_rx_buffer(0x8000000L, 32*1024);
   socket_connect(&a,port);
 
   while(!disconnected) {
@@ -727,7 +729,7 @@ void main(void)
   unsigned char i,reload;
 
   // Enable logging of ethernet activity on the serial monitor interface
-  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;
+  //  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;
 
   POKE(0,65);
   mega65_io_enable();

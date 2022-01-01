@@ -86,7 +86,7 @@ add_checksum
  */
 void 
 ip_checksum
-   (buffer_t p,
+   (localbuffer_t p,
    uint16_t t)
 {
    _c = 0;

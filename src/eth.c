@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include <string.h>
+
 #include "task.h"
 #include "weeip.h"
 #include "arp.h"
@@ -214,7 +215,7 @@ uint8_t eth_task (uint8_t p)
 
 #define IPH(X) _header.ip.X
 
-void eth_write(uint8_t *buf,uint16_t len)
+void eth_write(localbuffer_t buf,uint16_t len)
 {
   if (len+eth_tx_len>=MTU) return;
   lcopy((uint32_t)buf,(unsigned long)&tx_frame_buf[eth_tx_len],len);

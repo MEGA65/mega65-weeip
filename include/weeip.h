@@ -93,7 +93,7 @@ typedef struct {
 	unsigned state;                        ///< TCP state machine.
 	unsigned retry;                        ///< Retry counter.
 	byte_t toSend;                            ///< Flags to send on next packet.
-	void *rx;                                 ///< Reception buffer pointer.
+        buffer_t rx;                              ///< Reception buffer pointer.
 	void *tx;                                 ///< Transmission buffer pointer.
 
        
@@ -132,7 +132,7 @@ extern void socket_set_rx_buffer(buffer_t b, int size);
 extern void socket_set_callback(task_t c);
 extern bool_t socket_listen(uint16_t p);
 extern bool_t socket_connect(IPV4 *a, uint16_t p);
-extern bool_t socket_send(buffer_t bdata, int size);
+extern bool_t socket_send(localbuffer_t bdata, int size);
 extern uint16_t socket_data_size();
 extern void socket_reset();
 extern bool_t socket_disconnect();
