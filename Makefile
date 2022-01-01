@@ -24,7 +24,17 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch.prg haustierbegriff.prg ethtest.c pages
+all:	fetch-loader.prg fetch.prg haustierbegriff.prg ethtest.prg pages
+
+dist:	all
+	mkdir -p sdcard-files
+	cp mega65-tools/bin/asciifont.bin sdcard-files/FETCHFNT.M65
+	cp fetch.prg sdcard-files/FETCHM.M65
+	if [ -e sdcard-files/FETCH.D81 ];then rm sdcard-files/FETCH.D81 ;fi
+	cbmconvert -D8 sdcard-files/FETCH.D81 fetch-loader.prg
+
+distpush:	dist
+	m65ftp -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHM.M65' -c 'quit'
 
 $(SUBDEPENDS):
 	git submodule init
@@ -45,6 +55,10 @@ fetch.prg:       $(TCPSRCS) src/fetch.c src/helper.s
 	git submodule init
 	git submodule update
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+
+fetch-loader.prg:       src/fetch_loader.c src/helper.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-loader.prg --mapfile $*.map src/fetch_loader.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+
 
 ethtest.prg:       $(TCPSRCS) src/ethtest.c src/helper.s
 	git submodule init
