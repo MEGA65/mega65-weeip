@@ -80,7 +80,7 @@ byte_t comunica (byte_t p)
          break;
       case WEEIP_EV_DATA:
 	// Show progress
-	printf(".%d",s->rx_data);
+	//	printf(".%d",s->rx_data);
 	//	while(1) continue;
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=lpeek(s->rx+i);
@@ -587,7 +587,7 @@ void parse_url(unsigned long addr)
 void select_url(void)
 {
   unsigned char c;
-  unsigned char url_ofs;
+  unsigned char url_ofs=0;
   unsigned char line_num=0;
   
   // H640,V200, VIC-III attributes
