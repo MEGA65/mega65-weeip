@@ -76,6 +76,7 @@ loadfile_routine:
         sta $d640
         nop
         ldz     #$00
+
 	jmp $080d
 	rts
 	

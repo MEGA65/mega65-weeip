@@ -24,18 +24,22 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch-loader.prg fetchm.prg fetchh65.prg haustierbegriff.prg ethtest.prg pages
+all:	fetch.prg fetchm.prg fetchh65.prg haustierbegriff.prg ethtest.prg pages
 
 dist:	all
 	mkdir -p sdcard-files
 	cp mega65-tools/bin/asciifont.bin sdcard-files/FETCHFNT.M65
-	cp fetch.prg sdcard-files/FETCHM.M65
+	cp fetchm.prg sdcard-files/FETCHM.M65
+	cp fetchh65.prg sdcard-files/FETCHH65.M65
 	cp haustierbegriff.prg bbs-client.prg
 	if [ -e sdcard-files/FETCH.D81 ];then rm sdcard-files/FETCH.D81 ;fi
-	cbmconvert -D8 sdcard-files/FETCH.D81 fetch-loader.prg bbs-client.prg
+	cbmconvert -D8 sdcard-files/FETCH.D81 fetch.prg bbs-client.prg
 
 distpush:	dist
-	m65ftp -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHM.M65' -c 'quit'
+	m65 -F ; m65ftp -l /dev/ttyUSB2 -c 'put sdcard-files/FETCHM.D81' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
+
+distrun:	distpush
+	m65 -F -4 -r fetch.prg
 
 $(SUBDEPENDS):
 	git submodule init
@@ -55,18 +59,18 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-fetchm.prg:       $(TCPSRCS) src/fetchm.c src/helper.s
+fetchm.prg:       src/fetchm.c src/helper.s
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetchm.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetchm.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
 fetchh65.prg:       $(TCPSRCS) src/fetchh65.c src/helper.s
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetchh65.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map $(TCPSRCS) src/fetchh65.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
-fetch-loader.prg:       src/fetch_loader.c src/helper.s
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-loader.prg --mapfile $*.map src/fetch_loader.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+fetch.prg:       src/fetch.c src/helper.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
 
 ethtest.prg:       $(TCPSRCS) src/ethtest.c src/helper.s

@@ -2,15 +2,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "task.h"
-#include "weeip.h"
-#include "eth.h"
-#include "arp.h"
-#include "dns.h"
-#include "dhcp.h"
-
-#include "memory.h"
+#include "defs.h"
 #include "random.h"
+#include "memory.h"
 #include "mouse.h"
 #include "debug.h"
 
@@ -55,153 +49,6 @@ unsigned long block_addr,block_len;
 unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
 unsigned short line_count;
 
-unsigned char disconnected=0;
-SOCKET *s;
-byte_t *buf=(byte_t *)0xC000;
-
-/* Function that is used as a call-back on socket events
- * */
-unsigned char last_bytes[4];
-int page_parse_state=0;
-
-byte_t comunica (byte_t p)
-{
-  unsigned int i,count;
-   socket_select(s);
-   switch(p) {
-      case WEEIP_EV_CONNECT:
-	//	while(1) continue;
-	// Buf is setup in fetch_page()
-
-        if (!socket_send(buf, strlen(buf))) 
-	  {
-	    printf("Error sending HTTP request.\n");
-	    h65_error=H65_SENDHTTP;
-	  }
-	break;
-      case WEEIP_EV_DISCONNECT:
-	disconnected=1;
-         break;
-      case WEEIP_EV_DATA:
-	// Show progress
-	//	printf(".%d",s->rx_data);
-	//	while(1) continue;
-	for(i=0;i<s->rx_data;i++) {
-	  unsigned char c=lpeek(s->rx+i);
-	  //	  printf("(%x)",page_parse_state);
-	  switch(page_parse_state) {
-	  case 0:
-	    // Look for H65+$FF header
-	    last_bytes[0]=last_bytes[1];
-	    last_bytes[1]=last_bytes[2];
-	    last_bytes[2]=last_bytes[3];
-	    last_bytes[3]=c;
-	    if (last_bytes[0]==0x48
-		&&last_bytes[1]==0x36
-		&&last_bytes[2]==0x35
-		&&last_bytes[3]==0xFF) {
-	      page_parse_state=2-1; // gets incremented below
-	      // printf("\nFound H65 header.\n");
-	      printf("+");
-	    }
-	    break;
-	  case 2:
-	    // Reading H65 header fields
-	    if (c!=1) {
-	      // Unsupported H65 version
-	      h65_error=H65_TOONEW;
-	    }
-	    break;
-	  case 3: break; // Ignore minor version
-	  case 4: line_width=c; break; // line width
-	  case 5: d054_bits=c; break; // $D054 bits
-	  case 6: line_display_width=c; break;
-	  case 7: d031_bits=c; break;
-	  case 8: line_count=c; break;
-	  case 9: line_count|=(((unsigned short)c)<<8); break;
-	  case 10: border_colour=c; break;
-	  case 11: screen_colour=c; break;
-	  case 12: text_colour=c; break;
-	  case 13: char_page=c; break;
-	  case 14: d016_bits=c; break;
-	    // Block header: Address
-#define HEADSKIP 126
-	  case HEADSKIP+0: ((char *)&block_addr)[0]=c; break;
-	  case HEADSKIP+1: ((char *)&block_addr)[1]=c; break;
-	  case HEADSKIP+2: ((char *)&block_addr)[2]=c; break;
-	  case HEADSKIP+3: ((char *)&block_addr)[3]=c; break;
-	    // Block header: Length
-	  case HEADSKIP+4: ((char *)&block_len)[0]=c; break;
-	  case HEADSKIP+5: ((char *)&block_len)[1]=c; break;
-	  case HEADSKIP+6: ((char *)&block_len)[2]=c; break;
-	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
-	    // Skip empty block
-	    if (block_len==0) {
-	      //	      printf("\nDONE!\n");
-	      page_parse_state=HEADSKIP-1;	      
-	      h65_error=H65_DONE;
-	      break;
-	    } else if (block_addr<0xf000) {
-              printf("bad address $%08x\n",block_addr);
-              h65_error=H65_BADADDR;
-              return 0;
-            } else if (block_len>0x20000) {
-              printf("bad length $%08x\n",block_len);
-              h65_error=H65_BADADDR;
-              return 0;
-            } else {
-	      // Block data
-#if 0
-	      POKE(0x286,5);
-	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
-		            block_addr,block_len);
-	      POKE(0x286,14);
-#endif
-	    }
-	    break;
-	  case HEADSKIP+8:
-            // Work out how many bytes we can handle in one go.
-            count = s->rx_data - i;
-            if (count>block_len) count=block_len;
-
-	    if (count>0) {
-	      // Stash them and update it
-	      lcopy(s->rx+i,block_addr,count);
-
-#if 0
-	      snprintf(buf,80,"%d @ $%08lx",count,block_addr);
-	      debug_msg(buf);
-#endif
-	      
-	      block_addr+=count;
-	      block_len-=count;
-	    }
-
-            // Update i based on the number of bytes digested
-            i+=count-1;
-
-	    // Read next block
-	    if (!block_len) page_parse_state=HEADSKIP-1;
-	    else page_parse_state=HEADSKIP+8-1;
-            break;
-	  default:
-	    // ???
-	    break;
-	  }
-	  if (page_parse_state) page_parse_state++;
-#if 0
-          POKE(0x427,c);
-	  while(!PEEK(0xD610)) continue; POKE(0xD610,0);
-#endif
-	}
-//	((char *)s->rx)[s->rx_data]=0;
-//	printf("%s",s->rx);
-	break;
-   }
-
-   return 0;
-}
-
 void update_mouse_position(unsigned char do_scroll);
 
 void c64_40columns(void)
@@ -213,36 +60,6 @@ void c64_40columns(void)
   POKE(0xD016,0xC8);
   POKE(0xD018,0x16);
 }
-
-void prepare_network(void)
-{
-  unsigned char i;
-
-  // Black screen with green text during network setup
-  c64_40columns();
-  POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
-  printf("%c",0x93);
-  
-  printf("MAC %02x",mac_local.b[0]);
-  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);
-  
-  // Setup WeeIP
-  weeip_init();
-  task_cancel(eth_task);
-  task_add(eth_task, 0, 0,"eth");
-
-  // Do DHCP auto-configuration
-  dhcp_configured=0;
-  printf("\nRequesting IP...\n");
-  dhcp_autoconfig();
-  while(!dhcp_configured) {
-    task_periodic();
-    // Let the mouse move around
-    update_mouse_position(0);
-  }
-  printf("My IP is %d.%d.%d.%d\n",
-	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
-}      
 
 signed long screen_address_offset=0;
 signed long screen_address_offset_max=0;
@@ -468,14 +285,12 @@ int port=80;
 char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
 char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
 
+char buf[256+1];
+
 void parse_url(unsigned long addr)
 {
   unsigned char hlen,url_ofs,plen;
 
-  // NOTE: We are using the TCP receive buffer for the URL
-  // since there should be no need to parse URLs, while there
-  // is outstanding TCP RX data, since we load pages entirely
-  // before allowing clicking on links etc
   lcopy(addr,(unsigned long)&buf[0],256);  
 
   printf("Parsing '%s'\n",buf);
@@ -661,14 +476,6 @@ void select_url(void)
     else if (line_num>11) line_num=0;
   }
 }
-
-unsigned char type_url[19]=
-  {0x54,0x79,0x70,0x65,0x20, // Type
-   0x6f,0x72,0x20, // or
-   0x73,0x65,0x6c,0x65,0x63,0x74,0x20, // select
-   0x55,0x52,0x4c, // URL
-   0x3a // :
-  };
 
 void main(void)
 {
