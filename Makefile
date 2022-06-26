@@ -59,17 +59,17 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-fetchm.prg:       src/fetchm.c src/helper.s
+fetchm.prg:       src/fetchm.c src/helper.s include/shared_state.h
 	git submodule init
 	git submodule update
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetchm.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
-fetchh65.prg:       $(TCPSRCS) src/fetchh65.c src/helper.s
+fetchh65.prg:       $(TCPSRCS) src/fetchh65.c src/helper.s include/shared_state.h
 	git submodule init
 	git submodule update
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map $(TCPSRCS) src/fetchh65.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
-fetch.prg:       src/fetch.c src/helper.s
+fetch.prg:       src/fetch.c src/helper.s include/shared_state.h
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
 
