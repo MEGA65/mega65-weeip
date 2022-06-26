@@ -68,7 +68,22 @@ _mega65_dos_exechelper:
 	RTS
 
 loadfile_routine:
-	; Now load the file to $0400 over the screen
+	;; Put dummy routine in at $080d, so that we can tell if it didn't load
+	lda #$ee
+	sta $080d
+	lda #$20
+	sta $080e
+	lda #$d0
+	sta $080f
+	lda #$4c
+	sta $0810
+	lda #$0d
+	sta $0811
+	lda #$08
+	sta $0812
+	
+	; Now load the file to $07FF so that the load address bytes make it line up
+	;; to $0801
         lda #$36
         ldx #$FF
         ldy #$07
