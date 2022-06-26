@@ -26,6 +26,10 @@ int main(void)
   __asm__("sei");
   mega65_io_enable();
   POKE(0,65);
+
+  // Clear any queued key presses in $D610, so that
+  // Fetch doesn't try to use them as the start of a URL
+  while(PEEK(0xD610)) POKE(0xD610,0);
   
   read_file_from_sdcard("FETCHFNT.M65",0xf000);
   mega65_dos_exechelper("FETCHM.M65");
