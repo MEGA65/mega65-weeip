@@ -119,6 +119,8 @@ void fetch_page(char *hostname,int port,char *path)
   fetch_shared_mem.host_str_addr=0xf800;
   fetch_shared_mem.path_str_addr=0xf900;
   fetch_shared_mem.port=port;
+
+  fetch_shared_mem.job_id++;
   
   // Find . that separates extension
   ext=&path[strlen(path)-1];  
@@ -215,8 +217,6 @@ void show_page(void)
 {
   //  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
   
-  printf("h65_error=%d\n",h65_error);
-
 #if 0
   POKE(0x0400,h65_error);
   while(1) {
@@ -226,45 +226,40 @@ void show_page(void)
   while (PEEK(0xD610)) POKE(0xD610,0);
 #endif
 
-  if (h65_error!=H65_DONE) {
-    printf("h65_error=%d\nPress almost any key to continue...\n",h65_error);
-    while(!PEEK(0xD610)) continue;
-    POKE(0xD610,0);
-  } else if (h65_error==H65_DONE) {
-    // Show mouse pointer
-    POKE(0xD015,0x01);
-    
-    // V400/H640 etc (do first due to hot regs)
-    POKE(0xD031,d031_bits);
-    // $D016 value
-    POKE(0xD016,d016_bits);
-    // Enable 16-bit text mode
-    POKE(0xD054,0x40+d054_bits);
-    // Line step
-    POKE(0xD058,line_width*2);
-    POKE(0xD059,0);
-    // Set screen address to $12000
-    POKE(0xD060,0x00);
-    POKE(0xD061,0x20);
-    POKE(0xD062,0x01);
-    POKE(0xD063,0x00);    
-    // Set colour RAM address
-    POKE(0xD065,0x20);
-    // Set charset address
-    POKE(0xD069,char_page);
-    // Display 51 rows, so that we can do smooth scrolling
-    POKE(0xD07B,51-1);
-    // Reset smooth scroll (assumes PAL)
-    POKE(0xD04E,0x68);
-
-    screen_address_offset_max=0;
-    max_position=0;
-
-    if (line_count>50) {
-      screen_address_offset_max=(line_width*2)*(line_count-50);
-      max_position=(line_count-50)*8;
-    }
-
+  // Show mouse pointer
+  POKE(0xD015,0x01);
+  
+  // V400/H640 etc (do first due to hot regs)
+  POKE(0xD031,d031_bits);
+  // $D016 value
+  POKE(0xD016,d016_bits);
+  // Enable 16-bit text mode
+  POKE(0xD054,0x40+d054_bits);
+  // Line step
+  POKE(0xD058,line_width*2);
+  POKE(0xD059,0);
+  // Set screen address to $12000
+  POKE(0xD060,0x00);
+  POKE(0xD061,0x20);
+  POKE(0xD062,0x01);
+  POKE(0xD063,0x00);    
+  // Set colour RAM address
+  POKE(0xD065,0x20);
+  // Set charset address
+  POKE(0xD069,char_page);
+  // Display 51 rows, so that we can do smooth scrolling
+  POKE(0xD07B,51-1);
+  // Reset smooth scroll (assumes PAL)
+  POKE(0xD04E,0x68);
+  
+  screen_address_offset_max=0;
+  max_position=0;
+  
+  if (line_count>50) {
+    screen_address_offset_max=(line_width*2)*(line_count-50);
+    max_position=(line_count-50)*8;
+  }
+  
 #if 0
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
@@ -273,7 +268,6 @@ void show_page(void)
   while (PEEK(0xD610)) POKE(0xD610,0);
 #endif
 
-  }
 }
 
 // Note: These will be interpretted as ASCII by fetch, but CC65 will encode them
@@ -482,6 +476,7 @@ void main(void)
   // Enable logging of ethernet activity on the serial monitor interface
   //  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;
 
+  __asm__("sei");
   POKE(0,65);
   mega65_io_enable();
   srand(random32(0));
@@ -514,6 +509,10 @@ void main(void)
     interact_page();
     break;
 
+  case FETCH_H65FETCH_HTTPERROR:
+    printf("HTTP error %d\n",fetch_shared_mem.http_result);
+    while(1) continue;
+    
   case FETCH_H65FETCH_DNSERROR:
     // Could not resolve hostname
     // XXX - should implement an error display
@@ -529,6 +528,9 @@ void main(void)
   default:
     select_url();
     parse_url(0xD000 + 80);
+
+    while(1) POKE(0xd020,PEEK(0xD020)+1);
+    
     // Call FETCHH65.M65 to fetch the page.
     fetch_page(hostname,port,path);
     break;    
@@ -591,13 +593,8 @@ void interact_page(void)
     }
 
     // Reload page if requested, and keep trying if page load fails for some reason.
-    if (reload||h65_error!=H65_DONE) {
-      h65_error=H65_BEFORE;
-      while(h65_error!=H65_DONE) {
-	fetch_page(hostname,port,path);
-	show_page();
-	if (h65_error!=H65_DONE) select_url();
-      }
+    if (reload) {
+      fetch_page(hostname,port,path);
     }
   }
 

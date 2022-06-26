@@ -7,8 +7,15 @@ struct __fetch_shared_mem {
   #define FETCH_H65FETCH_DNSERROR 2
   #define FETCH_H65FETCH_NOCONNECTION 3
   #define FETCH_H65FETCH_ABORTED 4
+  #define FETCH_H65FETCH_HTTPERROR 5
   unsigned char state;
 
+  // HTTP response code
+  unsigned short http_result;
+  
+  // Counter so that we know how many times things are being called
+  unsigned short job_id;
+  
   // Mouse position
   unsigned short mouse_x, mouse_y;
   

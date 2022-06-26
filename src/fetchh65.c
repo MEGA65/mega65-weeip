@@ -65,10 +65,39 @@ byte_t *buf=(byte_t *)0xC000;
 unsigned char last_bytes[4];
 int page_parse_state=0;
 
+char http_one_one[]="HTTP/1.1 ";
+
 byte_t comunica (byte_t p)
 {
-  unsigned int i,count;
+  unsigned int i,count,http_result=0;
    socket_select(s);
+
+   printf(".%d(st=%d)",(short)s->rx_data,page_parse_state);
+   if ((page_parse_state==0)&&(s->rx_data>12)) {
+     for(i=0;i<9;i++) {
+       unsigned char c=lpeek(s->rx+i);
+       if (c!=http_one_one[i]) break;
+     }
+     if (i==9) {
+       http_result
+	 =(lpeek(s->rx+9)-'0')*100
+	 +(lpeek(s->rx+10)-'0')*10
+	 +(lpeek(s->rx+11)-'0')*1;
+       
+       fetch_shared_mem.http_result=http_result;
+       if (http_result<200||http_result>209) {
+	 // Failed to fetch a page due to HTTP error.
+	 
+	 fetch_shared_mem.job_id++;
+	 fetch_shared_mem.state=FETCH_H65FETCH_HTTPERROR;
+	 mega65_dos_exechelper(fetchmdotm65);
+	 printf("ERROR: Could not load FETCHM.M65\n");
+	 while(1) POKE(0xd020,PEEK(0xd020)+1);
+	 
+       }
+     }
+   }
+   
    switch(p) {
       case WEEIP_EV_CONNECT:
 	//	while(1) continue;
@@ -83,9 +112,7 @@ byte_t comunica (byte_t p)
       case WEEIP_EV_DISCONNECT:
 	disconnected=1;
          break;
-      case WEEIP_EV_DATA:
-	// Show progress
-	//	printf(".%d",s->rx_data);
+      case WEEIP_EV_DATA:	
 	//	while(1) continue;
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=lpeek(s->rx+i);
@@ -189,7 +216,10 @@ byte_t comunica (byte_t p)
 	    // ???
 	    break;
 	  }
-	  if (page_parse_state) page_parse_state++;
+	  if (page_parse_state) {
+	    printf("s+");
+	    page_parse_state++;
+	  }
 #if 0
           POKE(0x427,c);
 	  while(!PEEK(0xD610)) continue; POKE(0xD610,0);
@@ -224,7 +254,7 @@ void prepare_network(void)
   POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
   printf("%c",0x93);
   
-  printf("MAC %02x",mac_local.b[0]);
+  printf("H65 MAC %02x",mac_local.b[0]);
   for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);
   
   // Setup WeeIP
@@ -266,7 +296,8 @@ void fetch_page(char *hostname,int port,char *path)
   
 restart_fetch:
 
-  printf("%cFetching %chttp://%s:%d%s\n",0x93,
+  printf("%c#%d: H65 Fetching %chttp://%s:%d%s\n",0x93,
+	 fetch_shared_mem.job_id,
 	 5,hostname,port,path);
   POKE(0x0286,0x0e);
 
@@ -304,6 +335,7 @@ restart_fetch:
   } else {
     printf("Failed to resolve hostname.\n");
 
+    fetch_shared_mem.job_id++;
     fetch_shared_mem.state=FETCH_H65FETCH_DNSERROR;
     mega65_dos_exechelper(fetchmdotm65);
     printf("ERROR: Could not load FETCHM.M65\n");
@@ -319,6 +351,7 @@ restart_fetch:
   socket_connect(&a,port);
 
   if (disconnected) {
+    fetch_shared_mem.job_id++;
     fetch_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
     mega65_dos_exechelper(fetchmdotm65);
     printf("ERROR: Could not load FETCHM.M65\n");
@@ -343,6 +376,7 @@ restart_fetch:
         socket_disconnect(s);
 
 	// Return to main program, reporting error
+	fetch_shared_mem.job_id++;
 	fetch_shared_mem.state=FETCH_H65FETCH_ABORTED;
 	
 	mega65_dos_exechelper(fetchmdotm65);
@@ -364,6 +398,7 @@ restart_fetch:
   socket_release(s);
   printf("Disconnected.\n");
   // Tell main module to display the page
+  fetch_shared_mem.job_id++;
   fetch_shared_mem.state=FETCH_H65VIEW;
   mega65_dos_exechelper(fetchmdotm65);
   printf("ERROR: Could not load FETCHM.M65\n");
@@ -428,6 +463,7 @@ void main(void)
   // Enable logging of ethernet activity on the serial monitor interface
   //  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;
 
+  __asm__("sei");
   POKE(0,65);
   mega65_io_enable();
   srand(random32(0));

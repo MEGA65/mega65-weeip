@@ -81,6 +81,16 @@ loadfile_routine:
 	sta $0811
 	lda #$08
 	sta $0812
+
+	;; wait for key before proceeding
+keyclear:			
+	sta $d610
+	lda $d610
+	bne keyclear
+loop:	inc $d020
+	lda $d610
+	beq loop
+	sta $d610
 	
 	; Now load the file to $07FF so that the load address bytes make it line up
 	;; to $0801
@@ -92,6 +102,12 @@ loadfile_routine:
         nop
         ldz     #$00
 
+	;; set fake load end address so that CC65 doesn't write over itself
+	lda #<$bfff
+	sta $2d
+	lda #>$bfff
+	sta $2e
+	
 	jmp $080d
 	rts
 	

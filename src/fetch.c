@@ -143,6 +143,8 @@ void fetch_page(char *hostname,int port,char *path)
   fetch_shared_mem.host_str_addr=0xf800;
   fetch_shared_mem.path_str_addr=0xf900;
   fetch_shared_mem.port=port;
+
+  fetch_shared_mem.job_id++;
   
   // Find . that separates extension
   ext=&path[strlen(path)-1];  
@@ -201,6 +203,8 @@ void main(void)
   // And export to shared state
   fetch_shared_mem.mouse_x=160;
   fetch_shared_mem.mouse_y=100;
+
+  fetch_shared_mem.job_id=0;
   
   // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
@@ -214,6 +218,7 @@ void main(void)
 
   // XXX - Load URL history from disk image?
 
-  fetch_page("files.mega65.org",80,"/INDEX.H65");
+  //  fetch_page("files.mega65.org",80,"/INDEX.H65");
+  fetch_page("192.168.178.20",80,"/index.h65");
   
 }
