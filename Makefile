@@ -24,7 +24,7 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch-loader.prg fetch.prg haustierbegriff.prg ethtest.prg pages
+all:	fetch-loader.prg fetchm.prg fetchh65.org haustierbegriff.prg ethtest.prg pages
 
 dist:	all
 	mkdir -p sdcard-files
@@ -55,10 +55,15 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-fetch.prg:       $(TCPSRCS) src/fetch.c src/helper.s
+fetchm.prg:       $(TCPSRCS) src/fetchm.c src/helper.s
 	git submodule init
 	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetchm.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+
+fetchh65.prg:       $(TCPSRCS) src/fetchh65.c src/helper.s
+	git submodule init
+	git submodule update
+	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch.prg --mapfile $*.map $(TCPSRCS) src/fetchh65.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
 
 fetch-loader.prg:       src/fetch_loader.c src/helper.s
 	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o fetch-loader.prg --mapfile $*.map src/fetch_loader.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
