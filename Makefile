@@ -30,8 +30,9 @@ dist:	all
 	mkdir -p sdcard-files
 	cp mega65-tools/bin/asciifont.bin sdcard-files/FETCHFNT.M65
 	cp fetch.prg sdcard-files/FETCHM.M65
+	cp haustierbegriff.prg bbs-client.prg
 	if [ -e sdcard-files/FETCH.D81 ];then rm sdcard-files/FETCH.D81 ;fi
-	cbmconvert -D8 sdcard-files/FETCH.D81 fetch-loader.prg
+	cbmconvert -D8 sdcard-files/FETCH.D81 fetch-loader.prg bbs-client.prg
 
 distpush:	dist
 	m65ftp -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHM.M65' -c 'quit'
@@ -40,6 +41,9 @@ $(SUBDEPENDS):
 	git submodule init
 	git submodule update
 	( cd mega65-tools; make bin/md2h65 )
+
+hex2pcap:	src/hex2pcap.c Makefile
+	gcc -Wall -g -o hex2pcap src/hex2pcap.c
 
 uploadpages: pages
 	( cd content ; ( echo "prompt" ; echo "mput *" ) | ftp f.mega65.org )
