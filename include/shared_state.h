@@ -25,4 +25,4 @@ struct __fetch_shared_mem {
   unsigned short path_str_addr;
 };
 
-#define fetch_shared_mem     (*(struct __fetch_shared_mem*)0x380)
+#define fetch_shared_mem     (*(struct __fetch_shared_mem*)0x3c0)

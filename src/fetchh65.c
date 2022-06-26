@@ -65,14 +65,16 @@ byte_t *buf=(byte_t *)0xC000;
 unsigned char last_bytes[4];
 int page_parse_state=0;
 
-char http_one_one[]="HTTP/1.1 ";
+char http_one_one[]={
+  // "HTTP/1.1 ";
+  0x48,0x54,0x54,0x50,'/','1','.','1',' ',0};
 
 byte_t comunica (byte_t p)
 {
   unsigned int i,count,http_result=0;
    socket_select(s);
 
-   printf(".%d(st=%d)",(short)s->rx_data,page_parse_state);
+   //   printf(".%d(st=%d)",(short)s->rx_data,page_parse_state);
    if ((page_parse_state==0)&&(s->rx_data>12)) {
      for(i=0;i<9;i++) {
        unsigned char c=lpeek(s->rx+i);
