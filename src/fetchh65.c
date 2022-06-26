@@ -300,7 +300,7 @@ restart_fetch:
   } else {
     printf("Failed to resolve hostname.\n");
 
-    fetch_shared_mem.result=FETCH_DNSERROR;
+    fetch_shared_mem.state=FETCH_H65FETCH_DNSERROR;
     mega65_dos_exechelper("FETCHM.M65");
     printf("ERROR: Could not load FETCHM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
@@ -315,7 +315,7 @@ restart_fetch:
   socket_connect(&a,port);
 
   if (disconnected) {
-    fetch_shared_mem.result=FETCH_NOCONNECTION;
+    fetch_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
     mega65_dos_exechelper("FETCHM.M65");
     printf("ERROR: Could not load FETCHM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
@@ -339,7 +339,7 @@ restart_fetch:
         socket_disconnect(s);
 
 	// Return to main program, reporting error
-	fetch_shared_mem.result=FETCH_ABORTED;
+	fetch_shared_mem.state=FETCH_H65FETCH_ABORTED;
 	
 	mega65_dos_exechelper("FETCHM.M65");
 	printf("ERROR: Could not load FETCHM.M65\n");
@@ -359,7 +359,8 @@ restart_fetch:
   // And throw away our record of the TCP connection, just to be sure.
   socket_release(s);
   printf("Disconnected.\n");
-  fetch_shared_mem.result=FETCH_SUCCESS;
+  // Tell main module to display the page
+  fetch_shared_mem.state=FETCH_H65VIEW;
   mega65_dos_exechelper("FETCHM.M65");
   printf("ERROR: Could not load FETCHM.M65\n");
   while(1) POKE(0xd020,PEEK(0xd020)+1);
