@@ -760,8 +760,8 @@ void main(void)
   // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
   // Sprite data from casette buffer
-  POKE(0x7F8,0x380/0x40);
-  lcopy((unsigned long)&mouse_pointer_sprite,0x380,63);  
+  POKE(0x7F8,0x340/0x40);
+  lcopy((unsigned long)&mouse_pointer_sprite,0x340,63);  
 
   // Get initial URL, and display it.
   // This allows having preset URLs if we pre-load
