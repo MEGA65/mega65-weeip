@@ -54,7 +54,7 @@ It would be nice to also have a "fetch installer" that installs the native FAT32
 0x0000-0x0340 -- Standard C64 ZP, stack etc
 0x0200-0x0220 -- M65 file loader helper routine temporary area
 0x0340-0x037f -- Sprite for mouse pointer
-0x0380-0x03bf -- Was mouse pointer sprite. Something is still overwriting it. Find and fix!
+0x0380-0x03bf -- 
 0x03c0-0x03ff -- fetch_shared_mem structure for passing control between modules
 0x0400-0x07ff -- 40-column screen for progress messages
 0x0800-0x9fff -- Code

@@ -510,9 +510,17 @@ void main(void)
     break;
 
   case FETCH_H65FETCH_HTTPERROR:
-    printf("HTTP error %d\n",fetch_shared_mem.http_result);
-    while(1) continue;
-    
+    printf("\r\nHTTP error %d\r\n",fetch_shared_mem.http_result);
+    printf("Press almost any key to continue.\r\n");
+    while(PEEK(0xD610)) POKE(0xD610,0); while(!PEEK(0xD610)) continue; POKE(0xD610,0);
+
+    select_url();
+    parse_url(0xD000 + 80);
+
+    // Call FETCHH65.M65 to fetch the page.
+    fetch_page(hostname,port,path);
+    break;    
+        
   case FETCH_H65FETCH_DNSERROR:
     // Could not resolve hostname
     // XXX - should implement an error display
@@ -529,8 +537,6 @@ void main(void)
     select_url();
     parse_url(0xD000 + 80);
 
-    while(1) POKE(0xd020,PEEK(0xD020)+1);
-    
     // Call FETCHH65.M65 to fetch the page.
     fetch_page(hostname,port,path);
     break;    

@@ -36,7 +36,7 @@ dist:	all
 	cbmconvert -D8 sdcard-files/FETCH.D81 fetch.prg bbs-client.prg
 
 distpush:	dist
-	m65 -F ; m65ftp -l /dev/ttyUSB2 -c 'put sdcard-files/FETCHM.D81' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
+	m65 -F ; m65ftp -l /dev/ttyUSB2 -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
 
 distrun:	distpush
 	m65 -F -4 -r fetch.prg
