@@ -58,12 +58,6 @@ const struct bbs bbs_list[27]=
   };
 
 
-void interrupt_handler(void)
-{
-      tick();
-      //      i_task_cancel(eth_task);
-      //      i_task_add(eth_task, 0, 0);
-}
 
 SOCKET *s;
 byte_t buf[1500];
@@ -144,7 +138,8 @@ void main(void)
   
   // Setup WeeIP
   weeip_init();
-  interrupt_handler();   
+  task_cancel(eth_task);
+  task_add(eth_task, 0, 0,"eth");
   
   // Clear buffer of received data we maintain for debugging
   lfill(0x12000,0,4);
@@ -158,6 +153,7 @@ void main(void)
   dhcp_autoconfig();
   while(!dhcp_configured) {
     task_periodic();
+    POKE(0x0400+999,PEEK(0x0400+999)+1);
   }
 
 #ifdef FIXED_DESTINATION_IP
