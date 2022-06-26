@@ -48,3 +48,26 @@ The fetchget program can also be easily derived from the existing fetch program.
 
 It would be nice to also have a "fetch installer" that installs the native FAT32 files to the SD card, if they are not already there.
 
+## Memory Layout
+
+```
+0x0000-0x0340 -- Standard C64 ZP, stack etc
+0x0340-0x0380 -- Sprite for mouse pointer
+0x0380-0x03ff -- fetch_shared_mem structure for passing control between modules
+0x0400-0x07ff -- 40-column screen for progress messages
+0x0800-0x9fff -- Code
+0xa000-0xbfff -- Code ?
+0xc000-0xc7ff -- 2KB TCP buffer
+0xc800-0xcfff -- CC65 C stack?
+0xd000-0xdfff -- Browser history
+0xe000-0xefff --
+0xf000-0xf7ff -- ASCII font
+0xf800-0xffff -- Scratch memory for passing control between modules (eg passing URL elements)
+0x10000-0x11fff -- C65 CBDOS buffers etc
+0x12000-0x19fff -- 32KB Screen RAM for H65 page
+0x1a000-0x1f7ff -- H65 custom glyphs ?
+0x1f800-0x1ffff -- 2K colour RAM for 40 column display etc
+0x20000-0x3ffff -- C65 ROM
+0x40000-0x5ffff -- H65 custom gylphs
+0xFF80800-0xFF87FFF -- 30KB colour RAM for H65 page
+```
