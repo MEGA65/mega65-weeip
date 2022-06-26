@@ -82,16 +82,6 @@ loadfile_routine:
 	lda #$08
 	sta $0812
 
-	;; wait for key before proceeding
-keyclear:			
-	sta $d610
-	lda $d610
-	bne keyclear
-loop:	inc $d020
-	lda $d610
-	beq loop
-	sta $d610
-	
 	; Now load the file to $07FF so that the load address bytes make it line up
 	;; to $0801
         lda #$36
