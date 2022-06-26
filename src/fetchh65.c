@@ -39,6 +39,10 @@ unsigned char mouse_pointer_sprite[63]={
 0x00,0x00,0x00
 };
 
+char fetchmdotm65[]={
+  0x46,0x45,0x54,0x43,0x48,0x4d,0x2e,0x4d,0x36,0x35,0
+};
+
 // Wait for key press before starting
 //#define DEBUG_WAIT
 
@@ -301,7 +305,7 @@ restart_fetch:
     printf("Failed to resolve hostname.\n");
 
     fetch_shared_mem.state=FETCH_H65FETCH_DNSERROR;
-    mega65_dos_exechelper("FETCHM.M65");
+    mega65_dos_exechelper(fetchmdotm65);
     printf("ERROR: Could not load FETCHM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
     
@@ -316,7 +320,7 @@ restart_fetch:
 
   if (disconnected) {
     fetch_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
-    mega65_dos_exechelper("FETCHM.M65");
+    mega65_dos_exechelper(fetchmdotm65);
     printf("ERROR: Could not load FETCHM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
   }
@@ -341,7 +345,7 @@ restart_fetch:
 	// Return to main program, reporting error
 	fetch_shared_mem.state=FETCH_H65FETCH_ABORTED;
 	
-	mega65_dos_exechelper("FETCHM.M65");
+	mega65_dos_exechelper(fetchmdotm65);
 	printf("ERROR: Could not load FETCHM.M65\n");
 	while(1) POKE(0xd020,PEEK(0xd020)+1);
 	
@@ -361,7 +365,7 @@ restart_fetch:
   printf("Disconnected.\n");
   // Tell main module to display the page
   fetch_shared_mem.state=FETCH_H65VIEW;
-  mega65_dos_exechelper("FETCHM.M65");
+  mega65_dos_exechelper(fetchmdotm65);
   printf("ERROR: Could not load FETCHM.M65\n");
   while(1) POKE(0xd020,PEEK(0xd020)+1);
 
@@ -461,4 +465,6 @@ void main(void)
 	     fetch_shared_mem.port,
 	     path);
 
+	while(1) POKE(0xd020,PEEK(0xd020)+1);
+  
 }
