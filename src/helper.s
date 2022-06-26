@@ -49,17 +49,17 @@ _mega65_dos_exechelper:
         sta $d640
         nop
 	
-	;; Now copy a little routine into place in $0340 that does the actual loading and jumps into
+	;; Now copy a little routine into place in $0200 that does the actual loading and jumps into
 	;; the program when loaded.
 	ldx #$00
 @lfr1:	lda loadfile_routine,x
-	sta $0340,x
+	sta $0200,x
 	inx
 	cpx #$80
 	bne @lfr1
 
 	;; Call helper routine
-	jsr $0340
+	jsr $0200
 	
 	;; as this is effectively like exec() on unix, it can only return an error
 	LDA #$01
