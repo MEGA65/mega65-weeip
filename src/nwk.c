@@ -398,8 +398,6 @@ byte_t nwk_upstream (byte_t sig)
 #endif
          eth_packet_send();
 
-	 printf("X");
-
 	 _sckt->toSend = 0;
 	 _sckt->timeout = FALSE;
 	 _sckt->time = SOCKET_TIMEOUT(_sckt);

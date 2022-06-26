@@ -195,7 +195,7 @@ void
 task_cancel_all()
 {
   volatile tid_t *task;
-  printf("Cancel all tasks.\n");
+  //  printf("Cancel all tasks.\n");
    for_each(_tasks, task) {
       task->fun = NULL;
    }
