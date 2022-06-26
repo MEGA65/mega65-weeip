@@ -24,7 +24,7 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch-loader.prg fetchm.prg fetchh65.org haustierbegriff.prg ethtest.prg pages
+all:	fetch-loader.prg fetchm.prg fetchh65.prg haustierbegriff.prg ethtest.prg pages
 
 dist:	all
 	mkdir -p sdcard-files
