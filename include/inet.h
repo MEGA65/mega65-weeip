@@ -103,6 +103,7 @@ typedef struct {
    uint16_t window;              ///< Reception window buffer (not used).
    uint16_t checksum;            ///< Packet checksum, with pseudo-header.
    uint16_t urgent;              ///< Urgent data pointer (not used).
+   uint8_t options[8];           ///< TCP options
 } TCP_HDR;
 
 /**

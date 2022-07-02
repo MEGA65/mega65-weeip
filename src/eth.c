@@ -118,7 +118,7 @@ uint8_t eth_task (uint8_t p)
     return 0;
   }
 
-  printf("/");
+  //  printf("/");
   
   // Process the next received ethernet frame
   
@@ -316,7 +316,7 @@ eth_ip_send()
     * Send protocol header.
     */
    if(IPH(protocol) == IP_PROTO_UDP) eth_size = 28;    // header size
-   else eth_size = 40;
+   else eth_size = 20+28;
    eth_write((uint8_t*)&_header, eth_size);
    
    //   printf("eth_ip_send success.\n");

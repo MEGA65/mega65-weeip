@@ -138,7 +138,7 @@ byte_t comunica (byte_t p)
 		&&last_bytes[3]==0xFF) {
 	      page_parse_state=2-1; // gets incremented below
 	      // printf("\nFound H65 header.\n");
-	      printf("+");
+	      //	      printf("+");
 	    }
 	    break;
 	  case 2:

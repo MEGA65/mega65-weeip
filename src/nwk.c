@@ -106,10 +106,12 @@ byte_t default_header[] = {
    0x45, 0x08, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x40, 0x06,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-   0x00, 0x00, 0x50, 0x00,
+   0x00, 0x00, 0x70, 0x00,
    // TCP Window size
    0xff, 0xff, // ~64KB by default
-   0x00, 0x00, 0x00, 0x00
+   0x00, 0x00, 0x00, 0x00,
+   // TCP option bytes reservation
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 /**
@@ -327,7 +329,7 @@ byte_t nwk_upstream (byte_t sig)
       
       // XXX Correct buffer offset processing to handle variable
       // header lengths
-      lcopy((uint32_t)default_header,(uint32_t)_header.b,40);
+      lcopy((uint32_t)default_header,(uint32_t)_header.b,48);
 
       IPH(id) = HTONS(id);
       id++;
@@ -349,7 +351,8 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * TCP message header.
           */
-         IPH(length) = HTONS((40 + data_size));
+	// 48 = 20 for IP header plus 28 for TCP header (including 8 bytes reserved for TCP options)
+         IPH(length) = HTONS((48 + data_size));
          TCPH(flags) = _sckt->toSend;
 
          /*
@@ -373,6 +376,16 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[2] = _sckt->remSeq.b[1];
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
 
+	 // Negotiate MSS during connection establishment.
+	 if(_sckt->toSend & SYN ) {
+	   TCPH(options[0])=0x02;
+	   TCPH(options[1])=0x04;
+	   TCPH(options[2])=1400>>8;
+	   TCPH(options[3])=1400;
+	   TCPH(hlen) = 0x60;
+	 }
+	 
+	 
 	 if (_sckt->remSeq.d-_sckt->remSeqStart.d) {
 #if 0
 	   snprintf(dbg_msg,80,"[ACK %ld]  ",
@@ -385,6 +398,7 @@ byte_t nwk_upstream (byte_t sig)
 	      */
 	     if(data_size) seq.d += data_size;
 	     if(_sckt->toSend & (SYN | FIN)) seq.d++;
+	     if( (_sckt->toSend & (SYN | ACK)) == (SYN|ACK) ) seq.d++;
 	     _sckt->seq.d = seq.d;
 	   }
 	 }
@@ -611,6 +625,8 @@ parse_tcp:
     * Check flags.
     */
    _flags = 0;
+   // XXX - Assumes no TCP options! Fix!
+   // Like it is now, it can't communicate to another instance of itself!
    data_size -= 40;
 
 
@@ -817,7 +833,14 @@ parse_tcp:
      
       /*
        * Update stream sequence number.
+       * 1. Add number of bytes seen.
+       * 2. If it is the first data after the connection handshake, subtract one
+       *    for the extra byte acked during the handshake
        */
+     if (0) if ( ( _sckt->remSeq.d==(1+_sckt->remSeqStart.d) )
+	  && ( _sckt->rx_data > 0 )
+	  ) _sckt->remSeq.d--;
+     
       _sckt->remSeq.d += _sckt->rx_data;
 
       // Deliver data to programme
