@@ -53,8 +53,6 @@ char fetchmdotm65[]={
 #define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
-unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
-unsigned short line_count;
 
 unsigned char disconnected=0;
 SOCKET *s;
@@ -143,17 +141,17 @@ byte_t comunica (byte_t p)
 	    }
 	    break;
 	  case 3: break; // Ignore minor version
-	  case 4: line_width=c; break; // line width
-	  case 5: d054_bits=c; break; // $D054 bits
-	  case 6: line_display_width=c; break;
-	  case 7: d031_bits=c; break;
-	  case 8: line_count=c; break;
-	  case 9: line_count|=(((unsigned short)c)<<8); break;
-	  case 10: border_colour=c; break;
-	  case 11: screen_colour=c; break;
-	  case 12: text_colour=c; break;
-	  case 13: char_page=c; break;
-	  case 14: d016_bits=c; break;
+	  case 4: fetch_shared_mem.line_width=c; break; // line width
+	  case 5: fetch_shared_mem.d054_bits=c; break; // $D054 bits
+	  case 6: fetch_shared_mem.line_display_width=c; break;
+	  case 7: fetch_shared_mem.d031_bits=c; break;
+	  case 8: fetch_shared_mem.line_count=c; break;
+	  case 9: fetch_shared_mem.line_count|=(((unsigned short)c)<<8); break;
+	  case 10: fetch_shared_mem.border_colour=c; break;
+	  case 11: fetch_shared_mem.screen_colour=c; break;
+	  case 12: fetch_shared_mem.text_colour=c; break;
+	  case 13: fetch_shared_mem.char_page=c; break;
+	  case 14: fetch_shared_mem.d016_bits=c; break;
 	    // Block header: Address
 #define HEADSKIP 126
 	  case HEADSKIP+0: ((char *)&block_addr)[0]=c; break;
@@ -219,7 +217,6 @@ byte_t comunica (byte_t p)
 	    break;
 	  }
 	  if (page_parse_state) {
-	    printf("s+");
 	    page_parse_state++;
 	  }
 #if 0

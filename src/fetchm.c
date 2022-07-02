@@ -46,10 +46,11 @@ unsigned char mouse_pointer_sprite[63]={
 #define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
-unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
-unsigned short line_count;
 
 void update_mouse_position(unsigned char do_scroll);
+
+char fetchh65[]={0x46,0x45,0x54,0x43,0x48,0x48,'6','5','.',0x4d,'6','5',0};
+char fetchget[]={0x46,0x45,0x54,0x43,0x48,0x47,0x45,0x54,'.',0x4d,'6','5',0};
 
 void c64_40columns(void)
 {
@@ -79,7 +80,7 @@ void scroll_down(long distance)
   if (position<0) position=0;
   if (position>max_position) position=max_position;
 
-  screen_address_offset=(position/8)*(line_width*2);
+  screen_address_offset=(position/8)*(fetch_shared_mem.line_width*2);
   if (screen_address_offset<0) screen_address_offset=0;
   if (screen_address_offset>screen_address_offset_max) screen_address_offset=screen_address_offset_max;  
 
@@ -125,10 +126,11 @@ void fetch_page(char *hostname,int port,char *path)
   // Find . that separates extension
   ext=&path[strlen(path)-1];  
   while (ext>path&&ext[-1]!='.') ext--;
-  
-  if (!strcasecmp(ext,"h65")) {
+
+  // CC65 PETSCII / ASCII mixing is a real pain, so we have to compare char by char here
+  if (ext[1]=='6'&&ext[2]=='5'&&((ext[0]&0xdf)==0x48)) {
     // Fetch H65 page
-    mega65_dos_exechelper("FETCHH65.M65");
+    mega65_dos_exechelper(fetchh65);
     printf("ERROR: Could not load FETCHH65.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
     
@@ -138,7 +140,7 @@ void fetch_page(char *hostname,int port,char *path)
     // and try to display them. But that will be done in the FETCH_GETFETCH_DOWNLOADED state
     // in main.  For now, we just need to call FETCHGET.M65
 
-    mega65_dos_exechelper("FETCHGET.M65");
+    mega65_dos_exechelper(fetchget);
     printf("ERROR: Could not load FETCHGET.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);    
   }
@@ -217,8 +219,7 @@ void show_page(void)
 {
   //  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
   
-#if 0
-  POKE(0x0400,h65_error);
+#if 1
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
@@ -230,13 +231,13 @@ void show_page(void)
   POKE(0xD015,0x01);
   
   // V400/H640 etc (do first due to hot regs)
-  POKE(0xD031,d031_bits);
+  POKE(0xD031,fetch_shared_mem.d031_bits);
   // $D016 value
-  POKE(0xD016,d016_bits);
+  POKE(0xD016,fetch_shared_mem.d016_bits);
   // Enable 16-bit text mode
-  POKE(0xD054,0x40+d054_bits);
+  POKE(0xD054,0x40+fetch_shared_mem.d054_bits);
   // Line step
-  POKE(0xD058,line_width*2);
+  POKE(0xD058,fetch_shared_mem.line_width*2);
   POKE(0xD059,0);
   // Set screen address to $12000
   POKE(0xD060,0x00);
@@ -246,7 +247,7 @@ void show_page(void)
   // Set colour RAM address
   POKE(0xD065,0x20);
   // Set charset address
-  POKE(0xD069,char_page);
+  POKE(0xD069,fetch_shared_mem.char_page);
   // Display 51 rows, so that we can do smooth scrolling
   POKE(0xD07B,51-1);
   // Reset smooth scroll (assumes PAL)
@@ -255,12 +256,12 @@ void show_page(void)
   screen_address_offset_max=0;
   max_position=0;
   
-  if (line_count>50) {
-    screen_address_offset_max=(line_width*2)*(line_count-50);
-    max_position=(line_count-50)*8;
+  if (fetch_shared_mem.line_count>50) {
+    screen_address_offset_max=(fetch_shared_mem.line_width*2)*(fetch_shared_mem.line_count-50);
+    max_position=(fetch_shared_mem.line_count-50)*8;
   }
   
-#if 0
+#if 1
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
