@@ -218,6 +218,10 @@ void remove_rx_data(SOCKET *_sckt)
   }
   if (_sckt->rx_oo_start&&(_sckt->rx_oo_end>_sckt->rx_data)) {
     // Shuffle down rx_data bytes in the buffer
+    if ((_sckt->rx_oo_end - _sckt->rx_data) > 0xffff ) {
+      printf("ERROR: lcopy() asked to move >0xffff bytes. This needs to be implemented.\n");
+      while(1) continue;
+    }
     lcopy(_sckt->rx + _sckt->rx_data, _sckt->rx,
 	  _sckt->rx_oo_end - _sckt->rx_data);
     _sckt->rx_oo_start -= _sckt->rx_data;
@@ -317,15 +321,6 @@ byte_t nwk_upstream (byte_t sig)
              * Use old sequence number.
              */
             if(data_size) seq.d -= data_size;
-
-	    // XXX Why on earth do we subtract one here?
-	    // This messes up connections sometimes, because
-	    // we SYN, get SYN+ACK, and have sent a 2nd SYN
-	    // again before we read the SYN+ACK. But in the process
-	    // we have of course decremented the sequence number
-	    // by one, so the other side gets VERY confused, and says
-	    // RST!
-	    //            if(_sckt->toSend & (SYN | FIN)) seq.d--;
          }
 
          TCPH(n_seq).b[0] = seq.b[3];
@@ -337,17 +332,21 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[2] = _sckt->remSeq.b[1];
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
 
-	 if (_sckt->remSeq.d-_sckt->remSeqStart.d)
-	   //	   printf("ACKing %ld\n",_sckt->remSeq.d-_sckt->remSeqStart.d+data_size);
-
-         if(!_sckt->timeout) {
-            /*
-             * Update sequence number data.
-             */
-            if(data_size) seq.d += data_size;
-            if(_sckt->toSend & (SYN | FIN)) seq.d++;
-            _sckt->seq.d = seq.d;
-         }
+	 if (_sckt->remSeq.d-_sckt->remSeqStart.d) {
+#if  0
+	   printf("[ACK %ld]  ",
+		  _sckt->remSeq.d-_sckt->remSeqStart.d+data_size);
+#endif
+	   
+	   if(!_sckt->timeout) {
+	     /*
+	      * Update sequence number data.
+	      */
+	     if(data_size) seq.d += data_size;
+	     if(_sckt->toSend & (SYN | FIN)) seq.d++;
+	     _sckt->seq.d = seq.d;
+	   }
+	 }
 
          /*
           * Update TCP checksum information.
@@ -553,6 +552,18 @@ found:
 parse_tcp:
 
    printf(":");
+
+   // Compute sequence relative to the current expected point
+   for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
+   rel_sequence.d-=_sckt->remSeq.d;
+
+#if 1
+   printf("[SEG %ld:%ld,%ld]  ",
+	  rel_sequence.d,rel_sequence.d+data_size,
+	  _sckt->remSeq.d-_sckt->remSeqStart.d
+	  //	  ,_sckt->remSeqStart.d
+	  );
+#endif
    
    /*
     * TCP message.
@@ -624,8 +635,6 @@ parse_tcp:
      // header lengths
      data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
      
-     for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
-     rel_sequence.d-=_sckt->remSeq.d;
 
 #if 0
      printf("\n%6lx: rel_seq=%ld, rx:%d,%d to %d\n",
@@ -637,21 +646,25 @@ parse_tcp:
      POKE(0xd610,0);
 #endif
 
-     if (rel_sequence.d>_sckt->rx_size || rel_sequence.d+data_size>_sckt->rx_size) {
+     if (rel_sequence.d>_sckt->rx_size
+	 || rel_sequence.d+data_size>_sckt->rx_size) {
        // Ignore segments that we can't possibly handle
-       //       printf("drop(a)");
+       printf("drop(a) %ld,%d,%d ",
+	      rel_sequence.d,_sckt->rx_size,
+	      data_size
+	      );
        if (data_size) { nwk_schedule_oo_ack(_sckt);
 	 goto drop; }
-     } else if (rel_sequence.w[0]==_sckt->rx_data) {
+     } else if (rel_sequence.d==_sckt->rx_data) {
        // Copy to end of data in RX buffer
-       //       printf("rx append %d@%d",data_size,_sckt->rx_data);
+       printf("rx append %d@%d ",data_size,_sckt->rx_data);
        if (data_size+_sckt->rx_data>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_data;
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_data, data_size);
        }
        _sckt->rx_data += data_size;       
-     } else if (rel_sequence.w[0]==_sckt->rx_oo_end) {
+     } else if (rel_sequence.d==_sckt->rx_oo_end) {
        // Copy to end of OO data in RX buffer
        // printf("oo append");
        if (data_size+_sckt->rx_oo_end>_sckt->rx_size)
@@ -660,21 +673,21 @@ parse_tcp:
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_oo_end, data_size);	 
        }
        _sckt->rx_oo_end += data_size;
-     } else if ((rel_sequence.w[0]+data_size)==_sckt->rx_oo_start) {
+     } else if ((rel_sequence.d+data_size)==_sckt->rx_oo_start) {
        // Copy to start of OO data in RX buffer
        //       printf("oo prepend");
        if (data_size) {
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,  _sckt->rx + rel_sequence.w[0], data_size);	 
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,  _sckt->rx + rel_sequence.d, data_size);	 
        }
-       _sckt->rx_oo_end += rel_sequence.w[0];
-     } else if ((rel_sequence.w[0]+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
+       _sckt->rx_oo_end += rel_sequence.d;
+     } else if ((rel_sequence.d+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
        // It belongs in the window, but not at the start, so put in RX OO buffer
        //       printf("oo stash");
        if (data_size) {
-	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + rel_sequence.w[0], data_size);	 
+	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + rel_sequence.d, data_size);	 
        }
-       _sckt->rx_oo_start = rel_sequence.w[0];
-       _sckt->rx_oo_end = rel_sequence.w[0] + data_size;
+       _sckt->rx_oo_start = rel_sequence.d;
+       _sckt->rx_oo_end = rel_sequence.d + data_size;
      } else if (rel_sequence.d) {
        //       printf("drop(b)");
        if (data_size) { nwk_schedule_oo_ack(_sckt);
