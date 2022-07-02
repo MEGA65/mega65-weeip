@@ -99,7 +99,7 @@ typedef struct {
        
         uint32_t rx_size;                         ///< Reception buffer size.
 	uint16_t tx_size;                         ///< Size of transmit packet.
-	uint32_t rx_data;                         ///< Bytes available in RX buffer
+	uint32_t rx_data;                         ///< Bytes used in RX buffer (i.e., bytes of data available)
         uint32_t rx_oo_start;                     ///< Start of out-of-order held data
         uint32_t rx_oo_end;                       ///< End of out-of-order held data
   
@@ -109,6 +109,7 @@ typedef struct {
 	uint16_t remPort;                         ///< Remote port number.
 	IPV4 remIP;                               ///< Remote IP address.
 	_uint32_t seq;                            ///< Local sequence number.
+	_uint32_t seqStart;                       ///< Local sequence number.
 	_uint32_t remSeq;                         ///< Remote sequence number.
 	_uint32_t remSeqStart;                    ///< Initial remote sequence number.
 } SOCKET;
