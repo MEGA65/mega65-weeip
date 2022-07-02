@@ -41,6 +41,10 @@ distpush:	dist
 distrun:	distpush
 	m65 -F -4 -r fetch.prg
 
+distfastrun:	dist
+	m65 -F ; m65ftp -l /dev/ttyUSB2 -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
+	m65 -F -4 -r fetch.prg
+
 $(SUBDEPENDS):
 	git submodule init
 	git submodule update
@@ -48,6 +52,9 @@ $(SUBDEPENDS):
 
 hex2pcap:	src/hex2pcap.c Makefile
 	gcc -Wall -g -o hex2pcap src/hex2pcap.c
+
+raw2pcap:	src/raw2pcap.c Makefile
+	gcc -Wall -g -o raw2pcap src/raw2pcap.c
 
 uploadpages: pages
 	( cd content ; ( echo "prompt" ; echo "mput *" ) | ftp f.mega65.org )
