@@ -15,6 +15,8 @@
 #include "debug.h"
 #include "shared_state.h"
 
+extern char dbg_msg[80];
+
 unsigned char mouse_pointer_sprite[63]={
 0xfC,0x00,0x00,
 0xf8,0x00,0x00,
@@ -114,8 +116,14 @@ byte_t comunica (byte_t p)
          break;
       case WEEIP_EV_DATA:	
 	//	while(1) continue;
+#ifdef DEBUG_TCP
+	snprintf(dbg_msg,80,"   processing %ld received bytes",s->rx_data);
+	debug_msg(dbg_msg);
+#endif
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=lpeek(s->rx+i);
+	  //	  snprintf(dbg_msg,80,"     %d of %ld",(short)i,(short)s->rx_data);
+	  //	  debug_msg(dbg_msg);
 	  //	  printf("(%x)",page_parse_state);
 	  switch(page_parse_state) {
 	  case 0:
@@ -169,12 +177,12 @@ byte_t comunica (byte_t p)
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
 	      break;
-	    } else if (block_addr<0xf000) {
-              printf("bad address $%08x\n",block_addr);
+	    } else if (block_addr<0xf000L) {
+              printf("bad address $%08lx\n",block_addr);
               h65_error=H65_BADADDR;
               return 0;
-            } else if (block_len>0x20000) {
-              printf("bad length $%08x\n",block_len);
+            } else if (block_len>0x20000L) {
+              printf("bad length $%08lx\n",block_len);
               h65_error=H65_BADADDR;
               return 0;
             } else {
@@ -196,8 +204,8 @@ byte_t comunica (byte_t p)
 	      // Stash them and update it
 	      lcopy(s->rx+i,block_addr,count);
 
-#if 0
-	      snprintf(buf,80,"%d @ $%08lx",count,block_addr);
+#if DEBUG_TCP
+	      snprintf(buf,80,"     storing %d data bytes @ $%08lx",count,block_addr);
 	      debug_msg(buf);
 #endif
 	      
