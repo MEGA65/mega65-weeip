@@ -87,6 +87,7 @@ eth_drop()
 {
   // Do nothing, as we pop the ethernet buffer off when asking for a frame in
   // eth_task().
+  
 }
 
 char dbg_msg[80];
@@ -96,6 +97,8 @@ unsigned char sixteenbytes[16];
  * Ethernet control task.
  * Shall be called when a packet arrives.
  */
+uint16_t frame_count=0;
+
 uint8_t eth_task (uint8_t p)
 {
   /*
@@ -117,14 +120,17 @@ uint8_t eth_task (uint8_t p)
 
   printf("/");
   
-  // Get next received packet
-  // Just $01 and $03 should be enough, but then packets may be received in triplicate
-  // based on testing in wirekrill. But clearing bit 1 again solves this problem.
-  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03); POKE(0xD6E1,0x01);
+  // Process the next received ethernet frame
   
   /*
    * A packet is available.
    */
+
+    // XXX DEBUG: Record all received frames in attic RAM for comparison
+  lcopy(ETH_RX_BUFFER,0x8000000L+(frame_count*2048L),2048);
+  lpoke(0x87ffffe,frame_count);
+  lpoke(0x87fffff,frame_count>>8);
+  frame_count++;  
 
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);
@@ -199,7 +205,11 @@ uint8_t eth_task (uint8_t p)
   }
   
  drop:
-  eth_drop();
+  eth_drop(); 
+
+  // Acknowledge the ethernet frame, freeing the buffer up for next RX
+  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
+  
   // We processed a packet, so schedule ourselves immediately, in case there
   // are more packets coming.
   task_add(eth_task, 0, 0,"ethtask");                    // try again to check more packets.
