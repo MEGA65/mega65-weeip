@@ -18,6 +18,8 @@
 // Report various things on serial monitor interface
 // #define DEBUG_ACK
 
+// #define DEBUG_TCP_REASSEMBLY
+
 // Enable ICMP PING if desired.
 //#define ENABLE_ICMP
 
@@ -73,7 +75,6 @@ HEADER _header;
 IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
 
 extern char dbg_msg[80];
-#define DEBUG_TCP_REASSEMBLY
 
 static uint16_t data_size,data_ofs;
 static _uint32_t seq;
@@ -373,8 +374,8 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
 
 	 if (_sckt->remSeq.d-_sckt->remSeqStart.d) {
-#if  0
-	   printf("[ACK %ld]  ",
+#if 0
+	   snprintf(dbg_msg,80,"[ACK %ld]  ",
 		  _sckt->remSeq.d-_sckt->remSeqStart.d+data_size);
 #endif
 	   
@@ -480,7 +481,7 @@ void nwk_schedule_oo_ack(SOCKET *_sckt)
   /*
    * Out of order, send our number.
    */
-#if 0
+#ifdef DEBUG_ACK
   printf("request OOO ack: %ld != %ld\n",
 	 byte_order_swap_d(TCPH(n_seq.d))-_sckt->remSeqStart.d,_sckt->remSeq.d-_sckt->remSeqStart.d);
 #endif  
@@ -795,6 +796,7 @@ parse_tcp:
 	 debug_msg(dbg_msg);
 #endif	        
        if (data_size) { nwk_schedule_oo_ack(_sckt);
+	 _sckt->toSend = ACK;            	 
 	 goto drop; }
      }
 
