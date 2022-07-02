@@ -86,6 +86,8 @@ found:
    _sckt->type = protocol;
    _sckt->seq.w[0] = rand32(0);
    _sckt->seq.w[1] = rand32(0);
+   _sckt->seqStart.w[0]=_sckt->seq.w[0];
+   _sckt->seqStart.w[1]=_sckt->seq.w[1];
    return _sckt;
 }
 
