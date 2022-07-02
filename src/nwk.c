@@ -72,6 +72,9 @@ HEADER _header;
 
 IPV4 ip_broadcast;                  ///< Subnetwork broadcast address
 
+extern char dbg_msg[80];
+#define DEBUG_TCP_REASSEMBLY
+
 static uint16_t data_size,data_ofs;
 static _uint32_t seq;
 #define TCPH(X) _header.t.tcp.X
@@ -115,6 +118,14 @@ byte_t _flags;
 
 void remove_rx_data(SOCKET *_sckt);
 
+void tcp_bytes(char c)
+{
+#ifdef DEBUG_TCP_REASSEMBLY
+   snprintf(dbg_msg,80,"   delivering %ld tcp payload bytes (%c)",
+	    _sckt->rx_data,c);
+   debug_msg(dbg_msg);
+#endif	        
+}
 
 /**
  * TCP timing control task.
@@ -197,6 +208,8 @@ byte_t nwk_tick (byte_t sig)
              * Socket down.
              */
             _sckt->state = _IDLE;
+	    tcp_bytes('d');
+
 	    _sckt->callback(WEEIP_EV_DISCONNECT);
 	    remove_rx_data(_sckt);
          }
@@ -212,22 +225,49 @@ byte_t nwk_tick (byte_t sig)
 
 void remove_rx_data(SOCKET *_sckt)
 {
+  unsigned short n;
+  
   if (!_sckt->rx_data) {
-    _sckt->rx_data=0;
     return;
   }
-  if (_sckt->rx_oo_start&&(_sckt->rx_oo_end>_sckt->rx_data)) {
-    // Shuffle down rx_data bytes in the buffer
-    if ((_sckt->rx_oo_end - _sckt->rx_data) > 0xffff ) {
-      printf("ERROR: lcopy() asked to move >0xffff bytes. This needs to be implemented.\n");
-      while(1) continue;
+
+#ifdef DEBUG_TCP_REASSEMBLY
+  snprintf(dbg_msg,80,"   shuffling down %ld bytes. oo_start,end was %ld,%ld.",
+	   _sckt->rx_data,_sckt->rx_oo_start,_sckt->rx_oo_end);
+  debug_msg(dbg_msg);
+#endif	        
+
+  // We are removing rx_data, so need to shuffle the out-of-order assembly
+  // area down that far.
+  
+  if (_sckt->rx_oo_end>_sckt->rx_data) {
+
+    uint32_t ofs,n;
+
+    n=_sckt->rx_oo_end - _sckt->rx_data;
+    
+    for(ofs=0;ofs<n;ofs+=65535) {
+      
+      uint32_t count=65535;
+      if (count>(n-ofs)) count = n-ofs;
+
+      // Copy down from the end of the received data to rx_oo_end.
+      lcopy(_sckt->rx + _sckt->rx_data + ofs, _sckt->rx + ofs, n);
     }
-    lcopy(_sckt->rx + _sckt->rx_data, _sckt->rx,
-	  _sckt->rx_oo_end - _sckt->rx_data);
+
     _sckt->rx_oo_start -= _sckt->rx_data;
+    if (_sckt->rx_oo_start < 0 ) _sckt->rx_oo_start = 0;
+
     _sckt->rx_oo_end -= _sckt->rx_data;
+
   }
   _sckt->rx_data=0;
+
+#ifdef DEBUG_TCP_REASSEMBLY
+  snprintf(dbg_msg,80,"   shuffled down oo_start,end now %ld,%ld.",
+	   _sckt->rx_oo_start,_sckt->rx_oo_end);
+  debug_msg(dbg_msg);
+#endif	        
   
 }
 
@@ -376,6 +416,8 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * Tell UDP that data was sent (no acknowledge).
           */
+	 tcp_bytes('a');
+
 	 _sckt->callback(WEEIP_EV_DATA_SENT);
 	 remove_rx_data(_sckt);
       }
@@ -544,6 +586,12 @@ found:
       if (data_size)
 	lcopy(ETH_RX_BUFFER+2+14+sizeof(IP_HDR)+8,_sckt->rx, data_size);
       _sckt->rx_data = data_size;
+
+#ifdef DEBUG_TCP_REASSEMBLY
+      snprintf(dbg_msg,80,"   set rx_data to %ld (a).",_sckt->rx_data);
+      debug_msg(dbg_msg);
+#endif	        
+      
    }
    
    ev = WEEIP_EV_DATA;
@@ -557,14 +605,6 @@ parse_tcp:
    for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
    rel_sequence.d-=_sckt->remSeq.d;
 
-#if 1
-   printf("[SEG %ld:%ld,%ld]  ",
-	  rel_sequence.d,rel_sequence.d+data_size,
-	  _sckt->remSeq.d-_sckt->remSeqStart.d
-	  //	  ,_sckt->remSeqStart.d
-	  );
-#endif
-   
    /*
     * TCP message.
     * Check flags.
@@ -572,6 +612,34 @@ parse_tcp:
    _flags = 0;
    data_size -= 40;
 
+
+   // No data to return, unless we discover otherwise
+   _sckt->rx_data = 0;
+   
+#ifdef DEBUG_TCP_REASSEMBLY
+   snprintf(dbg_msg,80,"saw segment [%ld,%ld), rel segment is [%ld,%ld)",
+	    rel_sequence.d
+	    +_sckt->remSeq.d
+	    -_sckt->remSeqStart.d,
+
+	    rel_sequence.d
+	    +_sckt->remSeq.d
+	    -_sckt->remSeqStart.d
+	    +data_size,
+
+	    rel_sequence.d,
+	    rel_sequence.d+data_size
+	    );
+   debug_msg(dbg_msg);
+#endif
+#ifdef DEBUG_TCP_REASSEMBLY
+  snprintf(dbg_msg,80,"   (oo_start,end was %ld,%ld)",
+	   _sckt->rx_oo_start,_sckt->rx_oo_end);
+  debug_msg(dbg_msg);
+#endif	        
+  
+
+   
    if(TCPH(flags) & ACK) {
       /*
        * Test acked sequence number.
@@ -635,61 +703,97 @@ parse_tcp:
      // header lengths
      data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
      
-
-#if 0
-     printf("\n%6lx: rel_seq=%ld, rx:%d,%d to %d\n",
-	    _sckt->remSeq.d-_sckt->remSeqStart.d,
-	    rel_sequence.d,
-	    _sckt->rx_data,
-	    _sckt->rx_oo_start,_sckt->rx_oo_end);
-     while(!PEEK(0xD610)) continue;
-     POKE(0xd610,0);
-#endif
-
      if (rel_sequence.d>_sckt->rx_size
 	 || rel_sequence.d+data_size>_sckt->rx_size) {
-       // Ignore segments that we can't possibly handle
-       printf("drop(a) %ld,%d,%d ",
-	      rel_sequence.d,_sckt->rx_size,
-	      data_size
-	      );
+       // Ignore segments that we can't possibly handle, i.e.,
+       // those that we have already ACKd, or that are beyond our window size
        if (data_size) { nwk_schedule_oo_ack(_sckt);
 	 goto drop; }
      } else if (rel_sequence.d==_sckt->rx_data) {
-       // Copy to end of data in RX buffer
-       printf("rx append %d@%d ",data_size,_sckt->rx_data);
+       // Data is exactly for where we are up to: Copy to end of data in RX buffer       
+#ifdef DEBUG_TCP_REASSEMBLY
+       snprintf(dbg_msg,80,"   appending %d bytes.",
+		data_size
+		);
+       debug_msg(dbg_msg);
+#endif       
+       
        if (data_size+_sckt->rx_data>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_data;
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_data, data_size);
        }
-       _sckt->rx_data += data_size;       
+       _sckt->rx_data += data_size;
+
+       // Does the bytes we have now overlap with the OO area? and if so, does this mean
+       // we have more bytes we can deliver now?
+       if ( (_sckt->rx_data >= _sckt->rx_oo_start) && (_sckt->rx_oo_end > _sckt->rx_data) ) {
+	 // It now overlaps with our OO area: so return it all
+	 _sckt->rx_data = _sckt->rx_oo_end;
+	 _sckt->rx_oo_start=0;
+	 _sckt->rx_oo_end=0;
+       }
+#ifdef DEBUG_TCP_REASSEMBLY
+      snprintf(dbg_msg,80,"   set rx_data to %ld (b).",_sckt->rx_data);
+      debug_msg(dbg_msg);
+#endif	        
+       
      } else if (rel_sequence.d==_sckt->rx_oo_end) {
        // Copy to end of OO data in RX buffer
-       // printf("oo append");
+       
        if (data_size+_sckt->rx_oo_end>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_oo_end;
        if (data_size) {
+
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_oo_end, data_size);	 
        }
        _sckt->rx_oo_end += data_size;
-     } else if ((rel_sequence.d+data_size)==_sckt->rx_oo_start) {
+
+#ifdef DEBUG_TCP_REASSEMBLY
+       snprintf(dbg_msg,80,"   oo appending %d bytes: rel=%ld, oo_start=%ld, oo_end=%ld",
+		data_size,
+		rel_sequence.d,_sckt->rx_oo_start,_sckt->rx_oo_end);
+       debug_msg(dbg_msg);
+#endif
+       
+     } else if (((rel_sequence.d+data_size)>=_sckt->rx_oo_start)
+		&&(rel_sequence.d+data_size<_sckt->rx_oo_end))
+       {
        // Copy to start of OO data in RX buffer
-       //       printf("oo prepend");
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,  _sckt->rx + rel_sequence.d, data_size);	 
        }
-       _sckt->rx_oo_end += rel_sequence.d;
+       _sckt->rx_oo_start = rel_sequence.d;
+#ifdef DEBUG_TCP_REASSEMBLY
+       snprintf(dbg_msg,80,"   Prepending %d bytes to oo_start. oo_start=%ld, oo_end=%ld",
+		data_size,
+		_sckt->rx_oo_start,_sckt->rx_oo_end);
+	 debug_msg(dbg_msg);
+#endif	        
      } else if ((rel_sequence.d+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
        // It belongs in the window, but not at the start, so put in RX OO buffer
-       //       printf("oo stash");
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + rel_sequence.d, data_size);	 
+
+	 _sckt->rx_oo_start = rel_sequence.d;
+	 _sckt->rx_oo_end = rel_sequence.d + data_size;
+
+#ifdef DEBUG_TCP_REASSEMBLY
+	 snprintf(dbg_msg,80,"   stashing %d bytes: oo_start=%ld, oo_end=%ld",
+		  data_size,
+		  _sckt->rx_oo_start,_sckt->rx_oo_end);
+	 debug_msg(dbg_msg);
+#endif	        
        }
-       _sckt->rx_oo_start = rel_sequence.d;
-       _sckt->rx_oo_end = rel_sequence.d + data_size;
      } else if (rel_sequence.d) {
-       //       printf("drop(b)");
+#ifdef DEBUG_TCP_REASSEMBLY
+	 snprintf(dbg_msg,80,"   Dropping %d bytes, because i can't buffer them.",
+		  data_size);
+	 debug_msg(dbg_msg);
+	 snprintf(dbg_msg,80,"   (oo_start=%ld, oo_end=%ld)",
+		  _sckt->rx_oo_start,_sckt->rx_oo_end);
+	 debug_msg(dbg_msg);
+#endif	        
        if (data_size) { nwk_schedule_oo_ack(_sckt);
 	 goto drop; }
      }
@@ -701,6 +805,12 @@ parse_tcp:
        _sckt->rx_data=_sckt->rx_oo_end;
        _sckt->rx_oo_end=0;
        _sckt->rx_oo_start=0;
+
+#ifdef DEBUG_TCP_REASSEMBLY
+      snprintf(dbg_msg,80,"   set rx_data to %ld (c).",_sckt->rx_data);
+      debug_msg(dbg_msg);
+#endif	        
+       
      }
      
       /*
@@ -710,6 +820,7 @@ parse_tcp:
 
       // Deliver data to programme
       if (_sckt->rx_data) {
+	 tcp_bytes('b');
 	_sckt->callback(WEEIP_EV_DATA);
 	remove_rx_data(_sckt);
       }
@@ -983,10 +1094,14 @@ done:
     * Add socket management task.
     */
    if(ev != WEEIP_EV_NONE) {
+
+     tcp_bytes('c');
      _sckt->callback(ev);
      remove_rx_data(_sckt);
    }
 
 drop:
+
+
    return;
 }
