@@ -23,6 +23,11 @@ struct __fetch_shared_mem {
   unsigned short port;
   unsigned short host_str_addr;
   unsigned short path_str_addr;
+
+  // video mode info
+  unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
+  unsigned short line_count;
+  
 };
 
 #define fetch_shared_mem     (*(struct __fetch_shared_mem*)0x3c0)
