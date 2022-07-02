@@ -256,6 +256,16 @@ void dhcp_send_query_or_request(unsigned char requestP)
     dns_query[dhcp_query_len++]=0x04;
     for(i=0;i<4;i++) dns_query[dhcp_query_len++]=ip_dhcpserver.b[i];
   } else {
+    // Identify us as 'MEGA65'
+    dns_query[dhcp_query_len++]=0x0C;
+    dns_query[dhcp_query_len++]=0x06;
+    dns_query[dhcp_query_len++]=0x4d;
+    dns_query[dhcp_query_len++]=0x45;
+    dns_query[dhcp_query_len++]=0x47;
+    dns_query[dhcp_query_len++]=0x41;
+    dns_query[dhcp_query_len++]=0x36;
+    dns_query[dhcp_query_len++]=0x35;
+    
     // Request subnetmask, router, domainname, DNS server
     dns_query[dhcp_query_len++]=0x37;
     dns_query[dhcp_query_len++]=0x05;
@@ -264,6 +274,7 @@ void dhcp_send_query_or_request(unsigned char requestP)
     dns_query[dhcp_query_len++]=0x0f;
     dns_query[dhcp_query_len++]=0x06;
     dns_query[dhcp_query_len++]=0x06;
+
   }
   // End of request
   dns_query[dhcp_query_len++]=0xff;
