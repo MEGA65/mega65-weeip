@@ -41,7 +41,10 @@
  */
 #define MAX_SOCKET         4
 
-#define TIMEOUT_TCP			1
+// XXX - TIMEOUT_TCP _must_ be > 1, or else all TX will be deemed
+// re-transmissions, and the data length will be subtracted from the sequence
+// number, resulting in -ve sequence numbers which confuses everything.
+#define TIMEOUT_TCP			2
 #define RETRIES_TCP			30
 #define TICK_TCP			   44					// one second
 
