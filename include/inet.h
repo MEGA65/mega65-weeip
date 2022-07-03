@@ -33,6 +33,8 @@
 #define __INETH__
 #include "defs.h"
 
+#define HEADER_LEN 56
+
 /**
  * Internet protocol address (version 4).
  */
@@ -103,7 +105,7 @@ typedef struct {
    uint16_t window;              ///< Reception window buffer (not used).
    uint16_t checksum;            ///< Packet checksum, with pseudo-header.
    uint16_t urgent;              ///< Urgent data pointer (not used).
-   uint8_t options[8];           ///< TCP options
+   uint8_t options[HEADER_LEN - 40];           ///< TCP options
 } TCP_HDR;
 
 /**
@@ -140,9 +142,12 @@ typedef struct {
 
 /**
  * General message header structure.
+ * 40 bytes are required for bare TCP.
+ * Extra size allows for TCP option bytes that we need.
+ * This includes MSS negotiation as well as SACK.
  */
 typedef union {
-   byte_t b[40];                 ///< Raw byte access.
+   byte_t b[HEADER_LEN];                 ///< Raw byte access.
    ARP_HDR arp;                  ///< ARP message access.
    struct {
       IP_HDR ip;                 ///< IP header access.

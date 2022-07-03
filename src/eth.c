@@ -126,11 +126,14 @@ uint8_t eth_task (uint8_t p)
    * A packet is available.
    */
 
-    // XXX DEBUG: Record all received frames in attic RAM for comparison
-  lcopy(ETH_RX_BUFFER,0x8000000L+(frame_count*2048L),2048);
+#if 0
+  // XXX DEBUG: Record all received frames in attic RAM for comparison
+  lcopy(ETH_RX_BUFFER,0x8400000L+(frame_count*2048L),2048);
   lpoke(0x87ffffe,frame_count);
   lpoke(0x87fffff,frame_count>>8);
-  frame_count++;  
+  frame_count++;
+#endif
+  printf("/%d/",lpeek(ETH_RX_BUFFER+0L)+256*(lpeek(ETH_RX_BUFFER+1L)&7));
 
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);
@@ -316,7 +319,7 @@ eth_ip_send()
     * Send protocol header.
     */
    if(IPH(protocol) == IP_PROTO_UDP) eth_size = 28;    // header size
-   else eth_size = 20+28;
+   else eth_size = sizeof(HEADER);
    eth_write((uint8_t*)&_header, eth_size);
    
    //   printf("eth_ip_send success.\n");

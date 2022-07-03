@@ -29,8 +29,8 @@
   at the same time, we don't wait forever for initial retries on a
   local LAN
 */
-#define SOCKET_TIMEOUT(S) (TIMEOUT_TCP + 32*(RETRIES_TCP - S->retry))
-//#define DEBUG_TCP_RETRIES
+#define SOCKET_TIMEOUT(S) (TIMEOUT_TCP + 8*(RETRIES_TCP - S->retry))
+#define DEBUG_TCP_RETRIES
 
 
 /********************************************************************************
@@ -102,15 +102,24 @@ IPV4 ip_local;
  * Default header.
  */
 #define WINDOW_SIZE_OFFSET 34
-byte_t default_header[] = {
+byte_t default_header[HEADER_LEN] = {
+   // IP header
    0x45, 0x08, 0x00, 0x28, 0x00, 0x00, 0x00, 0x00, 0x40, 0x06,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+   // UDP/TCP header
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-   0x00, 0x00, 0x70, 0x00,
+   0x00, 0x00,
+   // TCP header length field
+   ((HEADER_LEN-20)&0xfc)<<2,
+   0x00,
    // TCP Window size
    0xff, 0xff, // ~64KB by default
    0x00, 0x00, 0x00, 0x00,
    // TCP option bytes reservation
+#if HEADER_LEN == 56
+   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+#endif   
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
@@ -187,6 +196,7 @@ byte_t nwk_tick (byte_t sig)
 #endif
                   break;
                default:
+                  _sckt->toSend = ACK;
 		 _sckt->time = SOCKET_TIMEOUT(_sckt);
                   _sckt->timeout = FALSE;
                   break;
@@ -329,7 +339,7 @@ byte_t nwk_upstream (byte_t sig)
       
       // XXX Correct buffer offset processing to handle variable
       // header lengths
-      lcopy((uint32_t)default_header,(uint32_t)_header.b,48);
+      lcopy((uint32_t)default_header,(uint32_t)_header.b,HEADER_LEN);
 
       IPH(id) = HTONS(id);
       id++;
@@ -351,8 +361,8 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * TCP message header.
           */
-	// 48 = 20 for IP header plus 28 for TCP header (including 8 bytes reserved for TCP options)
-         IPH(length) = HTONS((48 + data_size));
+	 // 56 = 20 for IP header plus 36 for TCP header (including 16 bytes reserved for TCP options)
+         IPH(length) = HTONS((HEADER_LEN + data_size));
          TCPH(flags) = _sckt->toSend;
 
          /*
@@ -382,7 +392,6 @@ byte_t nwk_upstream (byte_t sig)
 	   TCPH(options[1])=0x04;
 	   TCPH(options[2])=1400>>8;
 	   TCPH(options[3])=1400;
-	   TCPH(hlen) = 0x60;
 	 }
 	 
 	 
@@ -407,7 +416,7 @@ byte_t nwk_upstream (byte_t sig)
           * Update TCP checksum information.
           */
          TCPH(checksum) = 0;
-         ip_checksum(&_header.b[12], 8 + sizeof(TCP_HDR));
+         ip_checksum(&_header.b[12], sizeof(TCP_HDR));
          add_checksum(IP_PROTO_TCP);
          add_checksum(data_size + sizeof(TCP_HDR));
          TCPH(checksum) = checksum_result();
@@ -754,7 +763,12 @@ parse_tcp:
       snprintf(dbg_msg,80,"   set rx_data to %ld (b).",_sckt->rx_data);
       debug_msg(dbg_msg);
 #endif	        
-       
+
+      // Finally, we should reset our retry timer and schedule an ACK, so that
+      // the other side knows where we are up to
+      _sckt->retry = RETRIES_TCP;
+      nwk_schedule_oo_ack(_sckt);            
+      
      } else if (rel_sequence.d==_sckt->rx_oo_end) {
        // Copy to end of OO data in RX buffer
        

@@ -41,7 +41,7 @@
  */
 #define MAX_SOCKET         4
 
-#define TIMEOUT_TCP			15
+#define TIMEOUT_TCP			1
 #define RETRIES_TCP			30
 #define TICK_TCP			   44					// one second
 

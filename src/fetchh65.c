@@ -138,7 +138,7 @@ byte_t comunica (byte_t p)
 		&&last_bytes[3]==0xFF) {
 	      page_parse_state=2-1; // gets incremented below
 	      // printf("\nFound H65 header.\n");
-	      //	      printf("+");
+	      printf("+");
 	    }
 	    break;
 	  case 2:
@@ -187,7 +187,7 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-#if 0
+#if 1
 	      POKE(0x286,5);
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
@@ -354,6 +354,7 @@ restart_fetch:
   socket_set_callback(comunica);
   // socket_set_rx_buffer(buf, 2048);
   // 128KB of Attic RAM for TCP RX buffer if present
+  // XXX - Do a proper auto-detection of the hyperRAM
   socket_set_rx_buffer(0x8000000L, 128*1024);
   socket_connect(&a,port);
 
