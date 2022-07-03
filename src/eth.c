@@ -24,7 +24,7 @@
 
 #define _PROMISCUOUS
 
-#define NOCRCCHECK
+// #define NOCRCCHECK
 
 static unsigned char eth_log_mode=0;
 
@@ -222,7 +222,7 @@ uint8_t eth_task (uint8_t p)
 
   // Process multiple ethernet frames at a time
   while((PEEK(0xD6E1)&0x20)) {
-    printf("[%d]",frames);
+    //    printf("[%d]",frames);
     eth_process_frame();
     frames++;
     if (frames==32) break;
@@ -388,11 +388,16 @@ eth_init()
 #endif
 #ifdef NOCRCCHECK
    POKE(0xD6E5,PEEK(0xD6E5)|0x02);
+#else
+   POKE(0xD6E5,PEEK(0xD6E5)&0xfd);
 #endif
 
 
    // Set ETH TX Phase to 1
    POKE(0xD6E5,(PEEK(0xD6E5)&0xf3)|(1<<2));   
+
+   // Set ETH RX Phase delay to 1
+   POKE(0xD6E5,(PEEK(0xD6E5)&0x3f)|(1<<6));   
    
    /*
     * Read MAC address from ETH controller
