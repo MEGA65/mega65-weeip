@@ -15,7 +15,7 @@
 //#define DEBUG_TASKS
 // Show each task as it is called
 //#define DEBUG_TASK_CALLS
-//#define DEBUG_NAMED_TASK "ethtask"
+//#define DEBUG_NAMED_TASK "dhcpretry"
 
 /********************************************************************************
  ********************************************************************************
@@ -132,6 +132,9 @@ task_add
 
    if(f == NULL) return FALSE;
 
+   // Don't allow same task to be multiply scheduled
+   task_cancel(f);
+   
    /*
     * Search the task list for an empty slot.
     */
@@ -302,9 +305,9 @@ void task_periodic(void)
        printf("%c %c%c",0x12+rev_toggle,0x9d,0x92);
        rev_toggle^=0x80;
      }
-#endif
 #ifdef DEBUG_NAMED_TASK
      }
+#endif
 #endif
      /*
       * Task is ready.
