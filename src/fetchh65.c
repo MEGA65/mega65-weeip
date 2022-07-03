@@ -313,7 +313,7 @@ restart_fetch:
 	   "get %s http/1.1\n\r"
 	   "hOST: %s\n\r"
 	   "aCCEPT: */*\n\r"
-	   "uSER-aGENT: fetch mega65-weeip/20210727\n\r"
+	   "uSER-aGENT: fetch mega65-wEEip/20220703\n\r"
 	   "\n\r",
 	   path,hostname);
   // Demunge PETSCII a bit
