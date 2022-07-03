@@ -33,7 +33,7 @@
 #define __INETH__
 #include "defs.h"
 
-#define HEADER_LEN 56
+#define HEADER_LEN 64
 
 /**
  * Internet protocol address (version 4).
