@@ -133,7 +133,10 @@ uint8_t eth_task (uint8_t p)
   lpoke(0x87fffff,frame_count>>8);
   frame_count++;
 #endif
-  printf("/%d/",lpeek(ETH_RX_BUFFER+0L)+256*(lpeek(ETH_RX_BUFFER+1L)&7));
+  {
+    int len =lpeek(ETH_RX_BUFFER+0L)+256*(lpeek(ETH_RX_BUFFER+1L)&7);
+    if (len>1000) printf("/%d/",len);
+  }
 
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);

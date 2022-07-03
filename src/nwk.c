@@ -389,14 +389,46 @@ byte_t nwk_upstream (byte_t sig)
          TCPH(n_ack).b[2] = _sckt->remSeq.b[1];
          TCPH(n_ack).b[3] = _sckt->remSeq.b[0];
 
-	 // Negotiate MSS during connection establishment.
 	 if(_sckt->toSend & SYN ) {
+	   // Negotiate MSS during connection establishment.
 	   TCPH(options[0])=0x02;
 	   TCPH(options[1])=0x04;
 	   TCPH(options[2])=1400>>8;
 	   TCPH(options[3])=1400;
+	   if (HEADER_LEN>=(40+2+8+8)) {
+	     // Permit Selective Acknowledgement (SACK)
+	     TCPH(options[4])=0x04;
+	     TCPH(options[5])=0x02;
+	   }
+	 } else {
+	   // Include SACK records.
+	   // 2 byte header + 8 bytes per record
+	   // 24 bytes thus gets us 2 SACK records
+	   if ((HEADER_LEN-40)>=(2+8+8)) {
+	     TCPH(options[0])=0x05;
+	     TCPH(options[1])=0x02+8*_sckt->sack_blocks;
+	     if (_sckt->sack_blocks) {
+	       TCPH(options[2])=_sckt->sack_block_0_left>>24;
+	       TCPH(options[3])=_sckt->sack_block_0_left>>16;
+	       TCPH(options[4])=_sckt->sack_block_0_left>>8;
+	       TCPH(options[5])=_sckt->sack_block_0_left>>0;
+	       TCPH(options[6])=_sckt->sack_block_0_right>>24;
+	       TCPH(options[7])=_sckt->sack_block_0_right>>16;
+	       TCPH(options[8])=_sckt->sack_block_0_right>>8;
+	       TCPH(options[9])=_sckt->sack_block_0_right>>0;
+	     }
+	     if (_sckt->sack_blocks>1) {
+	       TCPH(options[10])=_sckt->sack_block_1_left>>24;
+	       TCPH(options[11])=_sckt->sack_block_1_left>>16;
+	       TCPH(options[12])=_sckt->sack_block_1_left>>8;
+	       TCPH(options[13])=_sckt->sack_block_1_left>>0;
+	       TCPH(options[14])=_sckt->sack_block_1_right>>24;
+	       TCPH(options[15])=_sckt->sack_block_1_right>>16;
+	       TCPH(options[16])=_sckt->sack_block_1_right>>8;
+	       TCPH(options[17])=_sckt->sack_block_1_right>>0;
+	     }
+	   }
 	 }
-	 
 	 
 	 if (_sckt->remSeq.d-_sckt->remSeqStart.d) {
 #if 0
@@ -521,6 +553,17 @@ void nwk_schedule_oo_ack(SOCKET *_sckt)
 #endif
   task_cancel(nwk_upstream);
   task_add(nwk_upstream, 0, 0,"upstream");
+}
+
+void tcp_SACK_update(SOCKET *_sckt,uint32_t start,uint32_t end)
+{
+  if (_sckt->sack_blocks<2) _sckt->sack_blocks++;
+  _sckt->sack_block_1_left = _sckt->sack_block_0_left;
+  _sckt->sack_block_1_right = _sckt->sack_block_0_right;
+
+  _sckt->sack_block_0_left = start;
+  _sckt->sack_block_0_right = end;
+  
 }
 
 /**
@@ -746,7 +789,7 @@ parse_tcp:
 		);
        debug_msg(dbg_msg);
 #endif       
-       
+
        if (data_size+_sckt->rx_data>_sckt->rx_size)
 	 data_size=_sckt->rx_size-_sckt->rx_data;
        if (data_size) {
@@ -766,7 +809,7 @@ parse_tcp:
       snprintf(dbg_msg,80,"   set rx_data to %ld (b).",_sckt->rx_data);
       debug_msg(dbg_msg);
 #endif	        
-
+      
       // Finally, we should reset our retry timer and schedule an ACK, so that
       // the other side knows where we are up to
       _sckt->retry = RETRIES_TCP;
@@ -780,30 +823,42 @@ parse_tcp:
        if (data_size) {
 
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_oo_end, data_size);	 
-       }
-       _sckt->rx_oo_end += data_size;
 
+	 _sckt->rx_oo_end += data_size;
+	 
+	 if(!(TCPH(flags) & SYN)) 
+	   tcp_SACK_update(_sckt,
+			   _sckt->remSeq.d + _sckt->rx_oo_start,
+			   _sckt->remSeq.d + _sckt->rx_oo_end);
+	 
 #ifdef DEBUG_TCP_REASSEMBLY
-       snprintf(dbg_msg,80,"   oo appending %d bytes: rel=%ld, oo_start=%ld, oo_end=%ld",
-		data_size,
-		rel_sequence.d,_sckt->rx_oo_start,_sckt->rx_oo_end);
-       debug_msg(dbg_msg);
+	 snprintf(dbg_msg,80,"   oo appending %d bytes: rel=%ld, oo_start=%ld, oo_end=%ld",
+		  data_size,
+		  rel_sequence.d,_sckt->rx_oo_start,_sckt->rx_oo_end);
+	 debug_msg(dbg_msg);
 #endif
-       
+       } 
      } else if (((rel_sequence.d+data_size)>=_sckt->rx_oo_start)
 		&&(rel_sequence.d+data_size<_sckt->rx_oo_end))
        {
        // Copy to start of OO data in RX buffer
        if (data_size) {
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,  _sckt->rx + rel_sequence.d, data_size);	 
-       }
-       _sckt->rx_oo_start = rel_sequence.d;
+       
+	 _sckt->rx_oo_start = rel_sequence.d;
+
+	 if(!(TCPH(flags) & SYN)) 
+	   tcp_SACK_update(_sckt,
+			   _sckt->remSeq.d + _sckt->rx_oo_start,
+			   _sckt->remSeq.d + _sckt->rx_oo_end);
+	 
 #ifdef DEBUG_TCP_REASSEMBLY
-       snprintf(dbg_msg,80,"   Prepending %d bytes to oo_start. oo_start=%ld, oo_end=%ld",
-		data_size,
-		_sckt->rx_oo_start,_sckt->rx_oo_end);
+	 snprintf(dbg_msg,80,"   Prepending %d bytes to oo_start. oo_start=%ld, oo_end=%ld",
+		  data_size,
+		  _sckt->rx_oo_start,_sckt->rx_oo_end);
 	 debug_msg(dbg_msg);
-#endif	        
+#endif
+       }
      } else if ((rel_sequence.d+data_size)<_sckt->rx_size&&!_sckt->rx_oo_start) {
        // It belongs in the window, but not at the start, so put in RX OO buffer
        if (data_size) {
@@ -812,6 +867,11 @@ parse_tcp:
 	 _sckt->rx_oo_start = rel_sequence.d;
 	 _sckt->rx_oo_end = rel_sequence.d + data_size;
 
+	 if(!(TCPH(flags) & SYN)) 
+	   tcp_SACK_update(_sckt,
+			   _sckt->remSeq.d + _sckt->rx_oo_start,
+			   _sckt->remSeq.d + _sckt->rx_oo_end);
+	 
 #ifdef DEBUG_TCP_REASSEMBLY
 	 snprintf(dbg_msg,80,"   stashing %d bytes: oo_start=%ld, oo_end=%ld",
 		  data_size,
@@ -857,7 +917,11 @@ parse_tcp:
      if (0) if ( ( _sckt->remSeq.d==(1+_sckt->remSeqStart.d) )
 	  && ( _sckt->rx_data > 0 )
 	  ) _sckt->remSeq.d--;
-     
+
+     if(!(TCPH(flags) & SYN)) {
+       if (_sckt->rx_data) tcp_SACK_update(_sckt,_sckt->remSeq.d,_sckt->remSeq.d + _sckt->rx_data);
+     }
+		   
       _sckt->remSeq.d += _sckt->rx_data;
 
       // Deliver data to programme

@@ -112,6 +112,13 @@ typedef struct {
 	_uint32_t seqStart;                       ///< Local sequence number.
 	_uint32_t remSeq;                         ///< Remote sequence number.
 	_uint32_t remSeqStart;                    ///< Initial remote sequence number.
+
+        // TCP Selective ACK (SACK) tracking
+        uint8_t sack_blocks;
+        uint32_t sack_block_0_left;
+        uint32_t sack_block_0_right;
+        uint32_t sack_block_1_left;
+        uint32_t sack_block_1_right;
 } SOCKET;
 
 extern SOCKET *_sckt;
