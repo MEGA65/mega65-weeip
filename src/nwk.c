@@ -30,7 +30,7 @@
   local LAN
 */
 #define SOCKET_TIMEOUT(S) (TIMEOUT_TCP + 8*(RETRIES_TCP - S->retry))
-#define DEBUG_TCP_RETRIES
+//#define DEBUG_TCP_RETRIES
 
 
 /********************************************************************************
@@ -404,28 +404,18 @@ byte_t nwk_upstream (byte_t sig)
 	   // Include SACK records.
 	   // 2 byte header + 8 bytes per record
 	   // 24 bytes thus gets us 2 SACK records
-	   if ((HEADER_LEN-40)>=(2+8+8)) {
-	     TCPH(options[0])=0x05;
-	     TCPH(options[1])=0x02+8*_sckt->sack_blocks;
-	     if (_sckt->sack_blocks) {
-	       TCPH(options[2])=_sckt->sack_block_0_left>>24;
-	       TCPH(options[3])=_sckt->sack_block_0_left>>16;
-	       TCPH(options[4])=_sckt->sack_block_0_left>>8;
-	       TCPH(options[5])=_sckt->sack_block_0_left>>0;
-	       TCPH(options[6])=_sckt->sack_block_0_right>>24;
-	       TCPH(options[7])=_sckt->sack_block_0_right>>16;
-	       TCPH(options[8])=_sckt->sack_block_0_right>>8;
-	       TCPH(options[9])=_sckt->sack_block_0_right>>0;
-	     }
-	     if (_sckt->sack_blocks>1) {
-	       TCPH(options[10])=_sckt->sack_block_1_left>>24;
-	       TCPH(options[11])=_sckt->sack_block_1_left>>16;
-	       TCPH(options[12])=_sckt->sack_block_1_left>>8;
-	       TCPH(options[13])=_sckt->sack_block_1_left>>0;
-	       TCPH(options[14])=_sckt->sack_block_1_right>>24;
-	       TCPH(options[15])=_sckt->sack_block_1_right>>16;
-	       TCPH(options[16])=_sckt->sack_block_1_right>>8;
-	       TCPH(options[17])=_sckt->sack_block_1_right>>0;
+	   if ((HEADER_LEN-40)>=(2+8)) {
+	     if (_sckt->rx_oo_start) {
+	       TCPH(options[0])=0x05;
+	       TCPH(options[1])=0x02+8;
+	       TCPH(options[2])=(_sckt->rx_oo_start + _sckt->remSeq.d ) >>24;
+	       TCPH(options[3])=(_sckt->rx_oo_start + _sckt->remSeq.d) >>16;
+	       TCPH(options[4])=(_sckt->rx_oo_start + _sckt->remSeq.d) >>8;
+	       TCPH(options[5])=(_sckt->rx_oo_start + _sckt->remSeq.d) >>0;
+	       TCPH(options[6])=(_sckt->rx_oo_end + _sckt->remSeq.d) >>24;
+	       TCPH(options[7])=(_sckt->rx_oo_end + _sckt->remSeq.d) >>16;
+	       TCPH(options[8])=(_sckt->rx_oo_end + _sckt->remSeq.d) >>8;
+	       TCPH(options[9])=(_sckt->rx_oo_end + _sckt->remSeq.d) >>0;
 	     }
 	   }
 	 }
@@ -555,17 +545,6 @@ void nwk_schedule_oo_ack(SOCKET *_sckt)
   task_add(nwk_upstream, 0, 0,"upstream");
 }
 
-void tcp_SACK_update(SOCKET *_sckt,uint32_t start,uint32_t end)
-{
-  if (_sckt->sack_blocks<2) _sckt->sack_blocks++;
-  _sckt->sack_block_1_left = _sckt->sack_block_0_left;
-  _sckt->sack_block_1_right = _sckt->sack_block_0_right;
-
-  _sckt->sack_block_0_left = start;
-  _sckt->sack_block_0_right = end;
-  
-}
-
 /**
  * Network downstream processing.
  * Parse incoming network messages.
@@ -688,7 +667,8 @@ parse_tcp:
    // No data to return, unless we discover otherwise
    _sckt->rx_data = 0;
    
-#ifdef DEBUG_TCP_REASSEMBLY
+   //#ifdef DEBUG_TCP_REASSEMBLY
+#if 1
    snprintf(dbg_msg,80,"saw segment [%ld,%ld), rel segment is [%ld,%ld)",
 	    rel_sequence.d
 	    +_sckt->remSeq.d
@@ -811,7 +791,7 @@ parse_tcp:
 #endif	        
       
       // Finally, we should reset our retry timer and schedule an ACK, so that
-      // the other side knows where we are up to
+      // the other side knows where we are up  to
       _sckt->retry = RETRIES_TCP;
       nwk_schedule_oo_ack(_sckt);            
       
@@ -825,11 +805,6 @@ parse_tcp:
 	 lcopy(ETH_RX_BUFFER+16+data_ofs,_sckt->rx + _sckt->rx_oo_end, data_size);	 
 
 	 _sckt->rx_oo_end += data_size;
-	 
-	 if(!(TCPH(flags) & SYN)) 
-	   tcp_SACK_update(_sckt,
-			   _sckt->remSeq.d + _sckt->rx_oo_start,
-			   _sckt->remSeq.d + _sckt->rx_oo_end);
 	 
 #ifdef DEBUG_TCP_REASSEMBLY
 	 snprintf(dbg_msg,80,"   oo appending %d bytes: rel=%ld, oo_start=%ld, oo_end=%ld",
@@ -847,11 +822,6 @@ parse_tcp:
        
 	 _sckt->rx_oo_start = rel_sequence.d;
 
-	 if(!(TCPH(flags) & SYN)) 
-	   tcp_SACK_update(_sckt,
-			   _sckt->remSeq.d + _sckt->rx_oo_start,
-			   _sckt->remSeq.d + _sckt->rx_oo_end);
-	 
 #ifdef DEBUG_TCP_REASSEMBLY
 	 snprintf(dbg_msg,80,"   Prepending %d bytes to oo_start. oo_start=%ld, oo_end=%ld",
 		  data_size,
@@ -867,11 +837,6 @@ parse_tcp:
 	 _sckt->rx_oo_start = rel_sequence.d;
 	 _sckt->rx_oo_end = rel_sequence.d + data_size;
 
-	 if(!(TCPH(flags) & SYN)) 
-	   tcp_SACK_update(_sckt,
-			   _sckt->remSeq.d + _sckt->rx_oo_start,
-			   _sckt->remSeq.d + _sckt->rx_oo_end);
-	 
 #ifdef DEBUG_TCP_REASSEMBLY
 	 snprintf(dbg_msg,80,"   stashing %d bytes: oo_start=%ld, oo_end=%ld",
 		  data_size,
@@ -918,10 +883,6 @@ parse_tcp:
 	  && ( _sckt->rx_data > 0 )
 	  ) _sckt->remSeq.d--;
 
-     if(!(TCPH(flags) & SYN)) {
-       if (_sckt->rx_data) tcp_SACK_update(_sckt,_sckt->remSeq.d,_sckt->remSeq.d + _sckt->rx_data);
-     }
-		   
       _sckt->remSeq.d += _sckt->rx_data;
 
       // Deliver data to programme
