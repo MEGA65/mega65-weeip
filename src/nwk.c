@@ -332,7 +332,7 @@ byte_t nwk_upstream (byte_t sig)
 #ifdef DEBUG_ACK
       debug_msg("nwk_upstream sending a packet for socket");
 #endif
-      
+
       /*
        * Pending message found, send it.
        */
@@ -459,6 +459,7 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * UDP message header.
           */
+
          IPH(protocol) = IP_PROTO_UDP;
          IPH(length) = HTONS((28 + data_size));
          UDPH(length) = HTONS((8 + data_size));
@@ -475,7 +476,6 @@ byte_t nwk_upstream (byte_t sig)
          /*
           * Tell UDP that data was sent (no acknowledge).
           */
-	 tcp_bytes('a');
 
 	 _sckt->callback(WEEIP_EV_DATA_SENT);
 	 remove_rx_data(_sckt);
