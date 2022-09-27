@@ -125,6 +125,9 @@ void main(void)
   
   printf("%c%c",0x05,0x93);
 
+  // Clear $D610 key buffer
+  while(PEEK(0xD610)) POKE(0xD610,0);
+  
   // Fix invalid MAC address multicast bit
   POKE(0xD6E9,PEEK(0xD6E9)&0xFE);
   // Mark MAC address as locally allocated
