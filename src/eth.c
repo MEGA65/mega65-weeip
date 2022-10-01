@@ -370,6 +370,18 @@ eth_arp_send
    eth_packet_send();
 }
 
+void wait_100ms(void)
+{
+  // 16 x ~64usec raster lines = ~1ms
+  int c = 1600;
+  unsigned char b;
+  while (c--) {
+    b = PEEK(0xD012U);
+    while (b == PEEK(0xD012U))
+      continue;
+  }
+}
+
 /**
  * Ethernet controller initialization and configuration.
  */
@@ -404,9 +416,15 @@ eth_init()
     */
    lcopy(0xFFD36E9,(unsigned long)&mac_local.b[0],6);
 
-   // Reset, then release from reset and reset TX FSM
+   /* Reset, then release from reset and reset TX FSM
+      Note: The datasheet claims that 500usec after 0, and 100usec after
+      writing 3 should be sufficient.
+      But my experimentation suggests that 100ms for each is required instead.
+    */
    POKE(0xd6e0,0);
+   wait_100ms();
    POKE(0xd6e0,3);
+   wait_100ms();
    POKE(0xd6e1,3);
    POKE(0xd6e1,0);
    
