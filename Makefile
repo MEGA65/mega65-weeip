@@ -1,6 +1,8 @@
 .SUFFIXES: .bin .prg
 .PRECIOUS:	%.ngd %.ncd %.twx vivado/%.xpr bin/%.bit bin/%.mcs bin/%.M65 bin/%.BIN
 
+USBPORT=	/dev/ttyUSB1
+
 ASSETS=		assets
 CONTENTDIR=	content
 SRCDIR=		src
@@ -36,13 +38,13 @@ dist:	all
 	cbmconvert -D8 sdcard-files/FETCH.D81 fetch.prg bbs-client.prg
 
 distpush:	dist
-	m65 -F ; m65ftp -l /dev/ttyUSB2 -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
+	m65 -F ; m65ftp -l $(USBPORT) -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
 
 distrun:	distpush
 	m65 -F -4 -r fetch.prg
 
 distfastrun:	dist
-	m65 -F ; m65ftp -l /dev/ttyUSB2 -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
+	m65 -F ; m65ftp -l $(USBPORT) -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'quit'
 	m65 -F -4 -r fetch.prg
 
 $(SUBDEPENDS):
