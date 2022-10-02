@@ -41,9 +41,8 @@ unsigned char mouse_pointer_sprite[63]={
 0x00,0x00,0x00
 };
 
-char fetchmdotm65[]={
-  0x46,0x45,0x54,0x43,0x48,0x4d,0x2e,0x4d,0x36,0x35,0
-};
+// Names of helper programs
+char fetchmdotm65[]={0x46,0x45,0x54,0x43,0x48,0x4d,0x2e,0x4d,0x36,0x35,0};
 
 // Wait for key press before starting
 //#define DEBUG_WAIT
@@ -137,8 +136,8 @@ byte_t comunica (byte_t p)
 		&&last_bytes[2]==0x35
 		&&last_bytes[3]==0xFF) {
 	      page_parse_state=2-1; // gets incremented below
-	      // printf("\nFound H65 header.\n");
-	      printf("+");
+	      printf("\nFound H65 header.\n");
+	      // printf("+");
 	    }
 	    break;
 	  case 2:
@@ -396,7 +395,8 @@ restart_fetch:
 
   // Close socket, and call network loop a few times to make sure the FIN ACK gets
   // sent.
-  printf("Disconnecting... %d\n",h65_error);
+  if (h65_error) printf("Error %d occurred.\n",h65_error);
+  printf("Disconnecting...\n");
   socket_disconnect(s);
   for(i=0;i<16;i++) {
     task_periodic();
@@ -509,6 +509,7 @@ void main(void)
 	     fetch_shared_mem.port,
 	     path);
 
-	while(1) POKE(0xd020,PEEK(0xd020)+1);
+  // Show if something has gone wrong
+  while(1) POKE(0xd020,PEEK(0xd020)+1);
   
 }

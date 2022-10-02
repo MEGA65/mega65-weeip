@@ -1,10 +1,10 @@
 #include <stdio.h>
+//#include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <strings.h>
 #include <ctype.h>
-#include <stdint.h>
 
 typedef struct pcap_hdr_s {
   uint32_t magic_number;   /* magic number */

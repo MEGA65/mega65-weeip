@@ -7,8 +7,8 @@
  * @author Bruno Basseto (bruno@wise-ware.org)
  */
 
-#include <stdint.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include <string.h>
 
@@ -122,12 +122,13 @@ void eth_process_frame(void)
   lpoke(0x87ffffe,frame_count);
   lpoke(0x87fffff,frame_count>>8);
   frame_count++;
-#endif
+
   {
     int len =lpeek(ETH_RX_BUFFER+0L)+256*(lpeek(ETH_RX_BUFFER+1L)&7);
     if (len>1000) printf("/%d/",len);
   }
-
+#endif
+  
   if (eth_log_mode&ETH_LOG_RX) {
     getrtc(&tm);
     debug_msg("");

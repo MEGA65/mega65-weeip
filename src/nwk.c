@@ -648,7 +648,7 @@ found:
 
 parse_tcp:
 
-   printf(":");
+   //   printf(":");
 
    // Compute sequence relative to the current expected point
    for(i=0;i<4;i++) rel_sequence.b[i]=TCPH(n_seq.b[3-i]);
