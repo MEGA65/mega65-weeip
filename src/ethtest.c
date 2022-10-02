@@ -15,16 +15,13 @@
 #include "mouse.h"
 #include "debug.h"
 
+#include "h65.h"
+
 char cdecl mega65_dos_exechelper(char* filename);
 
 // Wait for key press before starting
 //#define DEBUG_WAIT
 
-#define H65_BEFORE 0
-#define H65_TOONEW 1
-#define H65_BADADDR 2
-#define H65_SENDHTTP 3
-#define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
 unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;

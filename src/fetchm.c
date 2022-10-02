@@ -8,6 +8,7 @@
 #include "mouse.h"
 #include "debug.h"
 
+#include "h65.h"
 #include "shared_state.h"
 
 void interact_page(void);
@@ -39,11 +40,6 @@ unsigned char mouse_pointer_sprite[63]={
 // Wait for key press before starting
 //#define DEBUG_WAIT
 
-#define H65_BEFORE 0
-#define H65_TOONEW 1
-#define H65_BADADDR 2
-#define H65_SENDHTTP 3
-#define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
 

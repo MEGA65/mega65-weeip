@@ -13,7 +13,10 @@
 #include "random.h"
 #include "mouse.h"
 #include "debug.h"
+
 #include "shared_state.h"
+#include "h65.h"
+
 
 extern char dbg_msg[80];
 
@@ -47,11 +50,6 @@ char fetchmdotm65[]={0x46,0x45,0x54,0x43,0x48,0x4d,0x2e,0x4d,0x36,0x35,0};
 // Wait for key press before starting
 //#define DEBUG_WAIT
 
-#define H65_BEFORE 0
-#define H65_TOONEW 1
-#define H65_BADADDR 2
-#define H65_SENDHTTP 3
-#define H65_DONE 255
 unsigned char h65_error=0;
 unsigned long block_addr,block_len;
 
@@ -364,6 +362,9 @@ restart_fetch:
     printf("ERROR: Could not load FETCHM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
   }
+
+  // Mark connection as not yet having found a page in the stream.
+  h65_error=H65_BEFORE;
   
   while(!disconnected) {
     // XXX Actually only call it periodically
@@ -395,7 +396,10 @@ restart_fetch:
 
   // Close socket, and call network loop a few times to make sure the FIN ACK gets
   // sent.
-  if (h65_error&&h65_error!=H65_DONE) printf("Error %d occurred.\n",h65_error);
+  if (h65_error!=H65_DONE) {
+    printf("Error %d occurred.\n",h65_error);
+    while(1) continue;
+  }
   // XXX -- Launch error handler program if h65_error is non-zero
   printf("Disconnecting...\n");
   socket_disconnect(s);
