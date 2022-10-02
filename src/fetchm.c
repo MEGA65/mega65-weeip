@@ -52,6 +52,19 @@ void update_mouse_position(unsigned char do_scroll);
 char fetchh65[]={0x46,0x45,0x54,0x43,0x48,0x48,'6','5','.',0x4d,'6','5',0};
 char fetchget[]={0x46,0x45,0x54,0x43,0x48,0x47,0x45,0x54,'.',0x4d,'6','5',0};
 
+// Note: These will be interpretted as ASCII by fetch, but CC65 will encode them
+// as PETSCII, so text must be upper case here, which will resolve to lower-case
+#define HOSTNAME_LEN 64
+#define PATH_LEN 128
+char hostname[HOSTNAME_LEN]="192.168.176.31";
+char path[PATH_LEN]="/INDEX.H65";
+int port=80;
+
+char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
+char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
+
+char buf[256+1];
+
 void c64_40columns(void)
 {
   // Reset video mode to C64 40 column mode while loading
@@ -115,8 +128,8 @@ void fetch_page(char *hostname,int port,char *path)
   
   // Setup URL port and strings at $F800 and $F900
   // for shared interaction with other modules
-  lcopy((unsigned short)hostname,0xf800,256);
-  lcopy((unsigned short)path,0xf900,256);
+  lcopy((unsigned short)hostname,0xf800,HOSTNAME_LEN);
+  lcopy((unsigned short)path,0xf900,PATH_LEN);
   fetch_shared_mem.host_str_addr=0xf800;
   fetch_shared_mem.path_str_addr=0xf900;
   fetch_shared_mem.port=port;
@@ -169,6 +182,8 @@ void update_mouse_position(unsigned char do_scroll)
   mouse_link_address=0; 
   
   mouse_update_position(&mx,&my);
+  lpoke(0x12000L,mx);
+  lpoke(0x12002L,my);
   if (my<50) {
     // Mouse is in top border, so scroll up by that amount
     if (do_scroll) scroll_down(my-50L);
@@ -183,7 +198,7 @@ void update_mouse_position(unsigned char do_scroll)
   
   {
     
-    // Work out mouse position
+    // Work out where the mouse position is in the page
     // Mouse is in H320, V200, so only 4 mouse pixels per character
     my=((position/2)+my-50)/4;
     mx=(mx-24)/4;
@@ -219,7 +234,7 @@ void show_page(void)
 {
   //  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
   
-#if 0
+#if 1
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
@@ -261,7 +276,7 @@ void show_page(void)
     max_position=(fetch_shared_mem.line_count-50)*8;
   }
   
-#if 0
+#if 1
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
@@ -270,17 +285,6 @@ void show_page(void)
 #endif
 
 }
-
-// Note: These will be interpretted as ASCII by fetch, but CC65 will encode them
-// as PETSCII, so text must be upper case here, which will resolve to lower-case
-char hostname[64]="192.168.176.31";
-char path[128]="/INDEX.H65";
-int port=80;
-
-char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
-char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
-
-char buf[256+1];
 
 void parse_url(unsigned long addr)
 {
@@ -490,7 +494,7 @@ void main(void)
   mouse_set_bounding_box(24,50-20,320+23,250+20);
   mouse_clicked(); // Clear mouse click status
   mouse_clicked(); // Clear mouse click status
-  
+
   // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
   // Sprite data from casette buffer
@@ -503,10 +507,10 @@ void main(void)
     show_page();
 
     // Copy page URL back to normal strings for our use, e.g., for reload command
-    lcopy(0xf800,(unsigned short)hostname,256);
-    lcopy(0xf900,(unsigned short)path,256);
+    lcopy(0xf800,(unsigned short)hostname,HOSTNAME_LEN);
+    lcopy(0xf900,(unsigned short)path,PATH_LEN);
     port=fetch_shared_mem.port;
-    
+
     interact_page();
     break;
 
@@ -548,6 +552,14 @@ void main(void)
 void interact_page(void)
 {
   unsigned char reload,i;
+
+#if 1
+  while(1) {
+    POKE(0xD020,PEEK(0xD020)+1);
+    if (PEEK(0xD610)) break;
+  }
+  while (PEEK(0xD610)) POKE(0xD610,0);
+#endif
 
   while(1) {
     reload=0;
