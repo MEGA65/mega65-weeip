@@ -1,6 +1,14 @@
 // Job completion codes for H65 page fetching
-#define H65_BEFORE 1
-#define H65_TOONEW 2
-#define H65_BADADDR 3
-#define H65_SENDHTTP 4
+
+// Could not connect to web server
+#define H65_COULDNOTCONNECT 1
+// Could not send HTTP request
+#define H65_SENDHTTP 2
+// Did not find H65 marker in the page
+#define H65_BEFORE 3
+// Unsupported H65 content version
+#define H65_VERSIONMISMATCH 2
+// Invalid block definition in H65 stream
+#define H65_BADBLOCK 3
+// Everything finished just fine
 #define H65_DONE 255
