@@ -8,8 +8,13 @@ struct __fetch_shared_mem {
   #define FETCH_H65FETCH_NOCONNECTION 3
   #define FETCH_H65FETCH_ABORTED 4
   #define FETCH_H65FETCH_HTTPERROR 5
+  #define FETCH_PAGEFETCHERROR 6
   unsigned char state;
 
+  // H65 response code
+  // (see h65.h for definitions)
+  unsigned char h65_error;
+  
   // HTTP response code
   unsigned short http_result;
   
