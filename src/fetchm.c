@@ -234,7 +234,7 @@ void show_page(void)
 {
   //  while(!PEEK(0xD610)) POKE(0xD020,PEEK(0xD020)+1); POKE(0xD610,0);
   
-#if 1
+#if 0
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
@@ -276,7 +276,7 @@ void show_page(void)
     max_position=(fetch_shared_mem.line_count-50)*8;
   }
   
-#if 1
+#if 0
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
@@ -553,7 +553,7 @@ void interact_page(void)
 {
   unsigned char reload,i;
 
-#if 1
+#if 0
   while(1) {
     POKE(0xD020,PEEK(0xD020)+1);
     if (PEEK(0xD610)) break;
