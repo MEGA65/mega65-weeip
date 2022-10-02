@@ -172,7 +172,7 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
 	    // Skip empty block
 	    if (block_len==0) {
-	      //	      printf("\nDONE!\n");
+	      printf("\nEnd of page found.\n");
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
 	      break;
@@ -396,6 +396,7 @@ restart_fetch:
   // Close socket, and call network loop a few times to make sure the FIN ACK gets
   // sent.
   if (h65_error) printf("Error %d occurred.\n",h65_error);
+  // XXX -- Launch error handler program if h65_error is non-zero
   printf("Disconnecting...\n");
   socket_disconnect(s);
   for(i=0;i<16;i++) {
@@ -404,7 +405,7 @@ restart_fetch:
   }
   // And throw away our record of the TCP connection, just to be sure.
   socket_release(s);
-  printf("Disconnected.\n");
+  //  printf("Disconnected.\n");
   // Tell main module to display the page
   fetch_shared_mem.job_id++;
   fetch_shared_mem.state=FETCH_H65VIEW;
