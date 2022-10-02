@@ -704,10 +704,6 @@ parse_tcp:
             * Out of order, drop it.
 	    * XXX This is when the other side has ACKed a different part
 	    * of our stream.
-	    * PGS: I think we lock-step and have only one unacknowledged packet
-	    * at a time, so can effectively ignore it. But we should probably resend
-	    * our single unacknowledged packet again, since that's most likely what
-	    * is being reported.
             */
        if (_sckt->state>=_CONNECT) {
 #if 0
