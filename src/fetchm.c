@@ -182,8 +182,6 @@ void update_mouse_position(unsigned char do_scroll)
   mouse_link_address=0; 
   
   mouse_update_position(&mx,&my);
-  lpoke(0x12000L,mx);
-  lpoke(0x12002L,my);
   if (my<50) {
     // Mouse is in top border, so scroll up by that amount
     if (do_scroll) scroll_down(my-50L);
