@@ -172,7 +172,7 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
 	    // Skip empty block
 	    if (block_len==0) {
-	      printf("\nEnd of page found.\n");
+	      if (h65_error!=H65_DONE) printf("\nEnd of page found.\n");
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
 	      break;
@@ -395,7 +395,7 @@ restart_fetch:
 
   // Close socket, and call network loop a few times to make sure the FIN ACK gets
   // sent.
-  if (h65_error) printf("Error %d occurred.\n",h65_error);
+  if (h65_error&&h65_error!=H65_DONE) printf("Error %d occurred.\n",h65_error);
   // XXX -- Launch error handler program if h65_error is non-zero
   printf("Disconnecting...\n");
   socket_disconnect(s);
