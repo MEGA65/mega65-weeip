@@ -378,6 +378,7 @@ restart_fetch:
   if (!socket_connect(&a,port)) {
     printf("connect() failed.\n");
     disconnected=1;
+    h65_error=H65_CONNECTFAILED;
   } else {
     printf("connect() succeeded.\n");	   
   }	   
