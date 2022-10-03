@@ -291,7 +291,7 @@ void parse_url(unsigned long addr)
 
   lcopy(addr,(unsigned long)&buf[0],256);  
 
-  printf("Parsing '%s'\n",buf);
+  printf("Parsing URL '%s'\n",buf);
   
   // Update browsing history
   // By checking the string length like this, we rather magically
@@ -313,7 +313,7 @@ void parse_url(unsigned long addr)
       // Otherwise leave path untouched
       lcopy(addr,0xD000+80*3,strlen(buf));
   }
-  
+
   hlen=0;
   url_ofs=0;
   plen=0;
@@ -323,6 +323,7 @@ void parse_url(unsigned long addr)
       if (hlen<64) { hostname[hlen++]=buf[url_ofs++]; hostname[hlen]=0; }
       else break;
     }
+
   if (hlen) port=80;
   if (buf[url_ofs]==':') {
     port=0; url_ofs++;
@@ -330,10 +331,12 @@ void parse_url(unsigned long addr)
       port*=10; port+=buf[url_ofs++]-'0';
     }
   }
+
   while(buf[url_ofs]&&buf[url_ofs]!=' ') {
     if (plen<127) path[plen++]=buf[url_ofs++];
   }
   path[plen]=0;
+
   // If no path, then we use /index.h65
   if (!plen) { strcpy(path,indexdoth65); }
   else if (path[plen-1]=='/'&&(plen<100)) {
