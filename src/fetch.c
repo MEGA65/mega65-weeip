@@ -61,6 +61,93 @@ void c64_40columns(void)
   POKE(0xD018,0x16);
 }
 
+unsigned char text_row = 0;
+unsigned short pixel_addr;
+unsigned char char_code;
+
+void h640_text_mode(void)
+{
+  // lower case
+  POKE(0xD018, 0x16);
+
+  // Normal text mode
+  POKE(0xD054, 0x00);
+  // H640, V400, fast CPU, extended attributes
+  POKE(0xD031, 0xE8);
+  // Adjust D016 smooth scrolling for VIC-III H640 offset
+  POKE(0xD016, 0xC9);
+  // 80 chars per line logical screen layout
+  POKE(0xD058, 80);
+  POKE(0xD059, 80 / 256);
+  // Draw 80 chars per row
+  POKE(0xD05E, 80);
+  // Put 4KB screen at $C000
+  POKE(0xD060, 0x00);
+  POKE(0xD061, 0xc0);
+  POKE(0xD062, 0x00);
+
+  // Use the ASCII font we have loaded
+  POKE(0xD069,0xf0);
+  
+  // 50 lines of text
+  POKE(0xD07B, 50);
+
+  lfill(0xc000, 0x20, 4000);
+  // Clear colour RAM, while setting all chars to 4-bits per pixel
+  lfill(0xff80000L, 0x0E, 4000);
+}
+
+void clear_text80(void)
+{
+  lfill(0xc000, 4000, 0x20);
+  lfill(0xff80000L, 4000, 1);
+  text_row = 0;
+}
+
+void print_text80(unsigned char x, unsigned char y, unsigned char colour, char *msg)
+{
+  pixel_addr = 0xC000 + x + y * 80;
+  while (*msg) {
+    char_code = *msg;
+#if USING_PETSCII_FONT    
+    if (*msg >= 0xc0 && *msg <= 0xe0)
+      char_code = *msg - 0x80;
+    else if (*msg >= 0x40 && *msg <= 0x60)
+      char_code = *msg - 0x40;
+    else if (*msg >= 0x60 && *msg <= 0x7A)
+      char_code = *msg - 0x20;
+#endif
+    POKE(pixel_addr + 0, char_code);
+    lpoke(0xff80000L - 0xc000 + pixel_addr, colour);
+    msg++;
+    pixel_addr += 1;
+  }
+}
+
+void println_text80(unsigned char colour, char *msg)
+{
+  if (text_row == 49) {
+    lcopy(0xc000 + 80, 0xc000, 4000 - 80);
+    lcopy(0xff80000 + 80, 0xff80000, 4000 - 80);
+    lfill(0xc000 + 4000 - 80, 0x20, 80);
+    lfill(0xff80000 + 4000 - 80, 0x01, 80);
+  }
+  print_text80(0, text_row, colour, msg);
+  if (text_row < 49)
+    text_row++;
+}
+
+int to_decimal(unsigned char *src, int bytes)
+{
+  int out = 0;
+  int i;
+  int x;
+  for (i = 0; i < bytes; i++) {
+    x = src[bytes - i - 1];
+    out |= (x << (8 * i));
+  }
+  return out;
+}
 
 signed long screen_address_offset=0;
 signed long screen_address_offset_max=0;
@@ -142,6 +229,8 @@ void fetch_page(char *hostname,int port,char *path)
 
   char *ext;
 
+  POKE(0xD011,0);
+  
   // Setup URL port and strings at $F800 and $F900
   // for shared interaction with other modules
   lcopy((unsigned short)hostname,0xf800,256);
@@ -184,6 +273,21 @@ unsigned char type_url[19]=
    0x3a // :
   };
 
+char to_nybl(int v)
+{
+  v&=0xf;
+  if (v<10) return '0'+v;
+  return 'A'+v-10;
+}
+
+void to_hex(char *out,unsigned int v)
+{
+  out[0]=to_nybl(v>>12);
+  out[1]=to_nybl(v>>8);
+  out[2]=to_nybl(v>>4);
+  out[3]=to_nybl(v>>0);
+}
+
 void main(void)
 {
   unsigned char i,reload;
@@ -224,6 +328,82 @@ void main(void)
 
   // XXX - Load URL history from disk image?
 
+  // Setup screen and show welcome message.
+  POKE(0xD020,0);
+  POKE(0xD021,0);
+  POKE(0x0286,1);
+  h640_text_mode();
+  println_text80(0x81,"Fetch - The Simple MEGA65 Browser");
+  println_text80(1,"");
+  println_text80(7,"Version 0.1");
+  println_text80(1,"");
+  println_text80(1,"Fetch is like a web browser, but uses special H65 formatted pages instead of    ");
+  println_text80(1,"HTML pages. This makes the browser very small and simple.                       ");
+  println_text80(1,"But don't be deceived -- it supports text, hyper-links, graphics (including with");
+  println_text80(1,"hyper-links behind them), as well as searching for and downloading files and    ");
+  println_text80(1,"software for your MEGA65 home computer. And we didn't forget blinking text!");
+  println_text80(1,"");
+  println_text80(7,"Fetch is designed to be used with a mouse. A MouSTer adaptor is a great way to  ");
+  println_text80(7,"use a modern USB or wireless mouse with your MEGA65.");
+  println_text80(1,"");
+  println_text80(8,"Also, don't forget to connect the Ethernet port of your MEGA65 to a suitable    ");
+  println_text80(8,"router or switch. Fetch supports DHCP auto-configuration for IPv4 only.");
+  println_text80(1,"");
+  println_text80(1,"Enjoy!");
+  println_text80(1,"");
+  println_text80(1,"Please select or click on one of the options below:");
+  println_text80(1,"");
+  println_text80(0x0d,"G - Type in or choose from your browser history a URL to Goto an H65 web page");
+  println_text80(1,"");
+  println_text80(0x0d,"1 - Goto HTTP://192.168.178.20:8000/index.h65");
+  println_text80(1,"");
+  println_text80(0x0d,"2 - Goto HTTP://192.168.178.20:8000/showdown65.h65");
+
+  while(1) {
+    unsigned short mx,my;
+    unsigned char choice=0;
+    update_mouse_position(0);
+
+    mouse_update_position(&mx,&my);      
+
+    if (my>0x70) {
+      // Work out which choice row is currently selected
+      // mouse res is in 320x200, so each 2 rows of text is 8 pixels
+      choice=(my-0x78)>>3;
+      for(i=20;i<25;i+=2) {
+	if (i==(18+choice*2)) lfill(0xff80000+i*80,0x2d,80);
+	else lfill(0xff80000+i*80,0x0d,80);
+      }
+    }
+    
+    // Check for mouse click on a choice
+    // (Implement by cancelling a mouse-indicated choice, if the mouse isn't being clicked) 
+    if (!mouse_clicked()) choice=0;
+
+    // Scan keyboard for choices also
+    if (PEEK(0xD610)) {
+      switch(PEEK(0xD610)) {
+      case 0x47: case 0x67: choice=1; break;
+      case 0x31: choice=2; break;
+      case 0x32: choice=3; break;
+      }
+      POKE(0xD610,0);
+    }
+
+    // Act on user input
+    switch(choice)
+      {
+      case 1:
+	// Ask user to choose URL from history, or type one in
+	fetch_shared_mem.job_id++;
+	fetch_shared_mem.state=FETCH_SELECTURL;
+	mega65_dos_exechelper("FETCHERR.M65");
+	break;
+      case 2: fetch_page("192.168.178.20",8000,"/index.h65"); break;
+      case 3: fetch_page("192.168.178.20",8000,"/showdown65.h65"); break;
+      }
+  }
+  
   //  fetch_page("files.mega65.org",80,"/INDEX.H65");
   fetch_page("192.168.178.20",8000,"/index.h65");
   //  fetch_page("zerobytesfree.io",80,"/index.h65");
