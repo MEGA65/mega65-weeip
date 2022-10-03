@@ -126,6 +126,8 @@ void fetch_page(char *hostname,int port,char *path)
   */
 
   char *ext;
+
+  POKE(0xD011,0);
   
   // Setup URL port and strings at $F800 and $F900
   // for shared interaction with other modules
@@ -283,6 +285,10 @@ void show_page(void)
   while (PEEK(0xD610)) POKE(0xD610,0);
 #endif
 
+  // Finally set screen and border colours
+  POKE(0xD020,fetch_shared_mem.border_colour);
+  POKE(0xD021,fetch_shared_mem.screen_colour);
+  
 }
 
 void parse_url(unsigned long addr)
@@ -583,6 +589,10 @@ void interact_page(void)
 	parse_url(0xD000 + 3*80);
 	reload=1;
       }
+      break;
+    case 0x13:
+      // Home = Jump to top of page
+      scroll_down(-9999);
       break;
     case 0x11:
       // Cursor down = scroll page down one line

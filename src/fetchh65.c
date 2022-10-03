@@ -117,6 +117,10 @@ byte_t comunica (byte_t p)
          break;
       case WEEIP_EV_DATA:	
 	//	while(1) continue;
+
+	// Border flash effect while loading pages
+	POKE(0xD020,1);
+	
 #ifdef DEBUG_TCP
 	snprintf(dbg_msg,80,"   processing %ld received bytes",s->rx_data);
 	debug_msg(dbg_msg);
@@ -232,6 +236,7 @@ byte_t comunica (byte_t p)
           POKE(0x427,c);
 	  while(!PEEK(0xD610)) continue; POKE(0xD610,0);
 #endif
+	  POKE(0xD020,0);
 	}
 //	((char *)s->rx)[s->rx_data]=0;
 //	printf("%s",s->rx);
@@ -310,10 +315,11 @@ void fetch_page(char *hostname,int port,char *path)
 
   disconnected=0;
   position=0;
-  
-  POKE(0x0286,0x0e);
-  POKE(0xD020,0x0E);
-  POKE(0xD021,0x06);
+
+  // light green on black while displaying network messages
+  POKE(0x0286,0x0d);
+  POKE(0xD020,0x00);
+  POKE(0xD021,0x00);
   c64_40columns();
   
 restart_fetch:
