@@ -263,7 +263,7 @@ void prepare_network(void)
   printf("%c",0x93);
   
   printf("H65 MAC %02x",mac_local.b[0]);
-  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);
+  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);  
   
   // Setup WeeIP
   weeip_init();
@@ -280,16 +280,15 @@ void prepare_network(void)
       // Let the mouse move around
       update_mouse_position();
     }
-    printf("My IP is %d.%d.%d.%d\n",
-	   ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
-
     // Store DHCP lease information for later recall
     fetch_shared_mem.dhcp_configured=1;
+    fetch_shared_mem.dhcp_myip=ip_local;
     fetch_shared_mem.dhcp_dnsip=ip_dnsserver;
     fetch_shared_mem.dhcp_netmask=ip_mask;
     fetch_shared_mem.dhcp_gatewayip=ip_gate;
   } else {
     // Restore DHCP lease configuration
+    ip_local=fetch_shared_mem.dhcp_myip;
     ip_dnsserver=fetch_shared_mem.dhcp_dnsip;
     ip_mask=fetch_shared_mem.dhcp_netmask;
     ip_gate=fetch_shared_mem.dhcp_gatewayip;
@@ -319,7 +318,7 @@ void fetch_page(char *hostname,int port,char *path)
   
 restart_fetch:
 
-  printf("%c#%d: H65 Fetching %chttp://%s:%d%s\n",0x93,
+  printf("%c#%d: H65 Fetching %chttp://%s:%d%s\n", 0x0d, // 0x93,
 	 fetch_shared_mem.job_id,
 	 5,hostname,port,path);
   POKE(0x0286,0x0e);
@@ -365,23 +364,34 @@ restart_fetch:
     while(1) POKE(0xd020,PEEK(0xd020)+1);
     
   }
-  
+
+  printf("Calling socket create\n");
   s = socket_create(SOCKET_TCP);
+  printf("Setting callback\n");
   socket_set_callback(comunica);
   // socket_set_rx_buffer(buf, 2048);
   // 128KB of Attic RAM for TCP RX buffer if present
   // XXX - Do a proper auto-detection of the hyperRAM
+  printf("Setting up buffer\n");
   socket_set_rx_buffer(0x8000000L, 128*1024);
-  socket_connect(&a,port);
+  printf("Connecting...\n");
+  if (!socket_connect(&a,port)) {
+    printf("connect() failed.\n");
+    disconnected=1;
+  } else {
+    printf("connect() succeeded.\n");	   
+  }	   
 
   if (disconnected) {
+    printf("Failed to connect.\n");
     fetch_shared_mem.job_id++;
     fetch_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
     mega65_dos_exechelper(fetchmdotm65);
     printf("ERROR: Could not load FETCHM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
   }
-
+  printf("Connected.\n");
+  
   // Mark connection as not yet having found a page in the stream.
   h65_error=H65_COULDNOTCONNECT;
   
@@ -538,6 +548,7 @@ void main(void)
 	     path);
 
   // Show if something has gone wrong
+  printf("ERROR: fetch_page() failed\n");
   while(1) POKE(0xd020,PEEK(0xd020)+1);
   
 }
