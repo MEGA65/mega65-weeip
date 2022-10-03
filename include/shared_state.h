@@ -32,6 +32,13 @@ struct __fetch_shared_mem {
   // video mode info
   unsigned char d054_bits,d031_bits,line_width,line_display_width,border_colour,screen_colour,text_colour,char_page,d016_bits;
   unsigned short line_count;
+
+  // DHCP lease info
+  unsigned char dhcp_configured;
+  IPV4 dhcp_myip;
+  IPV4 dhcp_gatewayip;
+  IPV4 dhcp_dnsip;
+  IPV4 dhcp_netmask;
   
 };
 

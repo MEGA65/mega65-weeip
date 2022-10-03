@@ -8,6 +8,11 @@
 #include "mouse.h"
 #include "debug.h"
 
+#include "weeip.h"
+#include "checksum.h"
+#include "eth.h"
+#include "arp.h"
+
 #include "h65.h"
 #include "shared_state.h"
 

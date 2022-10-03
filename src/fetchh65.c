@@ -17,6 +17,7 @@
 #include "shared_state.h"
 #include "h65.h"
 
+extern IPV4 ip_broadcast;
 
 extern char dbg_msg[80];
 
@@ -45,7 +46,10 @@ unsigned char mouse_pointer_sprite[63]={
 };
 
 // Names of helper programs
+// FETCHM.M65
 char fetchmdotm65[]={0x46,0x45,0x54,0x43,0x48,0x4d,0x2e,0x4d,0x36,0x35,0};
+// FETCHERR.M65
+char fetcherrdotm65[]={0x46,0x45,0x54,0x43,0x48,0x45,0x52,0x52,0x2e,0x4d,0x36,0x35,0};
 
 // Wait for key press before starting
 //#define DEBUG_WAIT
@@ -106,7 +110,7 @@ byte_t comunica (byte_t p)
 	  {
 	    printf("Error sending HTTP request.\n");
 	    h65_error=H65_SENDHTTP;
-	  }
+	  } else h65_error=H65_BEFORE;
 	break;
       case WEEIP_EV_DISCONNECT:
 	disconnected=1;
@@ -142,7 +146,7 @@ byte_t comunica (byte_t p)
 	    // Reading H65 header fields
 	    if (c!=1) {
 	      // Unsupported H65 version
-	      h65_error=H65_TOONEW;
+	      h65_error=H65_VERSIONMISMATCH;
 	    }
 	    break;
 	  case 3: break; // Ignore minor version
@@ -176,11 +180,11 @@ byte_t comunica (byte_t p)
 	      break;
 	    } else if (block_addr<0xf000L) {
               printf("bad address $%08lx\n",block_addr);
-              h65_error=H65_BADADDR;
+              h65_error=H65_BADBLOCK;
               return 0;
             } else if (block_len>0x20000L) {
               printf("bad length $%08lx\n",block_len);
-              h65_error=H65_BADADDR;
+              h65_error=H65_BADBLOCK;
               return 0;
             } else {
 	      // Block data
@@ -267,16 +271,31 @@ void prepare_network(void)
   task_add(eth_task, 0, 0,"eth");
 
   // Do DHCP auto-configuration
-  dhcp_configured=0;
-  printf("\nRequesting IP...\n");
-  dhcp_autoconfig();
-  while(!dhcp_configured) {
-    task_periodic();
-    // Let the mouse move around
-    update_mouse_position();
+  dhcp_configured=fetch_shared_mem.dhcp_configured;
+  if (!dhcp_configured) {
+    printf("\nRequesting IP...\n");
+    dhcp_autoconfig();
+    while(!dhcp_configured) {
+      task_periodic();
+      // Let the mouse move around
+      update_mouse_position();
+    }
+    printf("My IP is %d.%d.%d.%d\n",
+	   ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+
+    // Store DHCP lease information for later recall
+    fetch_shared_mem.dhcp_configured=1;
+    fetch_shared_mem.dhcp_dnsip=ip_dnsserver;
+    fetch_shared_mem.dhcp_netmask=ip_mask;
+    fetch_shared_mem.dhcp_gatewayip=ip_gate;
+  } else {
+    // Restore DHCP lease configuration
+    ip_dnsserver=fetch_shared_mem.dhcp_dnsip;
+    ip_mask=fetch_shared_mem.dhcp_netmask;
+    ip_gate=fetch_shared_mem.dhcp_gatewayip;
+    // Re-constitute ip_broadcast from IP address and mask
+    for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
   }
-  printf("My IP is %d.%d.%d.%d\n",
-	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 }      
 
 signed long screen_address_offset=0;
@@ -364,7 +383,7 @@ restart_fetch:
   }
 
   // Mark connection as not yet having found a page in the stream.
-  h65_error=H65_BEFORE;
+  h65_error=H65_COULDNOTCONNECT;
   
   while(!disconnected) {
     // XXX Actually only call it periodically
@@ -372,7 +391,6 @@ restart_fetch:
     task_periodic();
 
     update_mouse_position();
-    if (h65_error) break;
     switch(PEEK(0xD610)) {
       case 0x52: case 0x72:  // Restart fetch
         socket_disconnect(s);
@@ -396,19 +414,24 @@ restart_fetch:
 
   // Close socket, and call network loop a few times to make sure the FIN ACK gets
   // sent.
+  if (h65_error!=H65_COULDNOTCONNECT) {
+    // XXX -- Launch error handler program if h65_error is non-zero
+    printf("Disconnecting...\n");
+    socket_disconnect(s);
+    for(i=0;i<16;i++) {
+      task_periodic();
+      if (disconnected) break;
+    }
+    // And throw away our record of the TCP connection, just to be sure.
+    socket_release(s);
+  }
   if (h65_error!=H65_DONE) {
     printf("Error %d occurred.\n",h65_error);
-    while(1) continue;
+    fetch_shared_mem.job_id++;
+    fetch_shared_mem.state=FETCH_PAGEFETCHERROR;
+    mega65_dos_exechelper(fetcherrdotm65);
   }
-  // XXX -- Launch error handler program if h65_error is non-zero
-  printf("Disconnecting...\n");
-  socket_disconnect(s);
-  for(i=0;i<16;i++) {
-    task_periodic();
-    if (disconnected) break;
-  }
-  // And throw away our record of the TCP connection, just to be sure.
-  socket_release(s);
+  
   //  printf("Disconnected.\n");
   // Tell main module to display the page
   fetch_shared_mem.job_id++;

@@ -6,6 +6,11 @@
 #include "ascii.h"
 #include "defs.h"
 
+#include "weeip.h"
+#include "checksum.h"
+#include "eth.h"
+#include "arp.h"
+
 #include "memory.h"
 #include "random.h"
 #include "mouse.h"
@@ -220,7 +225,7 @@ void main(void)
   // XXX - Load URL history from disk image?
 
   //  fetch_page("files.mega65.org",80,"/INDEX.H65");
-  fetch_page("192.168.178.20",8000,"/index.h65");
+  fetch_page("192.168.178.20",8000,"/showdown65.h65");
   //  fetch_page("zerobytesfree.io",80,"/index.h65");
   
 }
