@@ -7,8 +7,10 @@
 // Did not find H65 marker in the page
 #define H65_BEFORE 3
 // Unsupported H65 content version
-#define H65_VERSIONMISMATCH 2
+#define H65_VERSIONMISMATCH 4
 // Invalid block definition in H65 stream
-#define H65_BADBLOCK 3
+#define H65_BADBLOCK 5
+// socket_connect() failed
+#define H65_CONNECTFAILED 6
 // Everything finished just fine
 #define H65_DONE 255
