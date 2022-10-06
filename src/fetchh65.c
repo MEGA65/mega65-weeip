@@ -125,6 +125,10 @@ byte_t comunica (byte_t p)
 	snprintf(dbg_msg,80,"   processing %ld received bytes",s->rx_data);
 	debug_msg(dbg_msg);
 #endif
+
+	// Don't waste time parsing packets after end of H65 document
+	if (h65_error==H65_DONE) break;
+	
 	for(i=0;i<s->rx_data;i++) {
 	  unsigned char c=lpeek(s->rx+i);
 	  //	  snprintf(dbg_msg,80,"     %d of %ld",(short)i,(short)s->rx_data);
@@ -178,7 +182,10 @@ byte_t comunica (byte_t p)
 	  case HEADSKIP+7: ((char *)&block_len)[3]=c;
 	    // Skip empty block
 	    if (block_len==0) {
-	      if (h65_error!=H65_DONE) printf("\nEnd of page found.\n");
+	      if (h65_error!=H65_DONE) {
+		printf("\nEnd of page found.\n");
+		socket_disconnect(s);
+	      }
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
 	      break;
