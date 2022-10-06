@@ -4,7 +4,6 @@
 USBPORT=	/dev/ttyUSB0
 
 ASSETS=		assets
-CONTENTDIR=	content
 SRCDIR=		src
 BINDIR=		bin
 B65DIR=		bin65
@@ -12,6 +11,9 @@ EXAMPLEDIR=	$(SRCDIR)/examples
 UTILDIR=	$(SRCDIR)/utilities
 TESTDIR=	$(SRCDIR)/tests
 LIBEXECDIR=	libexec
+
+CONTENTDIR=	content
+SDCARDFILESDIR = sdcard-files
 
 SUBDEPENDS=	mega65-tools/bin/md2h65 \
 		mega65-tools/bin/asciifont.bin
@@ -30,26 +32,36 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-all:	fetch.prg fetchm.prg fetcherr.prg fetchh65.prg haustierbegriff.prg ethtest.prg pages
+PRGS= fetch.prg fetchm.prg fetcherr.prg fetchh65.prg haustierbegriff.prg ethtest.prg
+MAPS= $(subst prg,map,$(PRGS))
+
+all:	$(PRGS) pages
+
+clean:
+	rm -rf $(CONTENTDIR)
+	rm -rf $(SDCARDFILESDIR)
+	rm -f $(PRGS)
+	rm -f bbs-client.prg
+	rm -f $(MAPS)
 
 dist:	all
-	mkdir -p sdcard-files
-	cp mega65-tools/bin/asciifont.bin sdcard-files/FETCHFNT.M65
-	cp fetchm.prg sdcard-files/FETCHM.M65
-	cp fetcherr.prg sdcard-files/FETCHERR.M65
-	cp fetchh65.prg sdcard-files/FETCHH65.M65
+	mkdir -p $(SDCCARDFILESDIR)
+	cp mega65-tools/bin/asciifont.bin $(SDCCARDFILESDIR)/FETCHFNT.M65
+	cp fetchm.prg $(SDCCARDFILESDIR)/FETCHM.M65
+	cp fetcherr.prg $(SDCCARDFILESDIR)/FETCHERR.M65
+	cp fetchh65.prg $(SDCCARDFILESDIR)/FETCHH65.M65
 	cp haustierbegriff.prg bbs-client.prg
-	if [ -e sdcard-files/FETCH.D81 ];then rm sdcard-files/FETCH.D81 ;fi
-	$(CBMCONVERT) -D8 sdcard-files/FETCH.D81 fetch.prg bbs-client.prg
+	if [ -e $(SDCCARDFILESDIR)/FETCH.D81 ];then rm $(SDCCARDFILESDIR)/FETCH.D81 ;fi
+	$(CBMCONVERT) -D8 $(SDCCARDFILESDIR)/FETCH.D81 fetch.prg bbs-client.prg
 
 distpush:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'put sdcard-files/FETCHERR.M65' -c 'quit'
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCCARDFILESDIR)/FETCH.D81" -c "put $(SDCCARDFILESDIR)/FETCHM.M65" -c "put $(SDCCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCCARDFILESDIR)/FETCHERR.M65" -c "quit"
 
 distrun:	distpush
 	$(M65) -F -4 -r fetch.prg
 
 distfastrun:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'put sdcard-files/FETCHERR.M65' -c 'quit'
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCCARDFILESDIR)/FETCHM.M65" -c "put $(SDCCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCCARDFILESDIR)/FETCHERR.M65" -c "quit"
 	$(M65) -F -4 -r fetch.prg
 
 $(SUBDEPENDS):
