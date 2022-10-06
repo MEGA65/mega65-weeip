@@ -45,23 +45,23 @@ clean:
 	rm -f $(MAPS)
 
 dist:	all
-	mkdir -p $(SDCCARDFILESDIR)
-	cp mega65-tools/bin/asciifont.bin $(SDCCARDFILESDIR)/FETCHFNT.M65
-	cp fetchm.prg $(SDCCARDFILESDIR)/FETCHM.M65
-	cp fetcherr.prg $(SDCCARDFILESDIR)/FETCHERR.M65
-	cp fetchh65.prg $(SDCCARDFILESDIR)/FETCHH65.M65
+	mkdir -p $(SDCARDFILESDIR)
+	cp mega65-tools/bin/asciifont.bin $(SDCARDFILESDIR)/FETCHFNT.M65
+	cp fetchm.prg $(SDCARDFILESDIR)/FETCHM.M65
+	cp fetcherr.prg $(SDCARDFILESDIR)/FETCHERR.M65
+	cp fetchh65.prg $(SDCARDFILESDIR)/FETCHH65.M65
 	cp haustierbegriff.prg bbs-client.prg
-	if [ -e $(SDCCARDFILESDIR)/FETCH.D81 ];then rm $(SDCCARDFILESDIR)/FETCH.D81 ;fi
-	$(CBMCONVERT) -D8 $(SDCCARDFILESDIR)/FETCH.D81 fetch.prg bbs-client.prg
+	if [ -e $(SDCARDFILESDIR)/FETCH.D81 ];then rm $(SDCARDFILESDIR)/FETCH.D81 ;fi
+	$(CBMCONVERT) -D8 $(SDCARDFILESDIR)/FETCH.D81 fetch.prg bbs-client.prg
 
 distpush:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCCARDFILESDIR)/FETCH.D81" -c "put $(SDCCARDFILESDIR)/FETCHM.M65" -c "put $(SDCCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCCARDFILESDIR)/FETCHERR.M65" -c "quit"
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCH.D81" -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
 
 distrun:	distpush
 	$(M65) -F -4 -r fetch.prg
 
 distfastrun:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCCARDFILESDIR)/FETCHM.M65" -c "put $(SDCCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCCARDFILESDIR)/FETCHERR.M65" -c "quit"
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
 	$(M65) -F -4 -r fetch.prg
 
 $(SUBDEPENDS):
