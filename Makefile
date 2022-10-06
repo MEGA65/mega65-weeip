@@ -17,6 +17,9 @@ SUBDEPENDS=	mega65-tools/bin/md2h65 \
 		mega65-tools/bin/asciifont.bin
 MD2H65=		../mega65-tools/bin/md2h65
 #MD2H65=		md2h65
+CBMCONVERT = cbmconvert
+M65 = m65
+M65FTP = mega65_ftp
 
 CC65=  cc65
 CA65=  ca65 --cpu 4510
@@ -37,17 +40,17 @@ dist:	all
 	cp fetchh65.prg sdcard-files/FETCHH65.M65
 	cp haustierbegriff.prg bbs-client.prg
 	if [ -e sdcard-files/FETCH.D81 ];then rm sdcard-files/FETCH.D81 ;fi
-	cbmconvert -D8 sdcard-files/FETCH.D81 fetch.prg bbs-client.prg
+	$(CBMCONVERT) -D8 sdcard-files/FETCH.D81 fetch.prg bbs-client.prg
 
 distpush:	dist
-	m65 -F ; m65ftp -l $(USBPORT) -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'put sdcard-files/FETCHERR.M65' -c 'quit'
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c 'put sdcard-files/FETCH.D81' -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'put sdcard-files/FETCHERR.M65' -c 'quit'
 
 distrun:	distpush
-	m65 -F -4 -r fetch.prg
+	$(M65) -F -4 -r fetch.prg
 
 distfastrun:	dist
-	m65 -F ; m65ftp -l $(USBPORT) -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'put sdcard-files/FETCHERR.M65' -c 'quit'
-	m65 -F -4 -r fetch.prg
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c 'put sdcard-files/FETCHM.M65' -c 'put sdcard-files/FETCHFNT.M65' -c 'put sdcard-files/FETCHH65.M65' -c 'put sdcard-files/FETCHERR.M65' -c 'quit'
+	$(M65) -F -4 -r fetch.prg
 
 $(SUBDEPENDS):
 	git submodule init
