@@ -358,6 +358,8 @@ void main(void)
   println_text80(0x0d,"1 - Goto HTTP://192.168.178.20:8000/index.h65");
   println_text80(1,"");
   println_text80(0x0d,"2 - Goto HTTP://192.168.178.20:8000/showdown65.h65");
+  println_text80(1,"");
+  println_text80(0x0d,"3 - Goto HTTP://www.badgerpunch.com/showdown65.h65");
 
   while(1) {
     unsigned short mx,my;
@@ -370,7 +372,7 @@ void main(void)
       // Work out which choice row is currently selected
       // mouse res is in 320x200, so each 2 rows of text is 8 pixels
       choice=(my-0x78)>>3;
-      for(i=20;i<25;i+=2) {
+      for(i=20;i<27;i+=2) {
 	if (i==(18+choice*2)) lfill(0xff80000+i*80,0x2d,80);
 	else lfill(0xff80000+i*80,0x0d,80);
       }
@@ -386,6 +388,7 @@ void main(void)
       case 0x47: case 0x67: choice=1; break;
       case 0x31: choice=2; break;
       case 0x32: choice=3; break;
+      case 0x33: choice=4; break;
       }
       POKE(0xD610,0);
     }
@@ -401,6 +404,7 @@ void main(void)
 	break;
       case 2: fetch_page("192.168.178.20",8000,"/index.h65"); break;
       case 3: fetch_page("192.168.178.20",8000,"/showdown65.h65"); break;
+      case 4: fetch_page("www.badgerpunch.com",80,"/showdown65.h65"); break;
       }
   }
   
