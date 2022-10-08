@@ -393,8 +393,9 @@ byte_t nwk_upstream (byte_t sig)
 	   // Negotiate MSS during connection establishment.
 	   TCPH(options[0])=0x02;
 	   TCPH(options[1])=0x04;
-	   TCPH(options[2])=1400>>8;
-	   TCPH(options[3])=1400;
+	   // Limit to 1300 like google does, so that tunnelled and double-tunnelled connections work
+	   TCPH(options[2])=1300>>8;
+	   TCPH(options[3])=1300;
 	   if (HEADER_LEN>=(40+2+8+8)) {
 	     // Permit Selective Acknowledgement (SACK)
 	     TCPH(options[4])=0x04;
