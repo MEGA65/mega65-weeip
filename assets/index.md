@@ -1,3 +1,10 @@
+#define FONT(h1) /usr/share/fonts/type1/urw-base35/NimbusRoman-Italic.t1,22
+#define FONT(h2) /usr/share/fonts/type1/urw-base35/NimbusRoman-Bold.t1,20
+#define FONT(h3) /usr/share/fonts/type1/urw-base35/NimbusRoman-Bold.t1,18
+#define FONT(p) /usr/share/fonts/type1/urw-base35/NimbusRoman-Regular.t1,12
+#define FONT(bold) /usr/share/fonts/type1/urw-base35/NimbusRoman-Bold.t1,12
+#define FONT(bolditalic) /usr/share/fonts/type1/urw-base35/NimbusRoman-BoldItalic.t1,12
+#define FONT(italic) /usr/share/fonts/type1/urw-base35/NimbusRoman-Italic.t1,12
 # Welcome to the MEGA65!
 
 The **MEGA65** is a brand new retro-computer that is backwards compatible with the **Commodore 64** and
@@ -11,7 +18,7 @@ The pre-series units came in a special clear acrylic case:
 You can also read about this programme, the [fetch](/fetch.h65) 8-bit web browser, or the [MegaWat!?](/megawat.h65)
 presentation software for the MEGA65, or read a page of [lorum](/lorumipsum.h65) [ipsum](/lorumipsum.h65) text.
 
-Some **bold text**
+Some more **bold text**
 
 
 
