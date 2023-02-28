@@ -26,7 +26,7 @@
 
 // #define NOCRCCHECK
 
-static unsigned char eth_log_mode=0;
+unsigned char eth_log_mode=0;
 
 static uint16_t eth_size;        // Packet size.
 uint16_t eth_tx_len=0;           // Bytes written to TX buffer
@@ -107,6 +107,9 @@ void eth_process_frame(void)
  
   unsigned char cpu_side=j&3;
   unsigned char eth_side=(j>>2)&3;
+
+  // Acknowledge the ethernet frame, freeing the buffer up for next RX
+  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
 
   //  printf("/");
   
@@ -203,23 +206,16 @@ void eth_process_frame(void)
   
  drop:
   eth_drop(); 
-
-  // Acknowledge the ethernet frame, freeing the buffer up for next RX
-  POKE(0xD6E1,0x01); POKE(0xD6E1,0x03);
-  
-  // We processed a packet, so schedule ourselves immediately, in case there
-  // are more packets coming.
-  task_add(eth_task, 0, 0,"ethtask");                    // try again to check more packets.
-  return;
 }
 
-uint8_t eth_task (uint8_t p)
+uint8_t eth_task (uint8_t /*p*/)
 {
   /*
    * Check if there are incoming packets.
    * If not, then check in a while.
    */
   unsigned char frames=0;
+  uint8_t delay=0;
 
   // Process multiple ethernet frames at a time
   while((PEEK(0xD6E1)&0x20)) {
@@ -231,9 +227,10 @@ uint8_t eth_task (uint8_t p)
   
   // Check the RXIRQ flag to see if we have frames waiting or not
   if(!(PEEK(0xD6E1)&0x20)) {
-    task_add(eth_task, 10, 0,"ethtask");
-    return 0;
+    delay = 10;
   }
+  task_add(eth_task, delay, 0, "ethtask");
+  return 0;
 }
 
 #define IPH(X) _header.ip.X

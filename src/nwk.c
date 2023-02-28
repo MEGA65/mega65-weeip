@@ -262,17 +262,19 @@ void remove_rx_data(SOCKET *_sckt)
 
     n=_sckt->rx_oo_end - _sckt->rx_data;
     
-    for(ofs=0;ofs<n;ofs+=65535) {
+    for(ofs=0;ofs<n;ofs+=65535L) {
       
-      uint32_t count=65535;
+      uint32_t count=65535L;
       if (count>(n-ofs)) count = n-ofs;
 
       // Copy down from the end of the received data to rx_oo_end.
       lcopy(_sckt->rx + _sckt->rx_data + ofs, _sckt->rx + ofs, n);
     }
 
+    if (_sckt->rx_oo_start > _sckt->rx_data)
     _sckt->rx_oo_start -= _sckt->rx_data;
-    if (_sckt->rx_oo_start < 0 ) _sckt->rx_oo_start = 0;
+    else
+      _sckt->rx_oo_start = 0;
 
     _sckt->rx_oo_end -= _sckt->rx_data;
 
@@ -554,6 +556,7 @@ void nwk_downstream(void)
 {
    WEEIP_EVENT ev;
    _uint32_t rel_sequence;
+   uint16_t rx_ip_chks;
    static unsigned char i;
 
    ev = WEEIP_EV_NONE;
@@ -569,8 +572,10 @@ void nwk_downstream(void)
     * Checksum.
     */
    checksum_init();
+   rx_ip_chks = IPH(checksum);
+   IPH(checksum) = 0;
    ip_checksum((byte_t*)&_header, 20);
-   if(chks.u != 0xffff) goto drop;
+   if(rx_ip_chks != checksum_result()) goto drop;
 
 #if 0
    printf("\nI am %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
