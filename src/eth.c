@@ -386,6 +386,7 @@ void wait_100ms(void)
 void
 eth_init()
 {
+   unsigned char timer = 40;
    eth_drop();
 
    /*
@@ -425,6 +426,9 @@ eth_init()
    wait_100ms();
    POKE(0xd6e1,3);
    POKE(0xd6e1,0);
+   // wait four seconds to allow PHY to come up again
+   while (timer--)
+     wait_100ms();
    
    // XXX Enable ethernet IRQs?
 }

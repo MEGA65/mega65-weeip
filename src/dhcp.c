@@ -42,17 +42,17 @@ byte_t dhcp_reply_handler (byte_t p)
     // And actually, that's all we care about receiving.
     // We MUST however, send the ACCEPT message.
     // Check that XID matches us
-    for(i=0;i<6;i++) if (dhcp_xid[i]!=dns_buf[4+i]) break;
+    for(i=0;i<6;i++) if (dhcp_xid[i]!=dns_query[4+i]) break;
     if (i<4) break;
     // Check that MAC address matches us
-    for(i=0;i<6;i++) if (dns_buf[0x1c+i]!=mac_local.b[i]) break;
+    for(i=0;i<6;i++) if (dns_query[0x1c+i]!=mac_local.b[i]) break;
     if (i<6) break;
 
     // Check that its a DHCP reply message
-    if (dns_buf[0x00]!=0x02) break;
-    if (dns_buf[0x01]!=0x01) break;
-    if (dns_buf[0x02]!=0x06) break;
-    if (dns_buf[0x03]!=0x00) break;
+    if (dns_query[0x00]!=0x02) break;
+    if (dns_query[0x01]!=0x01) break;
+    if (dns_query[0x02]!=0x06) break;
+    if (dns_query[0x03]!=0x00) break;
     
     // Ok, its for us. Extract the info we need.    
 
@@ -61,55 +61,58 @@ byte_t dhcp_reply_handler (byte_t p)
     // DNS defaults to the DHCP server, unless specified later in an option
     // (This is required because although we ask for it in our request,
     // Fritz Boxes at least seem to not always provide it, even when asked.)
-    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[20+i];
+    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_query[20+i];
     
     // Set our IP from BOOTP field
-    for(i=0;i<4;i++) ip_local.b[i] = dns_buf[0x10+i];
+    for(i=0;i<4;i++) ip_local.b[i] = dns_query[0x10+i];
 #ifdef DEBUG_DHCP
     printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 #endif
     
     // Only process DHCP fields if magic cookie is set
-    if (dns_buf[0xec]!=0x63) break;
-    if (dns_buf[0xed]!=0x82) break;
-    if (dns_buf[0xee]!=0x53) break;
-    if (dns_buf[0xef]!=0x63) break;
+    if (dns_query[0xec]!=0x63) break;
+    if (dns_query[0xed]!=0x82) break;
+    if (dns_query[0xee]!=0x53) break;
+    if (dns_query[0xef]!=0x63) break;
  
 #ifdef DEBUG_DHCP
-    //    printf("Parsing DHCP fields $%002x\n",dns_buf[0xf2]);
+    //    printf("Parsing DHCP fields $%002x\n",dns_query[0xf2]);
 #endif
 
-    if (dns_buf[0xf2]==0x02) {
+    if (dns_query[0xf2]==0x02) {
       offset=0xf0;
-      while(dns_buf[offset]!=0xff&&(offset<512)) {
-	if (!dns_buf[offset]) offset++;
+      while(dns_query[offset]!=0xff&&(offset<512)) {
+	if (!dns_query[offset]) offset++;
 	else {
-	  type = dns_buf[offset];
+	  type = dns_query[offset];
 	  // Skip field type
 	  offset++;
 	  // Parse and skip length marker
-	  len=dns_buf[offset];
+	  len=dns_query[offset];
 	  offset++;
 	  // offset now points to the data field.
 	  switch(type) {
 	  case 0x01:
-	    for(i=0;i<4;i++) ip_mask.b[i] = dns_buf[offset+i];	  
+	    for(i=0;i<4;i++) ip_mask.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
 	    printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
 #endif
 	    break;
-	  case 0x03: case 0x36:
-	    for(i=0;i<4;i++) ip_gate.b[i] = dns_buf[offset+i];	  
+	  case 0x03:
+	    for(i=0;i<4;i++) ip_gate.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
 	    printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
 #endif
 	    break;
 	  case 0x06:
-	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_buf[offset+i];	  
+	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
-	    //	    printf("DNS server is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+	    	    printf("DNS server is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
 #endif
 	    break;
+    case 0x36: // DHCP Server Identifier
+      for(i=0;i<4;i++) ip_dhcpserver.b[i] = dns_query[offset+i];
+      break;
 	  default:
 	    break;
 	  }
@@ -138,7 +141,7 @@ byte_t dhcp_reply_handler (byte_t p)
 	socket_release(dhcp_socket);
       }
 
-    } else if (dns_buf[0xf2]==0x05) {
+    } else if (dns_query[0xf2]==0x05) {
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
 #ifdef DEBUG_DHCP
@@ -159,11 +162,16 @@ byte_t dhcp_reply_handler (byte_t p)
 
 byte_t dhcp_autoconfig_retry(byte_t b)
 {
+  static delay = 30;
   if (!dhcp_configured) {
-    
-    // This will automatically re-add us to the list
-    dhcp_send_query_or_request(0);
+    --delay;
+    if (delay == 0) {
+      // This will automatically re-add us to the list
+      dhcp_send_query_or_request(0);
+      delay = 30;
+    }
     task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0,"dhcprtry");
+
   }
   return 0;
 }
@@ -177,7 +185,7 @@ bool_t dhcp_autoconfig(void)
   
   dhcp_socket = socket_create(SOCKET_UDP);
   socket_set_callback(dhcp_reply_handler);
-  socket_set_rx_buffer((uint32_t)&dns_buf[0],sizeof dns_buf);
+  socket_set_rx_buffer((uint32_t)&dns_query[0],sizeof dns_query);
 
   dhcp_send_query_or_request(0);
 
@@ -226,8 +234,6 @@ void dhcp_send_query_or_request(unsigned char requestP)
   } else {
     // Client IP
     for(i=0;i<4;i++) dns_query[dhcp_query_len+i]=ip_local.b[i];
-    // Server IP
-    for(i=0;i<4;i++) dns_query[dhcp_query_len+8+i]=ip_dhcpserver.b[i];
   }
   dhcp_query_len+=16;
   // our MAC address padded to 192 bytes
