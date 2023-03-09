@@ -140,6 +140,7 @@ void main(void)
 	 mac_local.b[3],mac_local.b[4],mac_local.b[5]);
   
   // Setup WeeIP
+  printf("Resetting ethernet controller\n");
   weeip_init();
   task_cancel(eth_task);
   task_add(eth_task, 0, 0,"eth");
@@ -184,6 +185,7 @@ void main(void)
 	break;
       } else POKE(0xD610,0);
     }
+    task_periodic();
   }
   POKE(198,0);
   printf("Preparing to connect to %s\n",bbs_list[nbbs].name);
