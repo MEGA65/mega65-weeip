@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "task.h"
@@ -274,8 +275,8 @@ void prepare_network(void)
   POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
   printf("%c",0x93);
   
-  printf("H65 MAC %02x",mac_local.b[0]);
-  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);  
+  //  printf("H65 MAC %02x",mac_local.b[0]);
+  //  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);  
   
   // Setup WeeIP
   weeip_init();
@@ -285,7 +286,7 @@ void prepare_network(void)
   // Do DHCP auto-configuration
   dhcp_configured=fetch_shared_mem.dhcp_configured;
   if (!dhcp_configured) {
-    printf("\nRequesting IP...\n");
+    //    printf("\nRequesting IP...\n");
     dhcp_autoconfig();
     while(!dhcp_configured) {
       task_periodic();
@@ -331,9 +332,8 @@ void fetch_page(char *hostname,int port,char *path)
   
 restart_fetch:
 
-  printf("%c#%d: H65 Fetching %chttp://%s:%d%s\n", 0x0d, // 0x93,
-	 fetch_shared_mem.job_id,
-	 5,hostname,port,path);
+  printf("Fetching http://%s:%d%s\n", 0x0d, // 0x93,
+	 hostname,port,path);
   POKE(0x0286,0x0e);
 
   // NOTE: PETSCII so things are inverted
@@ -363,12 +363,11 @@ restart_fetch:
   // Clear any partial match to h65+$ff header
   last_bytes[3]=0;
   
-  printf("Resolving %s\n",hostname);
   if (dns_hostname_to_ip(hostname,&a)) {
-    printf("Resolved to %d.%d.%d.%d:%d\n",
-	   a.b[0],a.b[1],a.b[2],a.b[3],port);
+    //    printf("Resolved to %d.%d.%d.%d:%d\n",
+    //	   a.b[0],a.b[1],a.b[2],a.b[3],port);
   } else {
-    printf("Failed to resolve hostname.\n");
+    printf("DNS failed.\n");
 
     fetch_shared_mem.job_id++;
     fetch_shared_mem.state=FETCH_H65FETCH_DNSERROR;
@@ -378,9 +377,7 @@ restart_fetch:
     
   }
 
-  printf("Calling socket create\n");
   s = socket_create(SOCKET_TCP);
-  printf("Setting callback\n");
   socket_set_callback(comunica);
   // socket_set_rx_buffer(buf, 2048);
   // 128KB of Attic RAM for TCP RX buffer if present
@@ -392,8 +389,6 @@ restart_fetch:
     printf("connect() failed.\n");
     disconnected=1;
     h65_error=H65_CONNECTFAILED;
-  } else {
-    printf("connect() succeeded.\n");	   
   }	   
 
   if (disconnected) {
