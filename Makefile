@@ -1,7 +1,7 @@
 .SUFFIXES: .bin .prg
 .PRECIOUS:	%.ngd %.ncd %.twx vivado/%.xpr bin/%.bit bin/%.mcs bin/%.M65 bin/%.BIN
 
-USBPORT=	/dev/ttyUSB0
+USBPORT=	/dev/ttyUSB1
 
 ASSETS=		assets
 SRCDIR=		src
