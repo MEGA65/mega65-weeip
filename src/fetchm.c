@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "defs.h"
@@ -17,6 +18,9 @@
 #include "shared_state.h"
 
 void interact_page(void);
+
+unsigned char j1=0;
+unsigned char last_j1=0;
 
 unsigned char mouse_pointer_sprite[63]={
 0xfC,0x00,0x00,
@@ -88,7 +92,7 @@ void scroll_down(long distance)
   // Wait for vertical blank so that we don't have visible tearing.
   while(PEEK(0xD012)<0xf0) continue;
   while(PEEK(0xD012)>=0xf0) continue;
-
+  
 
   position+=distance;
   if (position<0) position=0;
@@ -573,6 +577,16 @@ void interact_page(void)
     reload=0;
     update_mouse_position(1);
 
+    // Check joystick / mouse-wheel
+    last_j1=j1;
+    j1 = PEEK(0xdc01);
+    // Ideally we make sure we do only one per pulse
+    // But as this main loop is not real fast, we don't have to worry about over doing it.
+    //    if ((j1&8)&&(!(last_j1&8))) scroll_down(-8);
+    //    if ((j1&4)&&(!(last_j1&4))) scroll_down(8);
+    if (!(j1&8)) scroll_down(8);
+    if (!(j1&4)) scroll_down(-8);
+    
     // Check for keyboard input
     i=PEEK(0xD610); POKE(0xD610,0);
     switch(i) {
