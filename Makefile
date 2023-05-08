@@ -11,22 +11,28 @@ EXAMPLEDIR=	$(SRCDIR)/examples
 UTILDIR=	$(SRCDIR)/utilities
 TESTDIR=	$(SRCDIR)/tests
 LIBEXECDIR=	libexec
+CC65_PREFIX=	cc65/bin/
 
 CONTENTDIR=	content
 SDCARDFILESDIR = sdcard-files
 
-SUBDEPENDS=	mega65-tools/bin/md2h65 \
-		mega65-tools/bin/asciifont.bin
 MD2H65=		../mega65-tools/bin/md2h65
 #MD2H65=		md2h65
 CBMCONVERT = cbmconvert
 M65 = m65
 M65FTP = mega65_ftp
 
-CC65=  cc65
-CA65=  ca65 --cpu 4510
-LD65=  ld65 -t none
-CL65=  cl65 --config src/tests/vicii.cfg
+CC65=  $(CC65_PREFIX)cc65
+CA65=  $(CC65_PREFIX)ca65 --cpu 4510
+LD65=  $(CC65_PREFIX)ld65 -t none
+CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
+
+MEGA65LIBCDIR= $(SRCDIR)/mega65-libc/cc65
+MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
+MEGA65LIBCINC= -I $(MEGA65LIBCDIR)/include
+
+SUBDEPENDS=	mega65-tools/bin/md2h65 \
+		mega65-tools/bin/asciifont.bin
 
 KICKC= ../kickc/bin/kickc.sh
 
@@ -64,10 +70,24 @@ distfastrun:	dist
 	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
 	$(M65) -F -4 -r fetch.prg
 
+SUBMODULEUPDATE= \
+	@if [ -z "$(DO_SMU)" ] || [ "$(DO_SMU)" -eq "1" ] ; then \
+	echo "Updating Submodules... (set env-var DO_SMU=0 to turn this behaviour off)" ; \
+	git submodule update --init ; \
+	fi
+
 $(SUBDEPENDS):
-	git submodule init
-	git submodule update
+	$(SUBMODULEUPDATE)
 	( cd mega65-tools; make bin/md2h65 )
+
+$(MEGA65LIBCLIB):
+	$(SUBMODULEUPDATE)
+	make -C src/mega65-libc cc65
+	make -C src/mega65-libc clean
+
+$(CC65):
+	$(SUBMODULEUPDATE)
+	( cd cc65 && make -j 8 )
 
 hex2pcap:	src/hex2pcap.c Makefile
 	gcc -Wall -g -o hex2pcap src/hex2pcap.c
@@ -85,37 +105,30 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-fetchm.prg:       src/fetchm.c src/helper.s include/shared_state.h
-	git submodule init
-	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetchm.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+fetchm.prg: $(CC65) src/fetchm.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+	$(SUBMODULEUPDATE)
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map src/fetchm.c $(MEGA65LIBCLIB) src/helper.s
 
-fetcherr.prg:       src/fetcherr.c src/helper.s include/shared_state.h
-	git submodule init
-	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetcherr.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+fetcherr.prg: $(CC65) src/fetcherr.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+	$(SUBMODULEUPDATE)
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map src/fetcherr.c $(MEGA65LIBCLIB) src/helper.s
 
-fetchh65.prg:       $(TCPSRCS) src/fetchh65.c src/helper.s include/shared_state.h
-	git submodule init
-	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map $(TCPSRCS) src/fetchh65.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+fetchh65.prg: $(CC65) $(TCPSRCS) src/fetchh65.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+	$(SUBMODULEUPDATE)
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map $(TCPSRCS) src/fetchh65.c $(MEGA65LIBCLIB) src/helper.s
 
-fetch.prg:       src/fetch.c src/helper.s include/shared_state.h
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o $@ --mapfile $*.map src/fetch.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s src/helper.s
+fetch.prg: $(CC65) src/fetch.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map src/fetch.c $(MEGA65LIBCLIB) src/helper.s
 
+ethtest.prg: $(CC65) $(TCPSRCS) src/ethtest.c src/helper.s $(MEGA65LIBCLIB)
+	$(SUBMODULEUPDATE)
+	$(CL65) -DENABLE_ICMP=1 $(MEGA65LIBCINC) -I include -O -o ethtest.prg --mapfile $*.map $(TCPSRCS) src/ethtest.c src/helper.s $(MEGA65LIBCLIB)
 
-ethtest.prg:       $(TCPSRCS) src/ethtest.c src/helper.s
-	git submodule init
-	git submodule update
-	$(CL65) -DENABLE_ICMP=1 -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o ethtest.prg --mapfile $*.map $(TCPSRCS) src/ethtest.c src/helper.s $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
-
-fetchkc.prg:       $(TCPSRCS) src/fetch.c
-	git submodule init
-	git submodule update
+fetchkc.prg: $(TCPSRCS) src/fetch.c $(MEGA65LIBCLIB)
+	$(SUBMODULEUPDATE)
 	$(KICKC) -t mega65_c64 -a -I $(SRCDIR)/mega65-libc/kickc/include -I include -L src -L $(SRCDIR)/mega65-libc/kickc/src src/fetch.c
 
-haustierbegriff.prg:       $(TCPSRCS) src/haustierbegriff.c
-	git submodule init
-	git submodule update
-	$(CL65) -I $(SRCDIR)/mega65-libc/cc65/include -I include -O -o haustierbegriff.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c  $(SRCDIR)/mega65-libc/cc65/src/*.c $(SRCDIR)/mega65-libc/cc65/src/*.s
+haustierbegriff.prg: $(CC65) $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
+	$(SUBMODULEUPDATE)
+	$(CL65) $(MEGA65LIBCINC) -I include -Os -o haustierbegriff.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
 

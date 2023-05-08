@@ -32,26 +32,11 @@
 #ifndef __DEFSH__
 #define __DEFSH__
 
+#include <stdint.h>
+
 /*
  * Data types.
  */
-#if defined(__CPIK__)
-#define uint32_t unsigned long long int
-#define uint16_t unsigned long int
-
-#define int32_t long long int
-#define int16_t long int
-#define int8_t int
-#else
-#define uint32_t unsigned long int
-#define uint16_t unsigned short int
-
-#define int32_t long int
-#define int16_t short int
-#define int8_t char
-#endif
-
-#define uint8_t unsigned char
 #define byte_t unsigned char
 
 // 32-bit buffer_t to allow RX buffer to be outside of the first 64KB
