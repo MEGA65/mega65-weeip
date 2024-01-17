@@ -208,7 +208,7 @@ void eth_process_frame(void)
   eth_drop(); 
 }
 
-uint8_t eth_task (uint8_t /*p*/)
+uint8_t eth_task (unsigned char p)
 {
   /*
    * Check if there are incoming packets.

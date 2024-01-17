@@ -138,7 +138,7 @@ byte_t dns_reply_handler (byte_t p)
 	      }
 	      
 	      printf("Resolving CNAME %s ...\n",dns_buf);
-	      dns_construct_hostname_to_ip_query(dns_buf);
+	      dns_construct_hostname_to_ip_query((char *)dns_buf);
 	      socket_send(dns_query,dns_query_len);
 	      
 	    }

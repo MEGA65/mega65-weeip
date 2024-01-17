@@ -107,7 +107,7 @@ byte_t comunica (byte_t p)
 	//	while(1) continue;
 	// Buf is setup in fetch_page()
 
-        if (!socket_send(buf, strlen(buf))) 
+        if (!socket_send(buf, strlen((char *)buf))) 
 	  {
 	    printf("Error sending HTTP request.\n");
 	    h65_error=H65_SENDHTTP;
@@ -332,12 +332,12 @@ void fetch_page(char *hostname,int port,char *path)
   
 restart_fetch:
 
-  printf("Fetching http://%s:%d%s\n", 0x0d, // 0x93,
+  printf("Fetching http://%s:%d%s\n", 
 	 hostname,port,path);
   POKE(0x0286,0x0e);
 
   // NOTE: PETSCII so things are inverted
-  snprintf(buf,1024,
+  snprintf((char *)buf,1024,
 	   "get %s http/1.1\n\r"
 	   "hOST: %s\n\r"
 	   "aCCEPT: */*\n\r"
@@ -383,7 +383,7 @@ restart_fetch:
   // 128KB of Attic RAM for TCP RX buffer if present
   // XXX - Do a proper auto-detection of the hyperRAM
   printf("Setting up buffer\n");
-  socket_set_rx_buffer(0x8000000L, 128*1024);
+  socket_set_rx_buffer(0x8000000L, 128*1024L);
   printf("Connecting...\n");
   if (!socket_connect(&a,port)) {
     printf("connect() failed.\n");

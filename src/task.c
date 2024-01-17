@@ -150,7 +150,7 @@ task_add
        task->fun = f;
        task->par = par;
        task->tmr = tempo;
-       strncpy(task->name,name,8);
+       strncpy((char *)task->name,name,8);
        task->name[8]=0;
        ok = TRUE;
        break;
