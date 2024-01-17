@@ -164,7 +164,7 @@ byte_t dhcp_reply_handler (byte_t p)
 
 byte_t dhcp_autoconfig_retry(byte_t b)
 {
-  static delay = 30;
+  static char delay = 30;
   if (!dhcp_configured) {
     --delay;
     if (delay == 0) {

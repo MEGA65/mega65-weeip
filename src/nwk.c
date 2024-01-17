@@ -396,7 +396,7 @@ byte_t nwk_upstream (byte_t sig)
 	   TCPH(options[1])=0x04;
 	   // Limit to 1300 like google does, so that tunnelled and double-tunnelled connections work
 	   TCPH(options[2])=1300>>8;
-	   TCPH(options[3])=1300;
+	   TCPH(options[3])=(1300&0xff);
 	   if (HEADER_LEN>=(40+2+8+8)) {
 	     // Permit Selective Acknowledgement (SACK)
 	     TCPH(options[4])=0x04;
