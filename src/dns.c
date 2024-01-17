@@ -7,8 +7,8 @@
 #include "arp.h"
 #include "dns.h"
 
-#include "memory.h"
-#include "random.h"
+#include "mega65/memory.h"
+#include "mega65/random.h"
 
 unsigned char dns_query_returned=0;
 IPV4 dns_return_ip;

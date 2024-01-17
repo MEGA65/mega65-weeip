@@ -40,7 +40,7 @@
 #include "arp.h"
 #include "eth.h"
 
-#include "random.h"
+#include "mega65/random.h"
 
 extern uint16_t id;
 
@@ -260,7 +260,7 @@ socket_data_size()
  * @return TRUE if succeeded.
  */
 bool_t 
-socket_disconnect()
+socket_disconnect(void)
 {
    if(_sckt == NULL) return FALSE;
    if(_sckt->type == SOCKET_UDP) {

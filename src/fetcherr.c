@@ -1,12 +1,13 @@
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "defs.h"
-#include "random.h"
-#include "memory.h"
-#include "mouse.h"
-#include "debug.h"
+#include "mega65/random.h"
+#include "mega65/memory.h"
+#include "mega65/mouse.h"
+#include "mega65/debug.h"
 
 #include "weeip.h"
 #include "checksum.h"

@@ -10,8 +10,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "memory.h"
-#include "debug.h"
+#include "mega65/memory.h"
+#include "mega65/debug.h"
 
 // On MEGA65 we have deep enough stack we don't need to schedule sending
 // ACKs, we can just send them immediately.
@@ -65,8 +65,6 @@
 #include "checksum.h"
 #include "eth.h"
 #include "arp.h"
-
-#include "memory.h"
 
 /**
  * Message header buffer.

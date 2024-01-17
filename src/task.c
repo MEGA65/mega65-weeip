@@ -10,7 +10,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include "debug.h"
+#include "mega65/debug.h"
 
 // Periodically show the scheduled tasks 
 //#define DEBUG_TASKS

@@ -10,10 +10,10 @@
 #include "dns.h"
 #include "dhcp.h"
 
-#include "memory.h"
-#include "random.h"
-#include "mouse.h"
-#include "debug.h"
+#include "mega65/memory.h"
+#include "mega65/random.h"
+#include "mega65/mouse.h"
+#include "mega65/debug.h"
 
 #include "shared_state.h"
 #include "h65.h"
@@ -185,7 +185,7 @@ byte_t comunica (byte_t p)
 	    if (block_len==0) {
 	      if (h65_error!=H65_DONE) {
 		printf("\nEnd of page found.\n");
-		socket_disconnect(s);
+		socket_disconnect();
 	      }
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
@@ -412,13 +412,13 @@ restart_fetch:
     update_mouse_position();
     switch(PEEK(0xD610)) {
       case 0x52: case 0x72:  // Restart fetch
-        socket_disconnect(s);
+        socket_disconnect();
         POKE(0xD610,0);
         goto restart_fetch;
       case 0x03:
         // control-c / RUN/STOP -- abort fetch
         POKE(0xD610,0);
-        socket_disconnect(s);
+        socket_disconnect();
 
 	// Return to main program, reporting error
 	fetch_shared_mem.job_id++;
@@ -436,7 +436,7 @@ restart_fetch:
   if (h65_error!=H65_COULDNOTCONNECT) {
     // XXX -- Launch error handler program if h65_error is non-zero
     printf("Disconnecting...\n");
-    socket_disconnect(s);
+    socket_disconnect();
     for(i=0;i<16;i++) {
       task_periodic();
       if (disconnected) break;
@@ -513,7 +513,12 @@ int port=80;
 char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
 char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
 
-void main(void)
+#ifdef LLVM
+int
+#else
+void
+#endif
+main(void)
 {
   // Enable logging of ethernet activity on the serial monitor interface
   //  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;

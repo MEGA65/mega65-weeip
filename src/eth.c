@@ -17,10 +17,10 @@
 #include "arp.h"
 #include "eth.h"
 
-#include "memory.h"
-#include "hal.h"
-#include "debug.h"
-#include "time.h"
+#include "mega65/memory.h"
+#include "mega65/hal.h"
+#include "mega65/debug.h"
+#include "mega65/time.h"
 
 #define _PROMISCUOUS
 

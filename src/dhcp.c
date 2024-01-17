@@ -8,8 +8,8 @@
 #include "dns.h"
 #include "dhcp.h"
 
-#include "memory.h"
-#include "random.h"
+#include "mega65/memory.h"
+#include "mega65/random.h"
 
 // #define DEBUG_DHCP
 
