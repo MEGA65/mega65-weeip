@@ -13,10 +13,10 @@
 #include "eth.h"
 #include "arp.h"
 
-#include "memory.h"
-#include "random.h"
-#include "mouse.h"
-#include "debug.h"
+#include "mega65/memory.h"
+#include "mega65/random.h"
+#include "mega65/mouse.h"
+#include "mega65/debug.h"
 
 #include "shared_state.h"
 
