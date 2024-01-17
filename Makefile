@@ -22,12 +22,14 @@ CBMCONVERT = cbmconvert
 M65 = m65
 M65FTP = mega65_ftp
 
+#COMPILER=cc65
 #CC65=  $(CC65_PREFIX)cc65
 #CA65=  $(CC65_PREFIX)ca65 --cpu 4510
 #LD65=  $(CC65_PREFIX)ld65 -t none
 #CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
 #MAPFILE=	--mapfile $*.map
 
+COMPILER=clang
 CC65=	llvm-mos/bin/mos-mega65-clang
 LD65=	llvm-mos/bin/ld.lld
 CL65=	llvm-mos/bin/mos-mega65-clang
@@ -137,4 +139,14 @@ fetchkc.prg: $(TCPSRCS) src/fetch.c $(MEGA65LIBCLIB)
 haustierbegriff.prg: $(CC65) $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -Os -o haustierbegriff.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
+
+fetchkc.prg:       $(TCPSRCS) src/fetch.c
+	git submodule init
+	git submodule update
+	$(KICKC) -t mega65_c64 -a -I $(SRCDIR)/mega65-libc/kickc/include -I include -L src -L $(SRCDIR)/mega65-libc/kickc/src src/fetch.c
+
+haustierbegriff.prg:       $(TCPSRCS) src/haustierbegriff.c
+	git submodule init
+	git submodule update
+	$(CL65) -I $(SRCDIR)/mega65-libc/$(COMPILER)/include -I include -O -o haustierbegriff.prg $(MAPFILE) $(TCPSRCS) src/haustierbegriff.c  $(SRCDIR)/mega65-libc/$(COMPILER)/src/*.c $(SRCDIR)/mega65-libc/$(COMPILER)/src/*.s
 
