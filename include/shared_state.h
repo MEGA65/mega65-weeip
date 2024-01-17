@@ -1,3 +1,7 @@
+#ifdef LLVM
+#define cdecl
+#endif
+
 char cdecl read_file_from_sdcard(char *filename,unsigned long load_address);
 char cdecl mega65_dos_exechelper(char* filename);
 

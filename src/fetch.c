@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <string.h>
 
+#ifndef LLVM
 #include "ascii.h"
+#endif
 #include "defs.h"
 
 #include "weeip.h"
