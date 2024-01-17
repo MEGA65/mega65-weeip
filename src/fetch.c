@@ -290,7 +290,12 @@ void to_hex(char *out,unsigned int v)
   out[3]=to_nybl(v>>0);
 }
 
-void main(void)
+#ifdef LLVM
+int
+#else
+void 
+#endif
+main(void)
 {
   unsigned char i,reload;
 
