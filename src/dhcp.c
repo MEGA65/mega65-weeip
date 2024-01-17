@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
+#ifndef LLVM
 #include <stdlib.h>
+#endif
 
 #include "weeip.h"
 #include "eth.h"
@@ -197,7 +199,7 @@ bool_t dhcp_autoconfig(void)
   // Schedule ourselves to retransmit DHCP query until we are configured
   task_add(dhcp_autoconfig_retry, DHCP_RETRY_TICKS, 0,"dhcprtry");
   
-  
+  return 0;  
 }
 
 void dhcp_send_query_or_request(unsigned char requestP)

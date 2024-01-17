@@ -1,7 +1,7 @@
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
-#include <tests.h>
 
 #include "task.h"
 #include "weeip.h"
@@ -10,14 +10,15 @@
 #include "dns.h"
 #include "dhcp.h"
 
-#include "memory.h"
-#include "random.h"
-#include "mouse.h"
-#include "debug.h"
+#include "mega65/tests.h"
+#include "mega65/memory.h"
+#include "mega65/random.h"
+#include "mega65/mouse.h"
+#include "mega65/debug.h"
 
 #include "h65.h"
 
-char cdecl mega65_dos_exechelper(char* filename);
+#include "shared_state.h"
 
 // Wait for key press before starting
 //#define DEBUG_WAIT
@@ -29,7 +30,7 @@ unsigned short line_count;
 
 unsigned char disconnected=0;
 SOCKET *s;
-byte_t *buf=0xC000;
+byte_t *buf=(byte_t *)0xC000;
 
 /* Function that is used as a call-back on socket events
  * */
@@ -75,8 +76,12 @@ void prepare_network(void)
 	 ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
 }      
 
-
-void main(void)
+#ifdef LLVM
+int
+#else
+void 
+#endif
+main(void)
 {
   unsigned char i,reload;
 

@@ -1,5 +1,6 @@
 
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "task.h"
@@ -9,8 +10,8 @@
 #include "dns.h"
 #include "dhcp.h"
 
-#include "memory.h"
-#include "random.h"
+#include "mega65/memory.h"
+#include "mega65/random.h"
 
 unsigned char last_frame_number=0;
 
@@ -67,13 +68,13 @@ byte_t buf[1500];
 byte_t comunica (byte_t p)
 {
   unsigned int i;
-  unsigned char *rx=s->rx;
+  unsigned char *rx=(unsigned char *)s->rx;
   socket_select(s);
   switch(p) {
   case WEEIP_EV_CONNECT:
     printf("Connected.\n");
     // Send telnet GO AHEAD command
-    socket_send("\0377\0371",2);
+    socket_send((unsigned char *)"\0377\0371",2);
     break;
   case WEEIP_EV_DATA:
   case WEEIP_EV_DISCONNECT_WITH_DATA:
@@ -107,7 +108,12 @@ void dump_bytes(char *msg,uint8_t *d,int count);
 
 unsigned char nbbs=0;
 
-void main(void)
+#ifdef LLVM
+int
+#else
+void 
+#endif
+main(void)
 {
   IPV4 a;
   EUI48 mac;
@@ -201,7 +207,7 @@ void main(void)
    
    s = socket_create(SOCKET_TCP);
    socket_set_callback(comunica);
-   socket_set_rx_buffer(buf, 1500);
+   socket_set_rx_buffer((uint32_t)buf, 1500);
    socket_connect(&a,port_number);
 
    // Text to light green by default
@@ -218,7 +224,7 @@ void main(void)
      // Monitor hardware accelerated keyboard input for extra C65 keys only
      if (PEEK(0xD610)) {
        if (PEEK(0xD610)==0xF9) {
-	 printf("%c%c%c%c%c%cDisconnecting...",0x0d,0x05,0x12,0x11,0x11,0x11,0x11);
+	 printf("%c%c%c%c%c%cDisconnecting...",0x0d,0x05,0x12,0x11,0x11,0x11);
 	 socket_reset();
        }
        POKE(0xD610,0);

@@ -488,7 +488,12 @@ void select_url(void)
   }
 }
 
-void main(void)
+#ifdef LLVM
+int 
+#else
+void
+#endif
+main(void)
 {
   // Enable logging of ethernet activity on the serial monitor interface
   //  eth_log_mode=ETH_LOG_TX; // ETH_LOG_RX|ETH_LOG_TX;
