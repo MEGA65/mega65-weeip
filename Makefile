@@ -34,6 +34,7 @@ CC65=	llvm-mos/bin/mos-mega65-clang
 LD65=	llvm-mos/bin/ld.lld
 CL65=	llvm-mos/bin/mos-mega65-clang -DLLVM
 MAPFILE=	
+HELPERS=	src/helper-cc65.s
 
 MEGA65LIBCDIR= $(SRCDIR)/mega65-libc/cc65
 MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
@@ -134,7 +135,6 @@ ethtest.prg: $(CC65) $(TCPSRCS) src/ethtest.c src/helper.s $(MEGA65LIBCLIB)
 
 fetchkc.prg: $(TCPSRCS) src/fetch.c $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
-	$(KICKC) -t mega65_c64 -a -I $(SRCDIR)/mega65-libc/kickc/include -I include -L src -L $(SRCDIR)/mega65-libc/kickc/src src/fetch.c
 
 haustierbegriff.prg: $(CC65) $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
