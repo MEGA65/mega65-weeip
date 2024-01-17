@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <stdint.h>
 
 #include "task.h"
 #include "weeip.h"
