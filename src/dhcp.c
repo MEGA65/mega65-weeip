@@ -1,8 +1,5 @@
 #include <stdio.h>
 #include <stdint.h>
-#ifndef LLVM
-#include <stdlib.h>
-#endif
 
 #include "weeip.h"
 #include "eth.h"
