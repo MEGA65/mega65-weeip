@@ -101,8 +101,8 @@ void h640_text_mode(void)
 
 void clear_text80(void)
 {
-  lfill(0xc000, 4000, 0x20);
-  lfill(0xff80000L, 4000, 1);
+  lfill(0xc000, 0x20,4000);
+  lfill(0xff80000L, 0x01, 4000);
   text_row = 0;
 }
 
