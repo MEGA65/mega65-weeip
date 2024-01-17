@@ -31,9 +31,9 @@ M65FTP = mega65_ftp
 #HELPERS=	src/helper-cc65.s
 
 COMPILER=llvm
-CC65=	llvm-mos/bin/mos-mega65-clang
+CC65=	llvm-mos/bin/mos-c64-clang -mcpu=mos45gs02
 LD65=	llvm-mos/bin/ld.lld
-CL65=	llvm-mos/bin/mos-mega65-clang -DLLVM
+CL65=	llvm-mos/bin/mos-c64-clang -DLLVM -mcpu=mos45gs02
 MAPFILE=	
 HELPERS=	src/helper-llvm.c
 
