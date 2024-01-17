@@ -22,10 +22,16 @@ CBMCONVERT = cbmconvert
 M65 = m65
 M65FTP = mega65_ftp
 
-CC65=  $(CC65_PREFIX)cc65
-CA65=  $(CC65_PREFIX)ca65 --cpu 4510
-LD65=  $(CC65_PREFIX)ld65 -t none
-CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
+#CC65=  $(CC65_PREFIX)cc65
+#CA65=  $(CC65_PREFIX)ca65 --cpu 4510
+#LD65=  $(CC65_PREFIX)ld65 -t none
+#CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
+#MAPFILE=	--mapfile $*.map
+
+CC65=	llvm-mos/bin/mos-mega65-clang
+LD65=	llvm-mos/bin/ld.lld
+CL65=	llvm-mos/bin/mos-mega65-clang
+MAPFILE=	
 
 MEGA65LIBCDIR= $(SRCDIR)/mega65-libc/cc65
 MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
