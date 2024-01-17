@@ -66,6 +66,7 @@ char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
 char indexdoth65[11]={'/',0x69,0x6e,0x64,0x65,0x78,'.',0x68,0x36,0x35,0};
 
 char buf[256+1];
+char tempurl[256+1];
 
 void c64_40columns(void)
 {
@@ -311,8 +312,8 @@ void parse_url(unsigned long addr)
     lfill(0xD000+80*3,0x20,160);
     if (buf[0]=='/') {
       // Put http://host:port on front of paths
-      snprintf(&buf[256],256,"%s%s:%d%s",httpcolonslashslash,hostname,port,buf);
-      lcopy((unsigned long)&buf[256],0xD000+80*3,strlen(&buf[256]));
+      snprintf(tempurl,sizeof(tempurl),"%s%s:%d%s",httpcolonslashslash,hostname,port,buf);
+      lcopy((unsigned long)tempurl,0xD000+80*3,strlen(tempurl));
     } else
       // Otherwise leave path untouched
       lcopy(addr,0xD000+80*3,strlen(buf));
