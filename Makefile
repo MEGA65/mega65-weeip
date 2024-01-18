@@ -22,22 +22,24 @@ CBMCONVERT = cbmconvert
 M65 = m65
 M65FTP = mega65_ftp
 
-#COMPILER=cc65
-#CC65=  $(CC65_PREFIX)cc65
-#CA65=  $(CC65_PREFIX)ca65 --cpu 4510
-#LD65=  $(CC65_PREFIX)ld65 -t none
-#CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
-#MAPFILE=	--mapfile $*.map
-#HELPERS=	src/helper-cc65.s
+COMPILER=cc65
+CC65=  $(CC65_PREFIX)cc65
+COMPILERBIN=$(CC65)
+CA65=  $(CC65_PREFIX)ca65 --cpu 4510
+LD65=  $(CC65_PREFIX)ld65 -t none
+CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
+MAPFILE=	--mapfile $*.map
+HELPER=	src/helper-cc65.s
 
-COMPILER=llvm
-CC65=	llvm-mos/bin/mos-c64-clang -mcpu=mos45gs02
-LD65=	llvm-mos/bin/ld.lld
-CL65=	llvm-mos/bin/mos-c64-clang -DLLVM -mcpu=mos45gs02
-MAPFILE=	
-HELPERS=	src/helper-llvm.c
+#COMPILER=llvm
+#CC65=	llvm-mos/bin/mos-c64-clang -mcpu=mos45gs02
+#COMPILERBIN=	llvm-mos/bin/mos-c64-clang
+#LD65=	llvm-mos/bin/ld.lld
+#CL65=	llvm-mos/bin/mos-c64-clang -DLLVM -mcpu=mos45gs02
+#MAPFILE=	
+#HELPER=	src/helper-llvm.c
 
-MEGA65LIBCDIR= $(SRCDIR)/mega65-libc/cc65
+MEGA65LIBCDIR= $(SRCDIR)/mega65-libc
 MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
 MEGA65LIBCINC= -I $(MEGA65LIBCDIR)/include
 
@@ -92,12 +94,15 @@ $(SUBDEPENDS):
 
 $(MEGA65LIBCLIB):
 	$(SUBMODULEUPDATE)
-	make -C src/mega65-libc cc65
+	make -C src/mega65-libc $(COMPILER)
 	make -C src/mega65-libc clean
 
 $(CC65):
 	$(SUBMODULEUPDATE)
 	( cd cc65 && make -j 8 )
+
+$(LLVM):
+	$(SUBMODULEUPDATE)
 
 hex2pcap:	src/hex2pcap.c Makefile
 	gcc -Wall -g -o hex2pcap src/hex2pcap.c
@@ -115,23 +120,22 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-<<<<<<< HEAD
-grazem.prg: src/grazem.c $(CC65) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+grazem.prg: src/grazem.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-grazeerr.prg: src/grazeerr.c $(CC65) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+grazeerr.prg: src/grazeerr.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-grazeh65.prg: src/grazeh65.c $(CC65) $(TCPSRCS) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+grazeh65.prg: src/grazeh65.c $(COMPILERBIN) $(TCPSRCS) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $(TCPSRCS) $< $(MEGA65LIBCLIB) $(HELPER)
 
-graze.prg: src/graze.c $(CC65) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+graze.prg: src/graze.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-ethtest.prg: $(CC65) $(TCPSRCS) src/ethtest.c $(HELPER) $(MEGA65LIBCLIB)
+ethtest.prg: src/ethtest.c $(COMPILERBIN) $(TCPSRCS) $(HELPER) $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) -DENABLE_ICMP=1 $(MEGA65LIBCINC) -I include -O -o ethtest.prg $(MAPFILE) $(TCPSRCS) $< $(HELPER) $(MEGA65LIBCLIB)
 
@@ -139,7 +143,7 @@ fetchkc.prg: $(TCPSRCS) src/fetch.c $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(KICKC) -t mega65_c64 -a -I $(SRCDIR)/mega65-libc/kickc/include -I include -L src -L $(SRCDIR)/mega65-libc/kickc/src src/graze.c
 
-haustierbegriff.prg: src/haustierbegriff.c $(CC65) $(TCPSRCS) $(MEGA65LIBCLIB)
+haustierbegriff.prg: src/haustierbegriff.c $(COMPILERBIN) $(TCPSRCS) $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -Os -o haustierbegriff.prg $(MAPFILE) $(TCPSRCS) $< $(MEGA65LIBCLIB)
 
