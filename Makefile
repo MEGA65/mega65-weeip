@@ -1,7 +1,7 @@
 .SUFFIXES: .bin .prg
 .PRECIOUS:	%.ngd %.ncd %.twx vivado/%.xpr bin/%.bit bin/%.mcs bin/%.M65 bin/%.BIN
 
-USBPORT=	/dev/ttyUSB1
+USBPORT=	/dev/ttyUSB2
 
 ASSETS=		assets
 SRCDIR=		src
@@ -62,22 +62,22 @@ clean:
 
 dist:	all
 	mkdir -p $(SDCARDFILESDIR)
-	cp mega65-tools/bin/asciifont.bin $(SDCARDFILESDIR)/FETCHFNT.M65
-	cp grazem.prg $(SDCARDFILESDIR)/FETCHM.M65
-	cp grazeerr.prg $(SDCARDFILESDIR)/FETCHERR.M65
-	cp grazeh65.prg $(SDCARDFILESDIR)/FETCHH65.M65
+	cp mega65-tools/bin/asciifont.bin $(SDCARDFILESDIR)/GRAZEFNT.M65
+	cp grazem.prg $(SDCARDFILESDIR)/GRAZEM.M65
+	cp grazeerr.prg $(SDCARDFILESDIR)/GRAZEERR.M65
+	cp grazeh65.prg $(SDCARDFILESDIR)/GRAZEH65.M65
 	cp haustierbegriff.prg bbs-client.prg
-	if [ -e $(SDCARDFILESDIR)/FETCH.D81 ];then rm $(SDCARDFILESDIR)/FETCH.D81 ;fi
-	$(CBMCONVERT) -D8 $(SDCARDFILESDIR)/FETCH.D81 graze.prg bbs-client.prg
+	if [ -e $(SDCARDFILESDIR)/GRAZE.D81 ];then rm $(SDCARDFILESDIR)/GRAZE.D81 ;fi
+	$(CBMCONVERT) -D8 $(SDCARDFILESDIR)/GRAZE.D81 graze.prg bbs-client.prg
 
 distpush:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCH.D81" -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/GRAZE.D81" -c "put $(SDCARDFILESDIR)/GRAZEM.M65" -c "put $(SDCARDFILESDIR)/GRAZEFNT.M65" -c "put $(SDCARDFILESDIR)/GRAZEH65.M65" -c "put $(SDCARDFILESDIR)/GRAZEERR.M65" -c "quit"
 
 distrun:	distpush
 	$(M65) -F -4 -r graze.prg
 
 distfastrun:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
+	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/GRAZEM.M65" -c "put $(SDCARDFILESDIR)/GRAZEFNT.M65" -c "put $(SDCARDFILESDIR)/GRAZEH65.M65" -c "put $(SDCARDFILESDIR)/GRAZEERR.M65" -c "quit"
 	$(M65) -F -4 -r graze.prg
 
 SUBMODULEUPDATE= \
