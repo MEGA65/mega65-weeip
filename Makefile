@@ -22,22 +22,24 @@ CBMCONVERT = cbmconvert
 M65 = m65
 M65FTP = mega65_ftp
 
-COMPILER=cc65
-CC65=  $(CC65_PREFIX)cc65
-COMPILERBIN=$(CC65)
-CA65=  $(CC65_PREFIX)ca65 --cpu 4510
-LD65=  $(CC65_PREFIX)ld65 -t none
-CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
-MAPFILE=	--mapfile $*.map
-HELPER=	src/helper-cc65.s
+# Uncomment to use CC65
+#COMPILER=cc65
+#CC65=  $(CC65_PREFIX)cc65
+#COMPILERBIN=$(CC65)
+#CA65=  $(CC65_PREFIX)ca65 --cpu 4510
+#LD65=  $(CC65_PREFIX)ld65 -t none
+#CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
+#MAPFILE=	--mapfile $*.map
+#HELPER=	src/helper-cc65.s
 
-#COMPILER=llvm
-#CC65=	llvm-mos/bin/mos-c64-clang -mcpu=mos45gs02
-#COMPILERBIN=	llvm-mos/bin/mos-c64-clang
-#LD65=	llvm-mos/bin/ld.lld
-#CL65=	llvm-mos/bin/mos-c64-clang -DLLVM -mcpu=mos45gs02
-#MAPFILE=	
-#HELPER=	src/helper-llvm.c
+# Uncomment to use LLVM
+COMPILER=llvm
+CC65=	llvm-mos/bin/mos-c64-clang -mcpu=mos45gs02
+COMPILERBIN=	llvm-mos/bin/mos-c64-clang
+LD65=	llvm-mos/bin/ld.lld
+CL65=	llvm-mos/bin/mos-c64-clang -DLLVM -mcpu=mos45gs02
+MAPFILE=	
+HELPER=	src/helper-llvm.c
 
 MEGA65LIBCDIR= $(SRCDIR)/mega65-libc
 MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
@@ -97,12 +99,19 @@ $(MEGA65LIBCLIB):
 	make -C src/mega65-libc $(COMPILER)
 	make -C src/mega65-libc clean
 
-$(CC65):
+$(CC65_PREFIX)cc65:
 	$(SUBMODULEUPDATE)
 	( cd cc65 && make -j 8 )
 
-$(LLVM):
-	$(SUBMODULEUPDATE)
+llvm-mos/bin/mos-c64-clang:	llvm-mos
+	touch $@ $<
+
+llvm-mos:  llvm-mos-linux.tar.xz
+	tar xf llvm-mos-linux.tar.xz
+	
+llvm-mos-linux.tar.xz:
+	wget https://github.com/llvm-mos/llvm-mos-sdk/releases/latest/download/llvm-mos-linux.tar.xz 
+
 
 hex2pcap:	src/hex2pcap.c Makefile
 	gcc -Wall -g -o hex2pcap src/hex2pcap.c
