@@ -237,11 +237,11 @@ void fetch_page(char *hostname,int port,char *path)
   // for shared interaction with other modules
   lcopy((unsigned short)hostname,0xf800,256);
   lcopy((unsigned short)path,0xf900,256);
-  fetch_shared_mem.host_str_addr=0xf800;
-  fetch_shared_mem.path_str_addr=0xf900;
-  fetch_shared_mem.port=port;
+  graze_shared_mem.host_str_addr=0xf800;
+  graze_shared_mem.path_str_addr=0xf900;
+  graze_shared_mem.port=port;
 
-  fetch_shared_mem.job_id++;
+  graze_shared_mem.job_id++;
   
   // Find . that separates extension
   ext=&path[strlen(path)-1];  
@@ -250,8 +250,8 @@ void fetch_page(char *hostname,int port,char *path)
   if ((ext[1]=='6'&&ext[2]=='5')&&(ext[0]==0x48||ext[0]==0x68)) {
 
     // Fetch H65 page
-    mega65_dos_exechelper("FETCHH65.M65");
-    printf("ERROR: Could not load FETCHH65.M65\n");
+    mega65_dos_exechelper("GRAZEH65.M65");
+    printf("ERROR: Could not load GRAZEH65.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
     
   } else {
@@ -260,8 +260,8 @@ void fetch_page(char *hostname,int port,char *path)
     // and try to display them. But that will be done in the FETCH_GETFETCH_DOWNLOADED state
     // in main.  For now, we just need to call FETCHGET.M65
 
-    mega65_dos_exechelper("FETCHGET.M65");
-    printf("ERROR: Could not load FETCHGET.M65\n");
+    mega65_dos_exechelper("GRAZEGET.M65");
+    printf("ERROR: Could not load GRAZEGET.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);    
   }
   
@@ -308,7 +308,7 @@ main(void)
   // Fetch doesn't try to use them as the start of a URL
   while(PEEK(0xD610)) POKE(0xD610,0);
   
-  i=read_file_from_sdcard("FETCHFNT.M65",0xf000);
+  i=read_file_from_sdcard("GRAZEFNT.M65",0xf000);
 
   // Get initial mouse position
   mouse_update_position(NULL,NULL);
@@ -318,10 +318,10 @@ main(void)
   mouse_set_bounding_box(24,50-20,320+23,250+20);
 
   // And export to shared state
-  fetch_shared_mem.mouse_x=160;
-  fetch_shared_mem.mouse_y=100;
+  graze_shared_mem.mouse_x=160;
+  graze_shared_mem.mouse_y=100;
 
-  fetch_shared_mem.job_id=0;
+  graze_shared_mem.job_id=0;
   
   // Enable sprite 0 as mouse pointer
   POKE(0xD015,0x01);
@@ -405,9 +405,9 @@ main(void)
       {
       case 1:
 	// Ask user to choose URL from history, or type one in
-	fetch_shared_mem.job_id++;
-	fetch_shared_mem.state=FETCH_SELECTURL;
-	mega65_dos_exechelper("FETCHERR.M65");
+	graze_shared_mem.job_id++;
+	graze_shared_mem.state=FETCH_SELECTURL;
+	mega65_dos_exechelper("GRAZEERR.M65");
 	break;
       case 2: fetch_page("192.168.178.20",8000,"/index.h65"); break;
       case 3: fetch_page("192.168.178.20",8000,"/showdown65.h65"); break;

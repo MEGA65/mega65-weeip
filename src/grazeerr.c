@@ -51,15 +51,20 @@ unsigned long block_addr,block_len;
 
 void update_mouse_position(unsigned char do_scroll);
 
-char fetchh65[]={0x46,0x45,0x54,0x43,0x48,0x48,'6','5','.',0x4d,'6','5',0};
-char fetchget[]={0x46,0x45,0x54,0x43,0x48,0x47,0x45,0x54,'.',0x4d,'6','5',0};
+char grazeh65[]={0x47,0x52,0x41,0x5A,0x45,0x48,'6','5','.',0x4d,'6','5',0};
+char grazeget[]={0x47,0x52,0x41,0x5A,0x45,0x47,0x45,0x54,'.',0x4d,'6','5',0};
 
-// Note: These will be interpretted as ASCII by fetch, but CC65 will encode them
+// Note: These will be interpretted as ASCII by graze, but CC65 will encode them
 // as PETSCII, so text must be upper case here, which will resolve to lower-case
+// With LLVM-mos, we have no such problem
 #define HOSTNAME_LEN 64
 #define PATH_LEN 128
 char hostname[HOSTNAME_LEN]="192.168.176.31";
+#ifdef LLVM
+char path[PATH_LEN]="/index.h65";
+#else
 char path[PATH_LEN]="/INDEX.H65";
+#endif
 int port=80;
 
 char httpcolonslashslash[8]={0x68,0x74,0x74,0x70,':','/','/',0};
@@ -96,7 +101,7 @@ void scroll_down(long distance)
   if (position<0) position=0;
   if (position>max_position) position=max_position;
 
-  screen_address_offset=(position/8)*(fetch_shared_mem.line_width*2);
+  screen_address_offset=(position/8)*(graze_shared_mem.line_width*2);
   if (screen_address_offset<0) screen_address_offset=0;
   if (screen_address_offset>screen_address_offset_max) screen_address_offset=screen_address_offset_max;  
 
@@ -123,7 +128,7 @@ void scroll_down(long distance)
 void fetch_page(char *hostname,int port,char *path)
 {
   /*
-    Call FETCHH65 for H65 pages, or FETCHGET for downloading files.
+    Call GRAZEH65 for H65 pages, or GRAZEGET for downloading files.
 
   */
 
@@ -136,11 +141,11 @@ void fetch_page(char *hostname,int port,char *path)
   // for shared interaction with other modules
   lcopy((unsigned short)hostname,0xf800,HOSTNAME_LEN);
   lcopy((unsigned short)path,0xf900,PATH_LEN);
-  fetch_shared_mem.host_str_addr=0xf800;
-  fetch_shared_mem.path_str_addr=0xf900;
-  fetch_shared_mem.port=port;
+  graze_shared_mem.host_str_addr=0xf800;
+  graze_shared_mem.path_str_addr=0xf900;
+  graze_shared_mem.port=port;
 
-  fetch_shared_mem.job_id++;
+  graze_shared_mem.job_id++;
   
   // Find . that separates extension
   ext=&path[strlen(path)-1];  
@@ -149,18 +154,18 @@ void fetch_page(char *hostname,int port,char *path)
   // CC65 PETSCII / ASCII mixing is a real pain, so we have to compare char by char here
   if (ext[1]=='6'&&ext[2]=='5'&&((ext[0]&0xdf)==0x48)) {
     // Fetch H65 page
-    mega65_dos_exechelper(fetchh65);
-    printf("ERROR: Could not load FETCHH65.M65\n");
+    mega65_dos_exechelper(grazeh65);
+    printf("ERROR: Could not load GRAZEH65.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
     
   } else {
     // Download file
     // XXX - We should check for .HTML, .PHP and other common extension for "normal" web pages,
     // and try to display them. But that will be done in the FETCH_GETFETCH_DOWNLOADED state
-    // in main.  For now, we just need to call FETCHGET.M65
+    // in main.  For now, we just need to call GRAZEGET.M65
 
-    mega65_dos_exechelper(fetchget);
-    printf("ERROR: Could not load FETCHGET.M65\n");
+    mega65_dos_exechelper(grazeget);
+    printf("ERROR: Could not load GRAZEGET.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);    
   }
   
@@ -250,13 +255,13 @@ void show_page(void)
   POKE(0xD015,0x01);
   
   // V400/H640 etc (do first due to hot regs)
-  POKE(0xD031,fetch_shared_mem.d031_bits);
+  POKE(0xD031,graze_shared_mem.d031_bits);
   // $D016 value
-  POKE(0xD016,fetch_shared_mem.d016_bits);
+  POKE(0xD016,graze_shared_mem.d016_bits);
   // Enable 16-bit text mode
-  POKE(0xD054,0x40+fetch_shared_mem.d054_bits);
+  POKE(0xD054,0x40+graze_shared_mem.d054_bits);
   // Line step
-  POKE(0xD058,fetch_shared_mem.line_width*2);
+  POKE(0xD058,graze_shared_mem.line_width*2);
   POKE(0xD059,0);
   // Set screen address to $12000
   POKE(0xD060,0x00);
@@ -266,7 +271,7 @@ void show_page(void)
   // Set colour RAM address
   POKE(0xD065,0x20);
   // Set charset address
-  POKE(0xD069,fetch_shared_mem.char_page);
+  POKE(0xD069,graze_shared_mem.char_page);
   // Display 51 rows, so that we can do smooth scrolling
   POKE(0xD07B,51-1);
   // Reset smooth scroll (assumes PAL)
@@ -275,9 +280,9 @@ void show_page(void)
   screen_address_offset_max=0;
   max_position=0;
   
-  if (fetch_shared_mem.line_count>50) {
-    screen_address_offset_max=(fetch_shared_mem.line_width*2)*(fetch_shared_mem.line_count-50);
-    max_position=(fetch_shared_mem.line_count-50)*8;
+  if (graze_shared_mem.line_count>50) {
+    screen_address_offset_max=(graze_shared_mem.line_width*2)*(graze_shared_mem.line_count-50);
+    max_position=(graze_shared_mem.line_count-50)*8;
   }
   
 #if 0
@@ -497,7 +502,7 @@ main(void)
 
   // Restore mouse position from IPC
   mouse_update_position(NULL,NULL);
-  mouse_warp_to(fetch_shared_mem.mouse_x,fetch_shared_mem.mouse_y);
+  mouse_warp_to(graze_shared_mem.mouse_x,graze_shared_mem.mouse_y);
   mouse_bind_to_sprite(0);
   mouse_update_pointer();
   mouse_set_bounding_box(24,50-20,320+23,250+20);
@@ -510,7 +515,7 @@ main(void)
   POKE(0x7F8,0x340/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x340,63);  
 
-  switch(fetch_shared_mem.state) {
+  switch(graze_shared_mem.state) {
   case FETCH_H65VIEW:
     // We loaded an H65 page, so display it, and allow interaction
     show_page();
@@ -518,20 +523,20 @@ main(void)
     // Copy page URL back to normal strings for our use, e.g., for reload command
     lcopy(0xf800,(unsigned short)hostname,HOSTNAME_LEN);
     lcopy(0xf900,(unsigned short)path,PATH_LEN);
-    port=fetch_shared_mem.port;
+    port=graze_shared_mem.port;
 
     interact_page();
     break;
 
   case FETCH_H65FETCH_HTTPERROR:
-    printf("\r\nHTTP error %d\r\n",fetch_shared_mem.http_result);
+    printf("\r\nHTTP error %d\r\n",graze_shared_mem.http_result);
     printf("Press almost any key to continue.\r\n");
     while(PEEK(0xD610)) POKE(0xD610,0); while(!PEEK(0xD610)) continue; POKE(0xD610,0);
 
     select_url();
     parse_url(0xD000 + 80);
 
-    // Call FETCHH65.M65 to fetch the page.
+    // Call GRAZEH65.M65 to fetch the page.
     fetch_page(hostname,port,path);
     break;    
         
@@ -551,7 +556,7 @@ main(void)
     select_url();
     parse_url(0xD000 + 80);
 
-    // Call FETCHH65.M65 to fetch the page.
+    // Call GRAZEH65.M65 to fetch the page.
     fetch_page(hostname,port,path);
     break;    
   }

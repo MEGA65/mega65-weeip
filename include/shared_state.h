@@ -5,7 +5,7 @@
 char cdecl read_file_from_sdcard(char *filename,unsigned long load_address);
 char cdecl mega65_dos_exechelper(char* filename);
 
-struct __fetch_shared_mem {
+struct __graze_shared_mem {
   #define FETCH_SELECTURL 0
   #define FETCH_H65VIEW 1
   #define FETCH_H65FETCH_DNSERROR 2
@@ -46,4 +46,4 @@ struct __fetch_shared_mem {
   
 };
 
-#define fetch_shared_mem     (*(struct __fetch_shared_mem*)0x3c0)
+#define  graze_shared_mem     (*(volatile struct __graze_shared_mem*)0x3c0)

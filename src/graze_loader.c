@@ -31,8 +31,8 @@ int main(void)
   // Fetch doesn't try to use them as the start of a URL
   while(PEEK(0xD610)) POKE(0xD610,0);
   
-  read_file_from_sdcard("FETCHFNT.M65",0xf000);
-  mega65_dos_exechelper("FETCHM.M65");
-  printf("ERROR: Could not load FETCHM.M65\n");
+  read_file_from_sdcard("GRAZEFNT.M65",0xf000);
+  mega65_dos_exechelper("GRAZEM.M65");
+  printf("ERROR: Could not load GRAZEM.M65\n");
   return 0;
 }

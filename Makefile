@@ -48,7 +48,7 @@ KICKC= ../kickc/bin/kickc.sh
 
 TCPSRCS=	src/arp.c src/checksum.c src/eth.c src/nwk.c src/socket.c src/task.c src/dns.c src/dhcp.c
 
-PRGS= fetch.prg fetchm.prg fetcherr.prg fetchh65.prg haustierbegriff.prg ethtest.prg
+PRGS= graze.prg grazem.prg grazeerr.prg grazeh65.prg haustierbegriff.prg ethtest.prg
 MAPS= $(subst prg,map,$(PRGS))
 
 all:	$(PRGS) pages
@@ -63,22 +63,22 @@ clean:
 dist:	all
 	mkdir -p $(SDCARDFILESDIR)
 	cp mega65-tools/bin/asciifont.bin $(SDCARDFILESDIR)/FETCHFNT.M65
-	cp fetchm.prg $(SDCARDFILESDIR)/FETCHM.M65
-	cp fetcherr.prg $(SDCARDFILESDIR)/FETCHERR.M65
-	cp fetchh65.prg $(SDCARDFILESDIR)/FETCHH65.M65
+	cp grazem.prg $(SDCARDFILESDIR)/FETCHM.M65
+	cp grazeerr.prg $(SDCARDFILESDIR)/FETCHERR.M65
+	cp grazeh65.prg $(SDCARDFILESDIR)/FETCHH65.M65
 	cp haustierbegriff.prg bbs-client.prg
 	if [ -e $(SDCARDFILESDIR)/FETCH.D81 ];then rm $(SDCARDFILESDIR)/FETCH.D81 ;fi
-	$(CBMCONVERT) -D8 $(SDCARDFILESDIR)/FETCH.D81 fetch.prg bbs-client.prg
+	$(CBMCONVERT) -D8 $(SDCARDFILESDIR)/FETCH.D81 graze.prg bbs-client.prg
 
 distpush:	dist
 	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCH.D81" -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
 
 distrun:	distpush
-	$(M65) -F -4 -r fetch.prg
+	$(M65) -F -4 -r graze.prg
 
 distfastrun:	dist
 	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/FETCHM.M65" -c "put $(SDCARDFILESDIR)/FETCHFNT.M65" -c "put $(SDCARDFILESDIR)/FETCHH65.M65" -c "put $(SDCARDFILESDIR)/FETCHERR.M65" -c "quit"
-	$(M65) -F -4 -r fetch.prg
+	$(M65) -F -4 -r graze.prg
 
 SUBMODULEUPDATE= \
 	@if [ -z "$(DO_SMU)" ] || [ "$(DO_SMU)" -eq "1" ] ; then \
@@ -115,29 +115,31 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-fetchm.prg: $(CC65) src/fetchm.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+<<<<<<< HEAD
+grazem.prg: src/grazem.c $(CC65) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
-	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map src/fetchm.c $(MEGA65LIBCLIB) src/helper.s
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-fetcherr.prg: $(CC65) src/fetcherr.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+grazeerr.prg: src/grazeerr.c $(CC65) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
-	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map src/fetcherr.c $(MEGA65LIBCLIB) src/helper.s
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-fetchh65.prg: $(CC65) $(TCPSRCS) src/fetchh65.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
+grazeh65.prg: src/grazeh65.c $(CC65) $(TCPSRCS) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
-	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map $(TCPSRCS) src/fetchh65.c $(MEGA65LIBCLIB) src/helper.s
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $(TCPSRCS) $< $(MEGA65LIBCLIB) $(HELPER)
 
-fetch.prg: $(CC65) src/fetch.c src/helper.s include/shared_state.h $(MEGA65LIBCLIB)
-	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ --mapfile $*.map src/fetch.c $(MEGA65LIBCLIB) src/helper.s
+graze.prg: src/graze.c $(CC65) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-ethtest.prg: $(CC65) $(TCPSRCS) src/ethtest.c src/helper.s $(MEGA65LIBCLIB)
+ethtest.prg: $(CC65) $(TCPSRCS) src/ethtest.c $(HELPER) $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
-	$(CL65) -DENABLE_ICMP=1 $(MEGA65LIBCINC) -I include -O -o ethtest.prg --mapfile $*.map $(TCPSRCS) src/ethtest.c src/helper.s $(MEGA65LIBCLIB)
+	$(CL65) -DENABLE_ICMP=1 $(MEGA65LIBCINC) -I include -O -o ethtest.prg $(MAPFILE) $(TCPSRCS) $< $(HELPER) $(MEGA65LIBCLIB)
 
 fetchkc.prg: $(TCPSRCS) src/fetch.c $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
+	$(KICKC) -t mega65_c64 -a -I $(SRCDIR)/mega65-libc/kickc/include -I include -L src -L $(SRCDIR)/mega65-libc/kickc/src src/graze.c
 
-haustierbegriff.prg: $(CC65) $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
+haustierbegriff.prg: src/haustierbegriff.c $(CC65) $(TCPSRCS) $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
-	$(CL65) $(MEGA65LIBCINC) -I include -Os -o haustierbegriff.prg --mapfile $*.map $(TCPSRCS) src/haustierbegriff.c $(MEGA65LIBCLIB)
+	$(CL65) $(MEGA65LIBCINC) -I include -Os -o haustierbegriff.prg $(MAPFILE) $(TCPSRCS) $< $(MEGA65LIBCLIB)
 

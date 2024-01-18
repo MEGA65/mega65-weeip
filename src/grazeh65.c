@@ -47,10 +47,10 @@ unsigned char mouse_pointer_sprite[63]={
 };
 
 // Names of helper programs
-// FETCHM.M65
-char fetchmdotm65[]={0x46,0x45,0x54,0x43,0x48,0x4d,0x2e,0x4d,0x36,0x35,0};
-// FETCHERR.M65
-char fetcherrdotm65[]={0x46,0x45,0x54,0x43,0x48,0x45,0x52,0x52,0x2e,0x4d,0x36,0x35,0};
+// GRAZEM.M65
+char grazemdotm65[]={0x47,0x52,0x41,0x5A,0x45,0x4d,0x2e,0x4d,0x36,0x35,0};
+// GRAZEERR.M65
+char grazeerrdotm65[]={0x47,0x52,0x41,0x5A,0x45,0x45,0x52,0x52,0x2e,0x4d,0x36,0x35,0};
 
 // Wait for key press before starting
 //#define DEBUG_WAIT
@@ -88,14 +88,14 @@ byte_t comunica (byte_t p)
 	 +(lpeek(s->rx+10)-'0')*10
 	 +(lpeek(s->rx+11)-'0')*1;
        
-       fetch_shared_mem.http_result=http_result;
+       graze_shared_mem.http_result=http_result;
        if (http_result<200||http_result>209) {
 	 // Failed to fetch a page due to HTTP error.
 	 
-	 fetch_shared_mem.job_id++;
-	 fetch_shared_mem.state=FETCH_H65FETCH_HTTPERROR;
-	 mega65_dos_exechelper(fetchmdotm65);
-	 printf("ERROR: Could not load FETCHM.M65\n");
+	 graze_shared_mem.job_id++;
+	 graze_shared_mem.state=FETCH_H65FETCH_HTTPERROR;
+	 mega65_dos_exechelper(grazemdotm65);
+	 printf("ERROR: Could not load GRAZEM.M65\n");
 	 while(1) POKE(0xd020,PEEK(0xd020)+1);
 	 
        }
@@ -159,17 +159,17 @@ byte_t comunica (byte_t p)
 	    }
 	    break;
 	  case 3: break; // Ignore minor version
-	  case 4: fetch_shared_mem.line_width=c; break; // line width
-	  case 5: fetch_shared_mem.d054_bits=c; break; // $D054 bits
-	  case 6: fetch_shared_mem.line_display_width=c; break;
-	  case 7: fetch_shared_mem.d031_bits=c; break;
-	  case 8: fetch_shared_mem.line_count=c; break;
-	  case 9: fetch_shared_mem.line_count|=(((unsigned short)c)<<8); break;
-	  case 10: fetch_shared_mem.border_colour=c; break;
-	  case 11: fetch_shared_mem.screen_colour=c; break;
-	  case 12: fetch_shared_mem.text_colour=c; break;
-	  case 13: fetch_shared_mem.char_page=c; break;
-	  case 14: fetch_shared_mem.d016_bits=c; break;
+	  case 4: graze_shared_mem.line_width=c; break; // line width
+	  case 5: graze_shared_mem.d054_bits=c; break; // $D054 bits
+	  case 6: graze_shared_mem.line_display_width=c; break;
+	  case 7: graze_shared_mem.d031_bits=c; break;
+	  case 8: graze_shared_mem.line_count=c; break;
+	  case 9: graze_shared_mem.line_count|=(((unsigned short)c)<<8); break;
+	  case 10: graze_shared_mem.border_colour=c; break;
+	  case 11: graze_shared_mem.screen_colour=c; break;
+	  case 12: graze_shared_mem.text_colour=c; break;
+	  case 13: graze_shared_mem.char_page=c; break;
+	  case 14: graze_shared_mem.d016_bits=c; break;
 	    // Block header: Address
 #define HEADSKIP 126
 	  case HEADSKIP+0: ((char *)&block_addr)[0]=c; break;
@@ -284,7 +284,7 @@ void prepare_network(void)
   task_add(eth_task, 0, 0,"eth");
 
   // Do DHCP auto-configuration
-  dhcp_configured=fetch_shared_mem.dhcp_configured;
+  dhcp_configured=graze_shared_mem.dhcp_configured;
   if (!dhcp_configured) {
     //    printf("\nRequesting IP...\n");
     dhcp_autoconfig();
@@ -294,17 +294,17 @@ void prepare_network(void)
       update_mouse_position();
     }
     // Store DHCP lease information for later recall
-    fetch_shared_mem.dhcp_configured=1;
-    fetch_shared_mem.dhcp_myip=ip_local;
-    fetch_shared_mem.dhcp_dnsip=ip_dnsserver;
-    fetch_shared_mem.dhcp_netmask=ip_mask;
-    fetch_shared_mem.dhcp_gatewayip=ip_gate;
+    graze_shared_mem.dhcp_configured=1;
+    graze_shared_mem.dhcp_myip=ip_local;
+    graze_shared_mem.dhcp_dnsip=ip_dnsserver;
+    graze_shared_mem.dhcp_netmask=ip_mask;
+    graze_shared_mem.dhcp_gatewayip=ip_gate;
   } else {
     // Restore DHCP lease configuration
-    ip_local=fetch_shared_mem.dhcp_myip;
-    ip_dnsserver=fetch_shared_mem.dhcp_dnsip;
-    ip_mask=fetch_shared_mem.dhcp_netmask;
-    ip_gate=fetch_shared_mem.dhcp_gatewayip;
+    ip_local=graze_shared_mem.dhcp_myip;
+    ip_dnsserver=graze_shared_mem.dhcp_dnsip;
+    ip_mask=graze_shared_mem.dhcp_netmask;
+    ip_gate=graze_shared_mem.dhcp_gatewayip;
     // Re-constitute ip_broadcast from IP address and mask
     for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
   }
@@ -369,10 +369,10 @@ restart_fetch:
   } else {
     printf("DNS failed.\n");
 
-    fetch_shared_mem.job_id++;
-    fetch_shared_mem.state=FETCH_H65FETCH_DNSERROR;
-    mega65_dos_exechelper(fetchmdotm65);
-    printf("ERROR: Could not load FETCHM.M65\n");
+    graze_shared_mem.job_id++;
+    graze_shared_mem.state=FETCH_H65FETCH_DNSERROR;
+    mega65_dos_exechelper(grazemdotm65);
+    printf("ERROR: Could not load GRAZEM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
     
   }
@@ -393,10 +393,10 @@ restart_fetch:
 
   if (disconnected) {
     printf("Failed to connect.\n");
-    fetch_shared_mem.job_id++;
-    fetch_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
-    mega65_dos_exechelper(fetchmdotm65);
-    printf("ERROR: Could not load FETCHM.M65\n");
+    graze_shared_mem.job_id++;
+    graze_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
+    mega65_dos_exechelper(grazemdotm65);
+    printf("ERROR: Could not load GRAZEM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
   }
   printf("Connected.\n");
@@ -421,11 +421,11 @@ restart_fetch:
         socket_disconnect();
 
 	// Return to main program, reporting error
-	fetch_shared_mem.job_id++;
-	fetch_shared_mem.state=FETCH_H65FETCH_ABORTED;
+	graze_shared_mem.job_id++;
+	graze_shared_mem.state=FETCH_H65FETCH_ABORTED;
 	
-	mega65_dos_exechelper(fetchmdotm65);
-	printf("ERROR: Could not load FETCHM.M65\n");
+	mega65_dos_exechelper(grazemdotm65);
+	printf("ERROR: Could not load GRAZEM.M65\n");
 	while(1) POKE(0xd020,PEEK(0xd020)+1);
 	
     }
@@ -446,17 +446,17 @@ restart_fetch:
   }
   if (h65_error!=H65_DONE) {
     printf("Error %d occurred.\n",h65_error);
-    fetch_shared_mem.job_id++;
-    fetch_shared_mem.state=FETCH_PAGEFETCHERROR;
-    mega65_dos_exechelper(fetcherrdotm65);
+    graze_shared_mem.job_id++;
+    graze_shared_mem.state=FETCH_PAGEFETCHERROR;
+    mega65_dos_exechelper(grazeerrdotm65);
   }
   
   //  printf("Disconnected.\n");
   // Tell main module to display the page
-  fetch_shared_mem.job_id++;
-  fetch_shared_mem.state=FETCH_H65VIEW;
-  mega65_dos_exechelper(fetchmdotm65);
-  printf("ERROR: Could not load FETCHM.M65\n");
+  graze_shared_mem.job_id++;
+  graze_shared_mem.state=FETCH_H65VIEW;
+  mega65_dos_exechelper(grazemdotm65);
+  printf("ERROR: Could not load GRAZEM.M65\n");
   while(1) POKE(0xd020,PEEK(0xd020)+1);
 
 }
@@ -533,7 +533,7 @@ main(void)
 
   // Get initial mouse position
   mouse_update_position(NULL,NULL);
-  mouse_warp_to(fetch_shared_mem.mouse_x,fetch_shared_mem.mouse_y);
+  mouse_warp_to(graze_shared_mem.mouse_x,graze_shared_mem.mouse_y);
   
   mouse_bind_to_sprite(0);
   mouse_update_pointer();
@@ -553,12 +553,12 @@ main(void)
   POKE(0x7F8,0x340/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x340,63);  
 
-  // fetch_page exits to FETCHM by itself, and cannot return here
-  lcopy(fetch_shared_mem.host_str_addr,(unsigned short)hostname,256);
-  lcopy(fetch_shared_mem.path_str_addr,(unsigned short)path,256);
+  // fetch_page exits to GRAZEM by itself, and cannot return here
+  lcopy(graze_shared_mem.host_str_addr,(unsigned short)hostname,256);
+  lcopy(graze_shared_mem.path_str_addr,(unsigned short)path,256);
 
   fetch_page(hostname,
-	     fetch_shared_mem.port,
+	     graze_shared_mem.port,
 	     path);
 
   // Show if something has gone wrong
