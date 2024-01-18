@@ -1,3 +1,0 @@
-# Simple script that prepares and runs a test of the fetch HTTP-based H65 browser
-# for the mega65
-( cd ../mega65-tools ; make bin/md2h65 ; cp bin/md2h65 ~/bin/ ) && rm fetch.prg ; make fetch.prg && ( cd assets ; md2h65 index.md index.h65  ; md2h65 fetch.md fetch.h65 ; md2h65 megawat.md megawat.h65 ; md2h65 lorumipsum.md lorumipsum.h65 ; md2h65 devkit.md devkit.h65 ; md2h65 showdown65.md showdown65.h65 ) && m65 -F -4 -r fetch.prg && ( cd assets ; python3 -m http.server 8000  )

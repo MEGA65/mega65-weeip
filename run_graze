@@ -1,0 +1,3 @@
+# Simple script that prepares and runs a test of the graze HTTP-based H65 browser
+# for the mega65
+( cd ../mega65-tools ; make bin/md2h65 ; cp bin/md2h65 ~/bin/ ) && rm graze.prg ; make graze.prg && ( cd assets ; md2h65 index.md index.h65  ; md2h65 graze.md graze.h65 ; md2h65 megawat.md megawat.h65 ; md2h65 lorumipsum.md lorumipsum.h65 ; md2h65 devkit.md devkit.h65 ; md2h65 showdown65.md showdown65.h65 ) && m65 -F -4 -r graze.prg && ( cd assets ; python3 -m http.server 8000  )
