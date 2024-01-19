@@ -22,6 +22,10 @@ CBMCONVERT = cbmconvert
 M65 = m65
 M65FTP = mega65_ftp
 
+MEGA65LIBCDIR= $(SRCDIR)/mega65-libc
+MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
+MEGA65LIBCINC= -I $(MEGA65LIBCDIR)/include
+
 # Uncomment to use CC65
 #COMPILER=cc65
 #CC65=  $(CC65_PREFIX)cc65
@@ -31,6 +35,7 @@ M65FTP = mega65_ftp
 #CL65=  $(CC65_PREFIX)cl65 --config src/tests/vicii.cfg
 #MAPFILE=	--mapfile $*.map
 #HELPER=	src/helper-cc65.s
+#MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
 
 # Uncomment to use LLVM
 COMPILER=llvm
@@ -39,11 +44,8 @@ COMPILERBIN=	llvm-mos/bin/mos-c64-clang
 LD65=	llvm-mos/bin/ld.lld
 CL65=	llvm-mos/bin/mos-c64-clang -DLLVM -mcpu=mos45gs02
 MAPFILE=	
-HELPER=	src/helper-llvm.c
-
-MEGA65LIBCDIR= $(SRCDIR)/mega65-libc
-MEGA65LIBCLIB= $(MEGA65LIBCDIR)/libmega65.a
-MEGA65LIBCINC= -I $(MEGA65LIBCDIR)/include
+HELPER=	src/helper-llvm.s
+MEGA65LIBCLIB= $(MEGA65LIBCDIR)/build/src/libmega65libc.a
 
 SUBDEPENDS=	mega65-tools/bin/md2h65 \
 		mega65-tools/bin/asciifont.bin
@@ -108,7 +110,7 @@ llvm-mos/bin/mos-c64-clang:	llvm-mos
 
 llvm-mos:  llvm-mos-linux.tar.xz
 	tar xf llvm-mos-linux.tar.xz
-	
+
 llvm-mos-linux.tar.xz:
 	wget https://github.com/llvm-mos/llvm-mos-sdk/releases/latest/download/llvm-mos-linux.tar.xz 
 
