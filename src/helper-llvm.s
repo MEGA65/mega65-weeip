@@ -145,10 +145,11 @@ read_file_from_sdcard:
 
 	;; Get Load address into $00ZZYYXX
 	pla
-	tax
-	ply
-	lda __rc5
+	tay
+	plx
+	lda <__rc4
 	taz
+	lda #$00
 
 	;; Ask hypervisor to do the load
 	LDA #$36
