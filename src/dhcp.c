@@ -10,7 +10,7 @@
 #include "mega65/memory.h"
 #include "mega65/random.h"
 
-// #define DEBUG_DHCP
+#define DEBUG_DHCP
 
 // Don't request DHCP retries too quickly
 // as the network tick loop may be called
@@ -146,7 +146,7 @@ byte_t dhcp_reply_handler (byte_t p)
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
 #ifdef DEBUG_DHCP
-      //      printf("DHCP configuration complete.\n");
+      printf("DHCP configuration complete.\n");
 #endif
       socket_release(dhcp_socket);
     } else {
@@ -205,6 +205,10 @@ void dhcp_send_query_or_request(unsigned char requestP)
   unsigned char i;
   IPV4 ip_broadcast;
 
+#ifdef DEBUG_DHCP
+  printf("sENDING dhcp REQUEST...\n");
+#endif
+  
   socket_select(dhcp_socket);
   for(i=0;i<4;i++) ip_broadcast.b[i]=255;
   socket_connect(&ip_broadcast,67);
