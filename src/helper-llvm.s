@@ -55,6 +55,7 @@ lfr1:	lda loadfile_routine,x
 	// IMPORTANT: The following routine must be fully relocatable, and less than $FF bytes
 	// in length
 loadfile_routine:
+
 	;; Put dummy routine in at $080d, so that we can tell if it didn't load
 	lda #$ee
 	sta $080d
@@ -156,7 +157,7 @@ process_digit:
 got_digits:	
 
 	;; Jump to JMP instruction that points to entry point
-	jmp $0400
+	jmp $0100
 
 loadfile_routine_end:
 
