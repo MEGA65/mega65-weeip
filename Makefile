@@ -100,7 +100,6 @@ $(SUBDEPENDS):
 $(MEGA65LIBCLIB):
 	$(SUBMODULEUPDATE)
 	make -C src/mega65-libc $(COMPILER)
-	make -C src/mega65-libc clean
 
 $(CC65_PREFIX)cc65:
 	$(SUBMODULEUPDATE)
