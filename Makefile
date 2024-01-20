@@ -1,7 +1,7 @@
 .SUFFIXES: .bin .prg
 .PRECIOUS:	%.ngd %.ncd %.twx vivado/%.xpr bin/%.bit bin/%.mcs bin/%.M65 bin/%.BIN
 
-USBPORT=	/dev/ttyUSB2
+USBPORT=	/dev/ttyUSB1
 
 ASSETS=		assets
 SRCDIR=		src
@@ -77,7 +77,7 @@ dist:	all
 	$(CBMCONVERT) -D8 $(SDCARDFILESDIR)/GRAZE.D81 graze.prg bbs-client.prg
 
 distpush:	dist
-	$(M65) -F ; $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/GRAZE.D81" -c "put $(SDCARDFILESDIR)/GRAZEM.M65" -c "put $(SDCARDFILESDIR)/GRAZEFNT.M65" -c "put $(SDCARDFILESDIR)/GRAZEH65.M65" -c "put $(SDCARDFILESDIR)/GRAZEERR.M65" -c "quit"
+	$(M65) -F ; sleep 2 ;  $(M65FTP) -l $(USBPORT) -c "put $(SDCARDFILESDIR)/GRAZE.D81" -c "put $(SDCARDFILESDIR)/GRAZEM.M65" -c "put $(SDCARDFILESDIR)/GRAZEFNT.M65" -c "put $(SDCARDFILESDIR)/GRAZEH65.M65" -c "put $(SDCARDFILESDIR)/GRAZEERR.M65" -c "quit"
 
 distrun:	distpush
 	$(M65) -F -4 -r graze.prg
