@@ -65,6 +65,7 @@ clean:
 	rm -f $(PRGS)
 	rm -f bbs-client.prg
 	rm -f $(MAPS)
+	rm -f $(MEGA65LIBCLIB)
 
 dist:	all
 	mkdir -p $(SDCARDFILESDIR)
