@@ -1,4 +1,6 @@
 
+	.altmacro
+	
 	.globl mega65_dos_attachd81
 	.globl mega65_dos_chdir
 	.globl mega65_dos_exechelper
@@ -38,19 +40,20 @@ mega65_dos_exechelper:
 	;; the program when loaded.
 	ldx #$00
 lfr1:	lda loadfile_routine,x
-	sta $0200,x
+	sta $0400,x
 	inx
-	cpx #$80
 	bne lfr1
 
 	;; Call helper routine
-	jsr $0200
+	jsr $0400
 	
 	;; as this is effectively like exec() on unix, it can only return an error
 	LDA #$01
 	
 	RTS
 
+	// IMPORTANT: The following routine must be fully relocatable, and less than $FF bytes
+	// in length
 loadfile_routine:
 	;; Put dummy routine in at $080d, so that we can tell if it didn't load
 	lda #$ee
@@ -81,9 +84,85 @@ loadfile_routine:
 	sta $2d
 	lda #>$bfff
 	sta $2e
+
+	;; Clear start address accumulator
+	lda #$4c
+	sta $0100
+	lda #$00
+	sta $0101
+	sta $0102
 	
-	jmp $080d
-	rts
+	;; Now find the SYS and entry point
+	LDX #$03
+find_sys:	
+	lda $0800,x
+	inx
+	cmp #$9e
+	bne find_sys
+
+	;; skip any leading spaces
+skip_leading_spaces:	
+	lda $0800,x
+	cmp #$20
+	bne spaces_skipped
+	inx
+	bne skip_leading_spaces
+
+spaces_skipped:	
+process_digit:
+	lda $0800,x
+	cmp #$39
+	bcs got_digits
+
+	;; Multiply accumulated value by 10
+
+	;; multiply by 2
+	asw $0101
+	;; stash in $0103-$0104
+	lda $0101
+	sta $0103
+	lda $0102
+	sta $0104
+	;; multiply by 4, to get x8
+	asw $0101
+	asw $0101
+
+	;; Now add the x2 value
+	lda $0101
+	clc
+	adc $0103
+	sta $0101
+	lda $0102
+	adc $0104
+	sta $0102
+
+	;; Now add the digit
+	lda $0800,x
+	and #$09
+	clc
+	adc $0101
+	sta $0101
+	lda $0102
+	adc #0
+	sta $0102
+
+	inx
+	bne process_digit
+
+	clc
+got_digits:	
+	inc $d020
+	bcc got_digits
+
+	;; Jump to JMP instruction that points to entry point
+	jmp $0400
+
+loadfile_routine_end:
+
+.if ((loadfile_routine_end-loadfile_routine)>255)
+	.error "load_routine is too long. Max length = 255."
+.endif
+
 	
 mega65_dos_attachd81:
 	;; char mega65_dos_attachd81(char *image_name);
