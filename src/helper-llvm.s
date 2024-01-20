@@ -108,11 +108,15 @@ skip_leading_spaces:
 	inx
 	bne skip_leading_spaces
 
-spaces_skipped:	
+spaces_skipped:
+	
 process_digit:
+	
 	lda $0800,x
 	cmp #$39
 	bcs got_digits
+	cmp #$2f
+	bcc got_digits
 
 	;; Multiply accumulated value by 10
 
@@ -138,7 +142,7 @@ process_digit:
 
 	;; Now add the digit
 	lda $0800,x
-	and #$09
+	and #$0f
 	clc
 	adc $0101
 	sta $0101
@@ -149,10 +153,7 @@ process_digit:
 	inx
 	bne process_digit
 
-	clc
 got_digits:	
-	inc $d020
-	bcc got_digits
 
 	;; Jump to JMP instruction that points to entry point
 	jmp $0400
