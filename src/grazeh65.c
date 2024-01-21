@@ -126,7 +126,11 @@ byte_t comunica (byte_t p)
 		&&last_bytes[2]==0x35
 		&&last_bytes[3]==0xFF) {
 	      page_parse_state=2-1; // gets incremented below
+#ifdef __llvm__
+	      printf("\nfOUND h65 HEADER.\n");
+#else
 	      printf("\nFound H65 header.\n");
+#endif
 	      // printf("+");
 	    }
 	    break;
@@ -312,8 +316,12 @@ restart_fetch:
     //    printf("Resolved to %d.%d.%d.%d:%d\n",
     //	   a.b[0],a.b[1],a.b[2],a.b[3],port);
   } else {
+#ifdef __llvm__
+    printf("dns FAILED.\n");
+#else
     printf("DNS failed.\n");
-
+#endif
+    
     graze_shared_mem.job_id++;
     graze_shared_mem.state=FETCH_H65FETCH_DNSERROR;
     mega65_dos_exechelper(grazemdotm65);
@@ -327,9 +335,17 @@ restart_fetch:
   // socket_set_rx_buffer(buf, 2048);
   // 128KB of Attic RAM for TCP RX buffer if present
   // XXX - Do a proper auto-detection of the hyperRAM
+#ifdef __llvm__
+  printf("sETTING UP tcp BUFFER\n");
+#else
   printf("Setting up buffer\n");
+#endif
   socket_set_rx_buffer(0x8000000L, 128*1024L);
+#ifdef __llvm__
+  printf("cONNECTING...\n");
+#else
   printf("Connecting...\n");
+#endif
   if (!socket_connect(&a,port)) {
     printf("connect() failed.\n");
     disconnected=1;
@@ -337,14 +353,22 @@ restart_fetch:
   }	   
 
   if (disconnected) {
+#ifdef __llvm__
+    printf("fAILED TO CONNECT.\n");
+#else
     printf("Failed to connect.\n");
+#endif
     graze_shared_mem.job_id++;
     graze_shared_mem.state=FETCH_H65FETCH_NOCONNECTION;
     mega65_dos_exechelper(grazemdotm65);
     printf("ERROR: Could not load GRAZEM.M65\n");
     while(1) POKE(0xd020,PEEK(0xd020)+1);
   }
+#ifdef __llvm__
+  printf("cONNECTED.\n");
+#else
   printf("Connected.\n");
+#endif
   
   // Mark connection as not yet having found a page in the stream.
   h65_error=H65_COULDNOTCONNECT;
