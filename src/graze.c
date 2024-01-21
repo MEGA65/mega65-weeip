@@ -206,6 +206,8 @@ void fetch_page(char *hostname,int port,char *path)
   POKE(0xD027,0x01); // make hourglass white
   lcopy((unsigned long)&mouse_hourglass_sprite,0x340,63);
 
+  c64_40columns();
+  
   // Setup URL port and strings at $F800 and $F900
   // for shared interaction with other modules
   lcopy((unsigned short)hostname,0xf800,256);
