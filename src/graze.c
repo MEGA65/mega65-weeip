@@ -296,7 +296,7 @@ main(void)
   POKE(0xD015,0x01);
   // Sprite data from casette buffer
   POKE(0x7F8,0x340/0x40);
-  lcopy((unsigned long)&mouse_pointer_sprite,0x340,63);  
+  lcopy((unsigned long)&mouse_hourglass_sprite,0x340,63);  
 
   // Loading files from SDcard corrupts first line of screen at $0400
   // Disable screen while we get ourselves organised...
@@ -333,9 +333,11 @@ main(void)
   // Do DHCP config, and remember the configuration for helper programs
   graze_shared_mem.dhcp_configured=0;
   prepare_network();
-
+  
   // XXX - Load URL history from disk image?
 
+  lcopy((unsigned long)&mouse_pointer_sprite,0x340,63);  
+  
   // Setup screen and show welcome message.
   POKE(0xD020,0);
   POKE(0xD021,0);
