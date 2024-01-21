@@ -20,29 +20,10 @@
 
 #include "shared_state.h"
 
-unsigned char mouse_pointer_sprite[63]={
-0xfC,0x00,0x00,
-0xf8,0x00,0x00,
-0xf0,0x00,0x00,
-0xf8,0x00,0x00,
-0xdc,0x00,0x00,
-0x8e,0x00,0x00,
-0x07,0x00,0x00,
-0x03,0x80,0x00,
-0x01,0xc0,0x00,
-0x00,0x80,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00
-};
+#define GRAZE_MOUSE_POINTERS
+#define GRAZE_PREPARE_NETWORK
+#define GRAZE_C64_40COLUMNS
+#include "../src/graze_common.c"
 
 // Wait for key press before starting
 //#define DEBUG_WAIT
@@ -52,16 +33,6 @@ unsigned long block_addr,block_len;
 unsigned short line_count;
 
 void update_mouse_position(unsigned char do_scroll);
-
-void c64_40columns(void)
-{
-  // Reset video mode to C64 40 column mode while loading
-  POKE(0xD054,0);
-  POKE(0xD031,0);
-  POKE(0xD011,0x1B);
-  POKE(0xD016,0xC8);
-  POKE(0xD018,0x16);
-}
 
 unsigned char text_row = 0;
 unsigned short pixel_addr;
@@ -87,10 +58,10 @@ void h640_text_mode(void)
   POKE(0xD060, 0x00);
   POKE(0xD061, 0xc0);
   POKE(0xD062, 0x00);
-
+  
   // Use the ASCII font we have loaded
   POKE(0xD069,0xf0);
-  
+
   // 50 lines of text
   POKE(0xD07B, 50);
 
@@ -307,8 +278,6 @@ main(void)
   // Clear any queued key presses in $D610, so that
   // Fetch doesn't try to use them as the start of a URL
   while(PEEK(0xD610)) POKE(0xD610,0);
-  
-  i=read_file_from_sdcard("GRAZEFNT.M65",0xf000);
 
   // Get initial mouse position
   mouse_update_position(NULL,NULL);
@@ -329,9 +298,41 @@ main(void)
   POKE(0x7F8,0x340/0x40);
   lcopy((unsigned long)&mouse_pointer_sprite,0x340,63);  
 
+  // Loading files from SDcard corrupts first line of screen at $0400
+  // Disable screen while we get ourselves organised...
+  // (actually make it all black, so we can still show sprites)
+  lfill(0xFF80000UL,0x00,1000); // all chars black
+  POKE(0xD020UL,0x00); POKE(0xD021UL,0x00); // screen black
+
+  // Load font
+  i=read_file_from_sdcard("GRAZEFNT.M65",0xf000);
+  
+  // Then clear screen and set colour to green to allow showing of
+  // network config process
+  lfill(0xFF80000,0x0a,1000);
+  lfill(0x0400,0x20,1000);
+  POKE(0x286,0x0d);
+  
   // Clear out URL history area
   lfill(0xD000L,0x20,4096);
   lcopy((unsigned long)type_url,0xD000L,19);
+
+  // Give ethernet interface time to auto negotiate etc
+#ifdef __llvm__
+  printf("%c%ceNABLING eTHERNET...\n",0x93,0x0e);
+#else
+  printf("%c%cEnabling Ethernet...\n",0x93,0x0e);
+#endif
+  eth_init();
+#ifdef __llvm__
+  printf("cONFIGURING nETWORK...\n");
+#else
+  printf("Configuring network...\n");
+#endif
+  
+  // Do DHCP config, and remember the configuration for helper programs
+  graze_shared_mem.dhcp_configured=0;
+  prepare_network();
 
   // XXX - Load URL history from disk image?
 

@@ -143,8 +143,8 @@ grazeh65.prg: src/grazeh65.c $(COMPILERBIN) $(TCPSRCS) $(HELPER) include/shared_
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $(TCPSRCS) $< $(MEGA65LIBCLIB) $(HELPER)
 
-graze.prg: src/graze.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
-	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
+graze.prg: src/graze.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(TCPSRCS) $(MEGA65LIBCLIB)
+	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(TCPSRCS) $(MEGA65LIBCLIB) $(HELPER)
 
 ethtest.prg: src/ethtest.c $(COMPILERBIN) $(TCPSRCS) $(HELPER) $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
