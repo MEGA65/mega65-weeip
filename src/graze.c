@@ -362,7 +362,7 @@ main(void)
   println_text80(1,"");
   println_text80(0x0d,"G - Type in or choose from your browser history a URL to Goto an H65 web page");
   println_text80(1,"");
-  println_text80(0x0d,"1 - Goto HTTP://192.168.178.20:8000/index.h65");
+  println_text80(0x0d,"1 - Goto HTTP://10.42.0.1/index.h65");
   println_text80(1,"");
   println_text80(0x0d,"2 - Goto HTTP://192.168.178.20:8000/showdown65.h65");
   println_text80(1,"");
@@ -409,7 +409,7 @@ main(void)
 	graze_shared_mem.state=FETCH_SELECTURL;
 	mega65_dos_exechelper("GRAZEERR.M65");
 	break;
-      case 2: fetch_page("192.168.178.20",8000,"/index.h65"); break;
+      case 2: fetch_page("10.42.0.1",80,"/index.h65"); break;
       case 3: fetch_page("192.168.178.20",8000,"/showdown65.h65"); break;
       case 4: fetch_page("www.badgerpunch.com",80,"/showdown65.h65"); break;
       }
