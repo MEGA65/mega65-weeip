@@ -196,14 +196,16 @@ void update_mouse_position(unsigned char do_scroll)
 void fetch_page(char *hostname,int port,char *path)
 {
   /*
-    Call FETCHH65 for H65 pages, or FETCHGET for downloading files.
+    Call GRAZEH65 for H65 pages, or GRAZEGET for downloading files.
 
   */
 
   char *ext;
 
-  POKE(0xD011,0);
-  
+  // Show hourglass while loading new page
+  POKE(0xD027,0x01); // make hourglass white
+  lcopy((unsigned long)&mouse_hourglass_sprite,0x340,63);
+
   // Setup URL port and strings at $F800 and $F900
   // for shared interaction with other modules
   lcopy((unsigned short)hostname,0xf800,256);
@@ -229,7 +231,7 @@ void fetch_page(char *hostname,int port,char *path)
     // Download file
     // XXX - We should check for .HTML, .PHP and other common extension for "normal" web pages,
     // and try to display them. But that will be done in the FETCH_GETFETCH_DOWNLOADED state
-    // in main.  For now, we just need to call FETCHGET.M65
+    // in main.  For now, we just need to call GRAZEGET.M65
 
     mega65_dos_exechelper("GRAZEGET.M65");
     printf("ERROR: Could not load GRAZEGET.M65\n");
@@ -276,7 +278,7 @@ main(void)
   srand(random32(0));
 
   // Clear any queued key presses in $D610, so that
-  // Fetch doesn't try to use them as the start of a URL
+  // Graze doesn't try to use them as the start of a URL
   while(PEEK(0xD610)) POKE(0xD610,0);
 
   // Get initial mouse position
@@ -343,21 +345,21 @@ main(void)
   POKE(0xD021,0);
   POKE(0x0286,1);
   h640_text_mode();
-  println_text80(0x81,"Fetch - The Simple MEGA65 Browser");
+  println_text80(0x81,"Graze - The Simple MEGA65 Browser");
   println_text80(1,"");
   println_text80(7,"Version 0.1");
   println_text80(1,"");
-  println_text80(1,"Fetch is like a web browser, but uses special H65 formatted pages instead of    ");
+  println_text80(1,"Graze is like a web browser, but uses special H65 formatted pages instead of    ");
   println_text80(1,"HTML pages. This makes the browser very small and simple.                       ");
   println_text80(1,"But don't be deceived -- it supports text, hyper-links, graphics (including with");
   println_text80(1,"hyper-links behind them), as well as searching for and downloading files and    ");
   println_text80(1,"software for your MEGA65 home computer. And we didn't forget blinking text!");
   println_text80(1,"");
-  println_text80(7,"Fetch is designed to be used with a mouse. A MouSTer adaptor is a great way to  ");
+  println_text80(7,"Graze is designed to be used with a mouse. A MouSTer adaptor is a great way to  ");
   println_text80(7,"use a modern USB or wireless mouse with your MEGA65.");
   println_text80(1,"");
   println_text80(8,"Also, don't forget to connect the Ethernet port of your MEGA65 to a suitable    ");
-  println_text80(8,"router or switch. Fetch supports DHCP auto-configuration for IPv4 only.");
+  println_text80(8,"router or switch. Graze supports DHCP auto-configuration for IPv4 only.");
   println_text80(1,"");
   println_text80(1,"Enjoy!");
   println_text80(1,"");
