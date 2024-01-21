@@ -337,6 +337,17 @@ restart_fetch:
   POKE(0x0286,0x0e);
 
   // NOTE: PETSCII so things are inverted
+#ifdef __llvm__
+  // LLVM uses ASCII
+  snprintf((char *)buf,1024,
+	   "GET %s HTTP/1.1\r\n"
+	   "Host: %s\r\n"
+	   "Accept: */*\r\n"
+	   "User-Agent: GRAZE MEGA65-WeeIP/20240121\r\n"
+	   "\r\n",
+	   path,hostname);
+#else
+  // CC65 uses PETSCII
   snprintf((char *)buf,1024,
 	   "get %s http/1.1\n\r"
 	   "hOST: %s\n\r"
@@ -344,6 +355,7 @@ restart_fetch:
 	   "uSER-aGENT: graze mega65-wEEip/20240121\n\r"
 	   "\n\r",
 	   path,hostname);
+#endif
   // Demunge PETSCII a bit
   for(i=0;buf[i];i++) {
     if (buf[i]>=0xc1) buf[i]-=0x60;
