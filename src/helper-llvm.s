@@ -56,6 +56,16 @@ lfr1:	lda loadfile_routine,x
 	// in length
 loadfile_routine:
 
+//	lda $d610		
+//	beq lf1
+//	sta $d610
+//	jmp loadfile_routine
+//lf1:		
+//	inc $d020
+//	lda $d610
+//	beq lf1
+//	sta $d610
+	
 	;; Put dummy routine in at $080d, so that we can tell if it didn't load
 	lda #$ee
 	sta $080d
