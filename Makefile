@@ -131,11 +131,11 @@ pages:	$(SUBDEPENDS) assets/*
 log2pcap: src/log2pcap.c
 	gcc -g -Wall -o log2pcap src/log2pcap.c
 
-grazem.prg: src/grazem.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+grazem.prg: src/grazem.c $(COMPILERBIN) $(HELPER) src/graze_common.c include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
-grazeerr.prg: src/grazeerr.c $(COMPILERBIN) $(HELPER) include/shared_state.h $(MEGA65LIBCLIB)
+grazeerr.prg: src/grazeerr.c $(COMPILERBIN) $(HELPER) src/graze_common.c include/shared_state.h $(MEGA65LIBCLIB)
 	$(SUBMODULEUPDATE)
 	$(CL65) $(MEGA65LIBCINC) -I include -O -o $@ $(MAPFILE) $< $(MEGA65LIBCLIB) $(HELPER)
 
