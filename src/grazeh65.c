@@ -18,33 +18,12 @@
 #include "shared_state.h"
 #include "h65.h"
 
-extern IPV4 ip_broadcast;
-
 extern char dbg_msg[80];
 
-unsigned char mouse_pointer_sprite[63]={
-0xfC,0x00,0x00,
-0xf8,0x00,0x00,
-0xf0,0x00,0x00,
-0xf8,0x00,0x00,
-0xdc,0x00,0x00,
-0x8e,0x00,0x00,
-0x07,0x00,0x00,
-0x03,0x80,0x00,
-0x01,0xc0,0x00,
-0x00,0x80,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00,
-0x00,0x00,0x00
-};
+#define GRAZE_MOUSE_POINTERS
+#define GRAZE_PREPARE_NETWORK
+#define GRAZE_C64_40COLUMNS
+#include "../src/graze_common.c"
 
 // Names of helper programs
 // GRAZEM.M65
@@ -184,14 +163,18 @@ byte_t comunica (byte_t p)
 	    // Skip empty block
 	    if (block_len==0) {
 	      if (h65_error!=H65_DONE) {
-		printf("\nEnd of page found.\n");
+#ifdef __llvm__
+		printf("eND OF PAGE FOUND.\n");
+#else
+		printf("End of page found.\n");
+#endif
 		socket_disconnect();
 	      }
 	      page_parse_state=HEADSKIP-1;	      
 	      h65_error=H65_DONE;
 	      break;
 	    } else if (block_addr<0xf000L) {
-              printf("bad address $%08lx\n",block_addr);
+	      printf("bad address $%08lx\n",block_addr);
               h65_error=H65_BADBLOCK;
               return 0;
             } else if (block_len>0x20000L) {
@@ -200,7 +183,7 @@ byte_t comunica (byte_t p)
               return 0;
             } else {
 	      // Block data
-#if 1
+#if 0
 	      POKE(0x286,5);
 	      printf("\nBlock addr=$%08lx, len=$%08lx\n\r",
 		            block_addr,block_len);
@@ -254,62 +237,6 @@ byte_t comunica (byte_t p)
    return 0;
 }
 
-void update_mouse_position(void);
-
-void c64_40columns(void)
-{
-  // Reset video mode to C64 40 column mode while loading
-  POKE(0xD054,0);
-  POKE(0xD031,0);
-  POKE(0xD011,0x1B);
-  POKE(0xD016,0xC8);
-  POKE(0xD018,0x16);
-}
-
-void prepare_network(void)
-{
-  unsigned char i;
-
-  // Black screen with green text during network setup
-  c64_40columns();
-  POKE(0xD020,0); POKE(0xD021,0); POKE(0x0286,0x0D);
-  printf("%c",0x93);
-  
-  //  printf("H65 MAC %02x",mac_local.b[0]);
-  //  for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);  
-  
-  // Setup WeeIP
-  weeip_init();
-  task_cancel(eth_task);
-  task_add(eth_task, 0, 0,"eth");
-
-  // Do DHCP auto-configuration
-  dhcp_configured=graze_shared_mem.dhcp_configured;
-  if (!dhcp_configured) {
-    //    printf("\nRequesting IP...\n");
-    dhcp_autoconfig();
-    while(!dhcp_configured) {
-      task_periodic();
-      // Let the mouse move around
-      update_mouse_position();
-    }
-    // Store DHCP lease information for later recall
-    graze_shared_mem.dhcp_configured=1;
-    graze_shared_mem.dhcp_myip=ip_local;
-    graze_shared_mem.dhcp_dnsip=ip_dnsserver;
-    graze_shared_mem.dhcp_netmask=ip_mask;
-    graze_shared_mem.dhcp_gatewayip=ip_gate;
-  } else {
-    // Restore DHCP lease configuration
-    ip_local=graze_shared_mem.dhcp_myip;
-    ip_dnsserver=graze_shared_mem.dhcp_dnsip;
-    ip_mask=graze_shared_mem.dhcp_netmask;
-    ip_gate=graze_shared_mem.dhcp_gatewayip;
-    // Re-constitute ip_broadcast from IP address and mask
-    for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
-  }
-}      
-
 signed long screen_address_offset=0;
 signed long screen_address_offset_max=0;
 
@@ -329,11 +256,17 @@ void fetch_page(char *hostname,int port,char *path)
   POKE(0xD020,0x00);
   POKE(0xD021,0x00);
   c64_40columns();
-  
+
+  // Show hourglass while loading new page
+  lcopy((unsigned long)&mouse_hourglass_sprite,0x340,63);
+
 restart_fetch:
 
-  printf("Fetching http://%s:%d%s\n", 
-	 hostname,port,path);
+#ifdef __llvm__
+  printf("fETCHING http://%s:%d%s\n",hostname,port,path);
+#else
+  printf("Fetching http://%s:%d%s\n",hostname,port,path);
+#endif
   POKE(0x0286,0x0e);
 
   // NOTE: PETSCII so things are inverted
@@ -371,7 +304,7 @@ restart_fetch:
   lfill(0xFF82000L,0,0x6000);
   lfill(0x40000L,0,0x0000);  // len=0 means len=64KB
   lfill(0x50000L,0,0x0000);
-  
+
   // Clear any partial match to h65+$ff header
   last_bytes[3]=0;
   
@@ -421,7 +354,7 @@ restart_fetch:
 
     task_periodic();
 
-    update_mouse_position();
+    update_mouse_position(0);
     switch(PEEK(0xD610)) {
       case 0x52: case 0x72:  // Restart fetch
         socket_disconnect();
@@ -480,7 +413,7 @@ unsigned char mouse_link_colours[8]={0x06,0x06,0x0E,0x0E,0x06,0x06,0x0E,0x0E};
 unsigned long mouse_link_address=0;
 unsigned char link_box[6];
 
-void update_mouse_position(void)
+void update_mouse_position(unsigned char do_scroll __attribute__((unused)))
 {
   unsigned short mx,my;
 
@@ -540,8 +473,11 @@ main(void)
   mega65_io_enable();
   srand(random32(0));
 
-  // Give ethernet interface time to auto negotiate etc
-  eth_init();
+  // Clear screen to erase loader program
+  printf("%c",0x93);  
+  
+  // Assume ethernet has been setup by loader
+  // eth_init();
 
   // Get initial mouse position
   mouse_update_position(NULL,NULL);
