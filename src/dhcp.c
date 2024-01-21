@@ -67,7 +67,11 @@ byte_t dhcp_reply_handler (byte_t p)
     // Set our IP from BOOTP field
     for(i=0;i<4;i++) ip_local.b[i] = dns_query[0x10+i];
 #ifdef DEBUG_DHCP
+#ifdef __llvm__
+    printf("ip IS %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+#else
     printf("IP is %d.%d.%d.%d\n",ip_local.b[0],ip_local.b[1],ip_local.b[2],ip_local.b[3]);
+#endif
 #endif
     
     // Only process DHCP fields if magic cookie is set
@@ -96,19 +100,31 @@ byte_t dhcp_reply_handler (byte_t p)
 	  case 0x01:
 	    for(i=0;i<4;i++) ip_mask.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
+#ifdef __llvm__	    
+	    printf("nETMASK IS %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+#else
 	    printf("Netmask is %d.%d.%d.%d\n",ip_mask.b[0],ip_mask.b[1],ip_mask.b[2],ip_mask.b[3]);
+#endif
 #endif
 	    break;
 	  case 0x03:
 	    for(i=0;i<4;i++) ip_gate.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
+#ifdef __llvm__
+	    printf("gATEWAY IS %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+#else
 	    printf("Gateway is %d.%d.%d.%d\n",ip_gate.b[0],ip_gate.b[1],ip_gate.b[2],ip_gate.b[3]);
+#endif
 #endif
 	    break;
 	  case 0x06:
 	    for(i=0;i<4;i++) ip_dnsserver.b[i] = dns_query[offset+i];	  
 #ifdef DEBUG_DHCP
-	    	    printf("DNS server is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+#ifdef __llvm__
+	    printf("dns SERVER IS %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+#else
+	    printf("DNS server is %d.%d.%d.%d\n",ip_dnsserver.b[0],ip_dnsserver.b[1],ip_dnsserver.b[2],ip_dnsserver.b[3]);
+#endif
 #endif
 	    break;
     case 0x36: // DHCP Server Identifier
@@ -125,7 +141,11 @@ byte_t dhcp_reply_handler (byte_t p)
       // Compute broadcast address
       for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
 #ifdef DEBUG_DHCP
+#ifdef __llvm__
+      printf("bROADCAST IS %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+#else
       printf("Broadcast is %d.%d.%d.%d\n",ip_broadcast.b[0],ip_broadcast.b[1],ip_broadcast.b[2],ip_broadcast.b[3]);
+#endif
 #endif      
       // XXX We SHOULD send a packet to acknowledge the offer.
       // It works for now without it, because we start responding to ARP requests which
@@ -146,7 +166,11 @@ byte_t dhcp_reply_handler (byte_t p)
       // Mark DHCP configuration complete, and free the socket
       dhcp_configured=1;
 #ifdef DEBUG_DHCP
+#ifdef __llvm__
+      printf("dhcp CONFIGURATION COMPLETE.\n");
+#else
       printf("DHCP configuration complete.\n");
+#endif
 #endif
       socket_release(dhcp_socket);
     } else {
@@ -206,7 +230,11 @@ void dhcp_send_query_or_request(unsigned char requestP)
   IPV4 ip_broadcast;
 
 #ifdef DEBUG_DHCP
+#ifdef __llvm__
   printf("sENDING dhcp REQUEST...\n");
+#else
+  printf("Sending DHCP request...\n");
+#endif
 #endif
   
   socket_select(dhcp_socket);
