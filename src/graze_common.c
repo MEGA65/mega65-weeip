@@ -78,7 +78,12 @@ void prepare_network(void)
   unsigned char i;
 
   // XXX - Complain if MAC address is invalid, and direct use to configure it using configure?
+  lcopy(0xFFD36E9,(unsigned long)&mac_local.b[0],6);
+#ifdef __llvm__
+  printf("mac ADDRESS IS %02x",mac_local.b[0]);
+#else
   printf("MAC address is %02x",mac_local.b[0]);
+#endif
   for(i=1;i<6;i++) printf(":%02x",mac_local.b[i]);
   printf("\n");
   
@@ -111,6 +116,11 @@ void prepare_network(void)
     ip_gate=graze_shared_mem.dhcp_gatewayip;
     // Re-constitute ip_broadcast from IP address and mask
     for(i=0;i<4;i++) ip_broadcast.b[i]=(0xff&(0xff^ip_mask.b[i]))|ip_local.b[i];
+#ifdef __llvm__
+    printf("nETWORK ALREADY CONFIGURED.\n");	   
+#else
+    printf("Network already configured.\n");
+#endif
   }
 }      
 #endif
