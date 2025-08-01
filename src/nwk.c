@@ -201,14 +201,12 @@ byte_t nwk_tick (byte_t sig)
                default:
                   _sckt->toSend = ACK;
 		 _sckt->time = SOCKET_TIMEOUT(_sckt);
-                  _sckt->timeout = FALSE;
                   break;
             }
             if(_sckt->toSend) {
                /*
                 * Force nwk_upstream() to execute.
                 */
-	      _sckt->timeout = TRUE;
 #ifdef INSTANT_ACK
 	      nwk_upstream(0);
 #endif
@@ -437,6 +435,7 @@ byte_t nwk_upstream (byte_t sig)
 	     if(_sckt->toSend & (SYN | FIN)) seq.d++;
 	     if( (_sckt->toSend & (SYN | ACK)) == (SYN|ACK) ) seq.d++;
 	     _sckt->seq.d = seq.d;
+	     _sckt->timeout = TRUE;
 	   }
 	 }
 
@@ -492,7 +491,6 @@ byte_t nwk_upstream (byte_t sig)
          eth_packet_send();
 
 	 _sckt->toSend = 0;
-	 _sckt->timeout = FALSE;
 	 _sckt->time = SOCKET_TIMEOUT(_sckt);
 	 
       } else {
