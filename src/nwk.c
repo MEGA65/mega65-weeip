@@ -664,9 +664,10 @@ parse_tcp:
     * Check flags.
     */
    _flags = 0;
-   // XXX - Assumes no TCP options! Fix!
-   // Like it is now, it can't communicate to another instance of itself!
-   data_size -= 40;
+   // XXX Correct buffer offset processing to handle variable
+   // header lengths
+   data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
+   data_size -= data_ofs;
 
 
    // No data to return, unless we discover otherwise
@@ -752,9 +753,6 @@ parse_tcp:
        */
 
      if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
-     // XXX Correct buffer offset processing to handle variable
-     // header lengths
-     data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
      
      if (rel_sequence.d>_sckt->rx_size
 	 || rel_sequence.d+data_size>_sckt->rx_size) {
