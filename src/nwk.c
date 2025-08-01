@@ -155,6 +155,7 @@ byte_t nwk_tick (byte_t sig)
    for_each(_sockets, _sckt) {
       if(_sckt->type != SOCKET_TCP) continue;               // UDP socket or unused.
 
+      if(_sckt->state == _CONNECT) continue;    // Not waiting for the peer to ack anything
 
       //      if(_sckt->time == 0) continue;                        // does not have timing requirements.
 
@@ -200,14 +201,12 @@ byte_t nwk_tick (byte_t sig)
                default:
                   _sckt->toSend = ACK;
 		 _sckt->time = SOCKET_TIMEOUT(_sckt);
-                  _sckt->timeout = FALSE;
                   break;
             }
             if(_sckt->toSend) {
                /*
                 * Force nwk_upstream() to execute.
                 */
-	      _sckt->timeout = TRUE;
 #ifdef INSTANT_ACK
 	      nwk_upstream(0);
 #endif
@@ -436,6 +435,7 @@ byte_t nwk_upstream (byte_t sig)
 	     if(_sckt->toSend & (SYN | FIN)) seq.d++;
 	     if( (_sckt->toSend & (SYN | ACK)) == (SYN|ACK) ) seq.d++;
 	     _sckt->seq.d = seq.d;
+	     _sckt->timeout = TRUE;
 	   }
 	 }
 
@@ -491,7 +491,6 @@ byte_t nwk_upstream (byte_t sig)
          eth_packet_send();
 
 	 _sckt->toSend = 0;
-	 _sckt->timeout = FALSE;
 	 _sckt->time = SOCKET_TIMEOUT(_sckt);
 	 
       } else {
@@ -664,9 +663,10 @@ parse_tcp:
     * Check flags.
     */
    _flags = 0;
-   // XXX - Assumes no TCP options! Fix!
-   // Like it is now, it can't communicate to another instance of itself!
-   data_size -= 40;
+   // XXX Correct buffer offset processing to handle variable
+   // header lengths
+   data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
+   data_size -= data_ofs;
 
 
    // No data to return, unless we discover otherwise
@@ -752,9 +752,6 @@ parse_tcp:
        */
 
      if(data_size > _sckt->rx_size) data_size = _sckt->rx_size;
-     // XXX Correct buffer offset processing to handle variable
-     // header lengths
-     data_ofs=((IPH(ver_length)&0x0f)<<2)+((TCPH(hlen)>>4)<<2);
      
      if (rel_sequence.d>_sckt->rx_size
 	 || rel_sequence.d+data_size>_sckt->rx_size) {
@@ -1002,7 +999,7 @@ parse_tcp:
 #endif
             _sckt->state = _FIN_REC;
             _sckt->toSend = ACK | FIN;
-            ev = WEEIP_EV_DISCONNECT;           // TESTE
+            // ev = WEEIP_EV_DISCONNECT;           // TESTE
             break;
          }
 

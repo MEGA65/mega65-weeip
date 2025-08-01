@@ -240,6 +240,7 @@ socket_send
    _sckt->tx_size = size;
    _sckt->toSend = ACK | PSH;
    _sckt->retry = RETRIES_TCP;
+   _sckt->timeout = FALSE;
    task_cancel(nwk_upstream);
    task_add(nwk_upstream, 0, 0,"upstream");
    return TRUE;
