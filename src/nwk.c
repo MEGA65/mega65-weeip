@@ -155,6 +155,7 @@ byte_t nwk_tick (byte_t sig)
    for_each(_sockets, _sckt) {
       if(_sckt->type != SOCKET_TCP) continue;               // UDP socket or unused.
 
+      if(_sckt->state == _CONNECT) continue;    // Not waiting for the peer to ack anything
 
       //      if(_sckt->time == 0) continue;                        // does not have timing requirements.
 
