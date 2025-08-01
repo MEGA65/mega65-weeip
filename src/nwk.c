@@ -999,7 +999,7 @@ parse_tcp:
 #endif
             _sckt->state = _FIN_REC;
             _sckt->toSend = ACK | FIN;
-            ev = WEEIP_EV_DISCONNECT;           // TESTE
+            // ev = WEEIP_EV_DISCONNECT;           // TESTE
             break;
          }
 
