@@ -124,9 +124,9 @@ spaces_skipped:
 process_digit:
 	
 	lda $0800,x
-	cmp #$39
+	cmp #$3a
 	bcs got_digits
-	cmp #$2f
+	cmp #$30
 	bcc got_digits
 
 	;; Multiply accumulated value by 10
